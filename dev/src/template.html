@@ -50,7 +50,8 @@ button{font-family:inherit}
 .m.more{background:var(--card2);color:var(--tx2);cursor:default}
 .row{display:flex;align-items:center;gap:10px}
 .seg{display:flex;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
-.seg button{border:0;background:none;padding:9px 11px;font-size:13px;color:var(--tx2);cursor:pointer}
+.seg{flex:none}
+.seg button{border:0;background:none;padding:9px 11px;font-size:13px;color:var(--tx2);cursor:pointer;white-space:nowrap}
 .seg button.on{background:var(--roxo-f);color:#fff}
 .pill{height:44px;border-radius:999px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);display:flex;align-items:center;gap:6px;padding:0 16px 0 12px;font-size:14px;font-weight:500;cursor:pointer;flex:none}
 .pill.on{background:var(--roxo-f);border-color:var(--roxo);color:#fff}
@@ -242,11 +243,14 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 </div>
 <div id="cfgSheet" class="sheetw" hidden>
   <div class="box">
-    <div class="top" style="display:flex;align-items:center;margin-bottom:4px"><span class="ttl">Configurar treino</span><button class="ic" id="bCfgClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="cr"><div class="lb">Repetições<small>por ciclo</small></div><div class="stp" data-k="reps"><button data-d="-1" aria-label="Menos repetições">−</button><output id="v_reps"></output><button data-d="1" aria-label="Mais repetições">+</button></div></div>
+    <div class="top" style="display:flex;align-items:center;margin-bottom:4px"><span class="ttl" id="cfgTitulo">Configurar treino</span><button class="ic" id="bCfgClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="nota" id="cfgSub" hidden style="margin:0 0 6px"></p>
+    <div class="cr"><div class="lb"><span id="cfgRepsNome">Repetições</span><small>por ciclo</small></div><div class="stp" data-k="reps"><button data-d="-1" aria-label="Menos repetições">−</button><output id="v_reps"></output><button data-d="1" aria-label="Mais repetições">+</button></div></div>
     <div class="cr"><div class="lb">Ciclos<small>séries do exercício</small></div><div class="stp" data-k="ciclos"><button data-d="-1" aria-label="Menos ciclos">−</button><output id="v_ciclos"></output><button data-d="1" aria-label="Mais ciclos">+</button></div></div>
     <div class="cr"><div class="lb">Descanso<small>entre um ciclo e outro</small></div><div class="stp" data-k="descanso"><button data-d="-1" aria-label="Menos descanso">−</button><output id="v_descanso"></output><button data-d="1" aria-label="Mais descanso">+</button></div></div>
-    <div class="cr"><div class="lb">Ritmo</div><div class="seg" id="cRitmo"><button data-v="1.45">Lento</button><button data-v="1">Normal</button><button data-v="0.7">Rápido</button></div></div>
+    <div class="cr" id="rowPausaRep" hidden><div class="lb">Pausa<small>entre uma repetição e outra</small></div><div class="stp" data-k="pausaRep"><button data-d="-1" aria-label="Menos pausa">−</button><output id="v_pausaRep"></output><button data-d="1" aria-label="Mais pausa">+</button></div></div>
+    <div class="cr" id="rowDepois" hidden><div class="lb">Descanso até o próximo<small id="cfgDepoisSub">antes do próximo exercício</small></div><div class="stp" data-k="depois"><button data-d="-1" aria-label="Menos descanso até o próximo">−</button><output id="v_depois"></output><button data-d="1" aria-label="Mais descanso até o próximo">+</button></div></div>
+    <div class="cr"><div class="lb">Ritmo</div><div class="seg" id="cRitmo"><button data-v="1.45">Lento</button><button data-v="1">Normal</button><button data-v="0.7">Rápido</button><button data-v="0.5">Turbo</button></div></div>
     <div class="cr"><div class="lb">Caneleira<small>peso usado nos exercícios com caneleira</small></div><div class="seg" id="cCan"><button data-v="1">1 kg</button><button data-v="3">3 kg</button><button data-v="5">5 kg</button></div></div>
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>

@@ -1506,14 +1506,15 @@
    * ===================================================================== */
   const CFG_KEY = 'corpo3d.treino.v1';
   const CFG_PADRAO = { reps: 10, ciclos: 3, descanso: 30, voz: true, ritmo: 1, caneleira: 1 };
-  const LIM = { reps: [1, 50, 1], ciclos: [1, 10, 1], descanso: [0, 300, 5] };
+  const LIM = { reps: [1, 50, 1], ciclos: [1, 10, 1], descanso: [0, 300, 5], pausaRep: [0, 30, 1], depois: [0, 300, 5] };
+  const RITMO_VALORES = [1.45, 1, 0.7, 0.5]; // lento, normal, rápido, turbo
   function lerCfg() {
     let o = {};
     try { o = JSON.parse(localStorage.getItem(CFG_KEY) || '{}') || {}; } catch (e) { o = {}; }
     const c = Object.assign({}, CFG_PADRAO);
     for (const k of ['reps', 'ciclos', 'descanso']) { const v = Math.round(Number(o[k])); if (Number.isFinite(v)) c[k] = clamp(v, LIM[k][0], LIM[k][1]); }
     if (typeof o.voz === 'boolean') c.voz = o.voz;
-    if ([0.7, 1, 1.45].includes(Number(o.ritmo))) c.ritmo = Number(o.ritmo);
+    if (RITMO_VALORES.includes(Number(o.ritmo))) c.ritmo = Number(o.ritmo);
     if ([1, 3, 5].includes(Number(o.caneleira))) c.caneleira = Number(o.caneleira);
     return c;
   }
@@ -1764,7 +1765,7 @@
   // configuração
   let rascunho = null;
   function cfgUI() {
-    for (const k of ['reps', 'ciclos', 'descanso']) $('v_' + k).textContent = String(rascunho[k]) + (k === 'descanso' ? ' s' : '');
+    for (const k of ['reps', 'ciclos', 'descanso', 'pausaRep', 'depois']) if (rascunho[k] !== undefined) $('v_' + k).textContent = String(rascunho[k]) + (k === 'reps' ? (cfgIso ? ' s' : '') : k === 'ciclos' ? '' : ' s');
     for (const o of $('cRitmo').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.ritmo);
     for (const o of $('cCan').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.caneleira);
     $('cVoz').checked = rascunho.voz;
@@ -1783,21 +1784,52 @@
     $('cfgMsg').textContent = vozPt ? '' : 'Não encontrei uma voz em português neste aparelho; vou usar a voz padrão.';
     falar('Um, dois, três. Ciclo um de três.', true, true);
   });
+  // dentro de um treino montado, os Ajustes mexem no exercício que está na tela,
+  // e ao salvar o treino guardado também muda
+  let cfgItem = null, cfgIso = false;
   $('bCfg').addEventListener('click', () => {
-    rascunho = Object.assign({}, cfg); $('cfgMsg').textContent = VOZ_OK ? '' : 'Este navegador não tem leitura em voz alta.';
+    cfgItem = SEQ ? SEQ.t.itens[SEQ.idx] : null;
+    cfgIso = !!(cfgItem && cur.isometria);
+    rascunho = Object.assign({}, cfg);
+    if (cfgItem) Object.assign(rascunho, { reps: cfgItem.reps, ciclos: cfgItem.ciclos, descanso: cfgItem.descanso, ritmo: cfgItem.ritmo, pausaRep: cfgItem.pausaRep, depois: cfgItem.depois });
+    else { delete rascunho.pausaRep; delete rascunho.depois; }
+    const ultimo = !SEQ || SEQ.idx >= SEQ.t.itens.length - 1;
+    $('cfgTitulo').textContent = cfgItem ? 'Ajustar este exercício' : 'Configurar treino';
+    $('cfgSub').hidden = !cfgItem;
+    if (cfgItem) $('cfgSub').textContent = cur.nome + ' · treino "' + SEQ.t.nome + '". Ao salvar, o treino guardado também muda.';
+    $('cfgRepsNome').textContent = cfgIso ? 'Segundos' : 'Repetições';
+    $('rowPausaRep').hidden = !cfgItem || cur.isometria;
+    $('rowDepois').hidden = !cfgItem || ultimo;
+    if (cfgItem && !ultimo) $('cfgDepoisSub').textContent = 'antes de ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex);
+    $('cfgMsg').textContent = VOZ_OK ? '' : 'Este navegador não tem leitura em voz alta.';
     cfgUI(); $('cfgSheet').hidden = false;
   });
   $('bCfgClose').addEventListener('click', () => { $('cfgSheet').hidden = true; });
   $('bCfgSave').addEventListener('click', () => {
-    const ritmoMudou = rascunho.ritmo !== cfg.ritmo;
-    cfg = Object.assign({}, rascunho);
-    const ok = salvarCfg(cfg);
-    if (!SEQ) tc = cfg;
-    if (ritmoMudou) { t = 0; lastCycle = 0; }
+    const ritmoAntes = tc.ritmo;
+    let ok = true, okTreino = true;
+    if (cfgItem && SEQ && SEQ.t.itens[SEQ.idx] === cfgItem) {
+      // voz e caneleira continuam gerais; o resto vai para o exercício do treino
+      cfg = Object.assign({}, cfg, { voz: rascunho.voz, caneleira: rascunho.caneleira });
+      ok = salvarCfg(cfg);
+      const novo = { reps: rascunho.reps, ciclos: rascunho.ciclos, descanso: rascunho.descanso, ritmo: rascunho.ritmo, pausaRep: rascunho.pausaRep, depois: rascunho.depois };
+      const lista = TREINOS.map(tr => tr.id !== SEQ.t.id ? tr : Object.assign({}, tr, { alterado: Date.now(), itens: tr.itens.map((it, i) => i === SEQ.idx ? Object.assign({}, it, novo) : it) }));
+      okTreino = gravarTreinos(lista);
+      if (okTreino) { TREINOS = lista; SEQ.t = TREINOS.find(tr => tr.id === SEQ.t.id); }
+      else Object.assign(SEQ.t.itens[SEQ.idx], novo); // vale agora, mesmo sem gravar
+      tc = Object.assign({}, cfg, novo);
+    } else {
+      cfg = Object.assign({}, rascunho); delete cfg.pausaRep; delete cfg.depois;
+      ok = salvarCfg(cfg);
+      if (!SEQ) tc = cfg;
+    }
+    // mudou o ritmo no meio: continua do mesmo ponto do movimento, só que na velocidade nova
+    if (tc.ritmo !== ritmoAntes && ritmoAntes > 0) { t = t * tc.ritmo / ritmoAntes; }
     if (!cfg.voz) calarVoz();
     escalaCaneleira(cfg.caneleira);
     painelTreino();
-    if (ok) { $('cfgSheet').hidden = true; }
+    if (ok && okTreino) { $('cfgSheet').hidden = true; cfgItem = null; }
+    else if (!okTreino) $('cfgMsg').textContent = 'Atenção: não consegui gravar no treino guardado. O ajuste vale só para agora.';
     else $('cfgMsg').textContent = 'Atenção: não consegui gravar neste aparelho. A configuração vale só até fechar o app.';
   });
 
@@ -1806,7 +1838,7 @@
    * ===================================================================== */
   const TREINOS_KEY = 'corpo3d.treinos.v1', MUSICA_KEY = 'corpo3d.musica.v1';
   const LIM_IT = { reps: [1, 50, 1], ciclos: [1, 10, 1], descanso: [0, 300, 5], pausaRep: [0, 30, 1], depois: [0, 300, 5] };
-  const RITMOS = [[1.45, 'Lento'], [1, 'Normal'], [0.7, 'Rápido']];
+  const RITMOS = [[1.45, 'Lento'], [1, 'Normal'], [0.7, 'Rápido'], [0.5, 'Turbo']];
   const TRILHAS = [['padrao', 'Padrão'], ['app', 'Som do app'], ['minhas', 'Minhas músicas'], ['off', 'Sem música']];
   const exPorId = id => EXERCICIOS.find(e => e.id === id);
   const nomeEx = id => { const e = exPorId(id); return e ? e.nome : 'Exercício removido'; };

@@ -294,7 +294,7 @@ window.Musica = (function () {
     op = op || {};
     if (op.nova) novaPend[tipo] = true;
     if (op.modo) modoPedidoAtual = op.modo;
-    if (op.ritmo) ritmoMul = 1 / op.ritmo;
+    if (op.ritmo) ritmoMul = Math.min(1.15, Math.max(0.85, 1 / op.ritmo)); // a música acompanha, mas sem exagero
     const n = ++ultimoPedido;
     return enfileirar(async () => {
       if (n !== ultimoPedido) return;
@@ -305,7 +305,7 @@ window.Musica = (function () {
   async function tocar2(tipo, op) {
     if (st.previa) parar2(true);
     if (op.modo) modoPedidoAtual = op.modo;
-    if (op.ritmo) ritmoMul = 1 / op.ritmo;
+    if (op.ritmo) ritmoMul = Math.min(1.15, Math.max(0.85, 1 / op.ritmo)); // a música acompanha, mas sem exagero
     if (!garantirCtx()) { st.erro = 'Este navegador não toca som gerado.'; return; }
     if (ctx.state === 'suspended') try { ctx.resume(); } catch (e) { /* ok */ }
     const pedido = modoPedidoAtual && modoPedidoAtual !== 'padrao' ? modoPedidoAtual : conf.modo;
