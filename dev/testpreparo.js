@@ -9,7 +9,7 @@ await p.evaluateOnNewDocument(()=>{window.__falas=[];const ss={speaking:false,pe
  Object.defineProperty(window,'speechSynthesis',{value:ss,configurable:true});});
 await p.goto('file://'+path.resolve('dist/corpo3d.html'));await p.waitForFunction('window.__corpo',{timeout:60000});
 const ok=(c,m)=>{console.log((c?'OK  ':'FALHA ')+m);if(!c)process.exitCode=1;};
-await p.evaluate(()=>{localStorage.setItem('corpo3d.treino.v1',JSON.stringify({reps:2,ciclos:2,descanso:5,voz:true,ritmo:1,caneleira:1}));});
+await p.evaluate(()=>{localStorage.setItem('corpo3d.treino.v1@p1',JSON.stringify({reps:2,ciclos:2,descanso:5,voz:true,ritmo:1,caneleira:1}));});
 await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});
 await p.evaluate(()=>__corpo.setExercise('agachamento'));await sleep(800);
 await p.evaluate(()=>{window.__falas=[];document.getElementById('bPlay').click();});
@@ -42,7 +42,7 @@ f=await p.evaluate(()=>window.__falas.map(x=>x.txt));ok(f[0]==='Começa!','conti
 // fim do ciclo: continua de pé até terminar de avisar, só depois senta
 await p.evaluate(()=>{document.getElementById('bReset').click();});await sleep(300);
 await p.evaluate(()=>{window.__msPorLetra=40;});
-await p.evaluate(()=>{const c=JSON.parse(localStorage.getItem('corpo3d.treino.v1'));});
+await p.evaluate(()=>{const c=JSON.parse(localStorage.getItem('corpo3d.treino.v1@p1'));});
 await p.evaluate(()=>document.getElementById('bPlay').click());
 await p.waitForFunction(()=>__corpo.treino().estado==='treino',{timeout:15000});
 await p.waitForFunction(()=>__corpo.treino().estado!=='treino',{timeout:20000});
@@ -60,7 +60,7 @@ ok(d1>=minimo,'aviso de fim adiantado não faz começar antes ('+d1.toFixed(1)+'
 await p.evaluate(()=>{window.__msPorLetra=25;});
 // sem voz: espera por tempo
 await p.evaluate(()=>{document.getElementById('bReset').click();});
-await p.evaluate(()=>{localStorage.setItem('corpo3d.treino.v1',JSON.stringify({reps:2,ciclos:1,descanso:5,voz:false,ritmo:1,caneleira:1}));});
+await p.evaluate(()=>{localStorage.setItem('corpo3d.treino.v1@p1',JSON.stringify({reps:2,ciclos:1,descanso:5,voz:false,ritmo:1,caneleira:1}));});
 await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});
 await p.evaluate(()=>__corpo.setExercise('agachamento'));await sleep(500);
 const t0=Date.now();await p.evaluate(()=>document.getElementById('bPlay').click());await sleep(300);

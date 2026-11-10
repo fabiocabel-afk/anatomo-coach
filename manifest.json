@@ -1,6 +1,6 @@
 {
-  "name": "Corpo 3D — Exercícios",
-  "short_name": "Corpo 3D",
+  "name": "AnatoMotion",
+  "short_name": "AnatoMotion",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

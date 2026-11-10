@@ -18,7 +18,7 @@ await p.screenshot({path:'shots/player_treino.png'});
 await cl('#bEscolher');ok(!(await p.$eval('#trSheet',e=>e.hidden)),'Escolher abre durante o treino');await cl('#bTrClose');
 await cl('#bNext');s=await st();ok(s.tr==='previa'&&s.at!==a1,'⏭ durante treino avulso troca de exercício');
 // sequência
-await p.evaluate(()=>{localStorage.setItem('corpo3d.treinos.v1',JSON.stringify({v:1,lista:[{id:'x',nome:'T',trilha:'off',itens:[{ex:'agachamento',reps:3,ciclos:1,descanso:5,pausaRep:0,ritmo:1,depois:10},{ex:'rosca',reps:2,ciclos:1,descanso:5,pausaRep:0,ritmo:1,depois:5},{ex:'prancha',reps:5,ciclos:1,descanso:5,pausaRep:0,ritmo:1,depois:5}]}]}));});
+await p.evaluate(()=>{localStorage.setItem('corpo3d.treinos.v1@p1',JSON.stringify({v:1,lista:[{id:'x',nome:'T',trilha:'off',itens:[{ex:'agachamento',reps:3,ciclos:1,descanso:5,pausaRep:0,ritmo:1,depois:10},{ex:'rosca',reps:2,ciclos:1,descanso:5,pausaRep:0,ritmo:1,depois:5},{ex:'prancha',reps:5,ciclos:1,descanso:5,pausaRep:0,ritmo:1,depois:5}]}]}));});
 await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});
 await cl('#bEscolher');await p.evaluate(()=>document.querySelector('#trList .trPlay').click());await sleep(300);
 s=await st();ok(s.seq.idx===0&&s.at==='agachamento'&&s.tr==='treino'&&!s.prev&&!s.next,'treino montado começa no 1');

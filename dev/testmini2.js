@@ -7,7 +7,7 @@ const ok=(c,m)=>{console.log((c?'OK  ':'FALHA ')+m);if(!c)process.exitCode=1;};
 for(const id of ['flexao','ponte','ziguezague_garrafas']){
  await p.evaluate(id=>__corpo.setExercise(id),id);await sleep(400);
  const antes=await p.evaluate(()=>{__corpo.posar(0.3,0);return JSON.stringify(__corpo.pontos())+JSON.stringify(__corpo.garrafasPos());});
- await p.evaluate(()=>{localStorage.setItem('corpo3d.catalogo.v1',JSON.stringify({grupo:'todos',modo:'mini'}));});
+ await p.evaluate(()=>{localStorage.setItem('corpo3d.catalogo.v1@p1',JSON.stringify({grupo:'todos',modo:'mini'}));});
  await p.evaluate(()=>{document.getElementById('bEscolher').click();});await sleep(200);await p.evaluate(()=>document.getElementById('bTrAvulso').click());
  await p.evaluate(()=>{document.querySelector('#exModo [data-v=mini]').click();});
  for(let k=0;k<6;k++){await p.evaluate(k=>{document.getElementById('exList').scrollTop=k*700;},k);await sleep(700);}

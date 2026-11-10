@@ -40,7 +40,7 @@ let tr=await p.evaluate(()=>__corpo.treinos());
 ok(tr.length===1&&tr[0].itens.length===3,'treino salvo com 3 exercícios');
 ok(JSON.stringify(tr[0].itens.map(i=>[i.ex,i.reps,i.ciclos,i.descanso,i.pausaRep,i.depois]))==='[["agachamento",3,2,5,1,0],["prancha",4,1,30,0,5],["rosca",2,1,30,0,60]]',
   'valores gravados '+JSON.stringify(tr[0].itens.map(i=>[i.ex,i.reps,i.ciclos,i.descanso,i.pausaRep,i.depois])));
-const ls=await p.evaluate(()=>JSON.parse(localStorage.getItem('corpo3d.treinos.v1')).lista.length);ok(ls===1,'gravado no armazenamento');
+const ls=await p.evaluate(()=>JSON.parse(localStorage.getItem('corpo3d.treinos.v1@p1')).lista.length);ok(ls===1,'gravado no armazenamento');
 await shot('4_lista');
 // 3) editar: troca nome e reordena, depois cancela outra edição
 await clickTxt('#trList .ic','');
@@ -107,7 +107,7 @@ await p.waitForFunction(()=>document.querySelectorAll('#muL_pausa .mur').length=
 let n=await p.evaluate(()=>[document.querySelectorAll('#muL_treino .mur').length,document.querySelectorAll('#muL_pausa .mur').length,document.getElementById('muN_treino').textContent]);
 ok(n[0]===2&&n[1]===1,'2 músicas de treino e 1 de pausa guardadas (texto recusado) '+n);
 await clickTxt('#muModo button','Minhas');
-ok(await p.evaluate(()=>JSON.parse(localStorage.getItem('corpo3d.musica.v1')).modo==='minhas'),'modo minhas gravado');
+ok(await p.evaluate(()=>JSON.parse(localStorage.getItem('corpo3d.musica.v1@p1')).modo==='minhas'),'modo minhas gravado');
 // renomear
 await sleep(800);await p.evaluate(()=>document.querySelector('#muL_treino [aria-label^="Renomear"]').click());await sleep(100);
 await p.$eval('.muRen',e=>{e.value='Aquecimento';});await p.focus('.muRen');await p.keyboard.press('Enter');await p.waitForFunction(()=>document.getElementById('muL_treino').textContent.includes('Aquecimento'),{timeout:8000}).catch(()=>{});

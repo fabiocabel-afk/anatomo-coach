@@ -1,4 +1,4 @@
-/* Corpo 3D — biblioteca de exercícios (dados)
+/* AnatoMotion — biblioteca de exercícios (dados)
  * Cada exercício: pose A (início) → pose B (fim), em graus [x, y, z] por osso.
  *   x negativo = flexão para frente (braços, pernas, dedos); x positivo na coluna/quadril = inclinar para frente.
  * Campos opcionais:

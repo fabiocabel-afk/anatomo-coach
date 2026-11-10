@@ -1,4 +1,4 @@
-# Corpo 3D — Anatomo Coach
+# AnatoMotion
 
 App (PWA) de exercícios com um corpo humano 3D próprio: esqueleto, músculos e dedos gerados por código (Three.js r128), catálogo de exercícios com ficha, treino com contagem por voz em português, treinos montados (sequências) e trilha sonora.
 

@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#131016">
-<title>Corpo 3D — Exercícios</title>
+<title>AnatoMotion</title>
+<meta name="apple-mobile-web-app-title" content="AnatoMotion">
 <!--PWA_HEAD-->
 <style>
 :root{--roxo:#8B4FC4;--roxo-f:#642A90;--bg:#131016;--card:#1E1A23;--card2:#28232E;--tx:#F3EEF6;--tx2:#A79FB0;--bd:#332C3A;--pri:#FF2D45;--sec:#FF9901}
@@ -13,8 +14,21 @@
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;position:relative}
 header{padding:calc(env(safe-area-inset-top) + 10px) 12px 2px 16px;display:flex;align-items:center;gap:10px}
-header h1{font-size:19px;margin:0;font-weight:600;color:var(--tx)}
-header h1 b{color:var(--roxo);font-weight:600}
+header h1{font-size:19px;margin:0;font-weight:700;color:#fff;letter-spacing:-.01em;white-space:nowrap}
+header h1 b{color:#9D5FE0;font-weight:700}
+.avatar{flex:none;width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.18);color:#fff;font-size:15px;font-weight:700;display:grid;place-items:center;cursor:pointer;padding:0;font-family:inherit}
+span.avatar{width:38px;height:38px;cursor:default}
+i.rot{font-style:normal}
+@media (max-width:400px){#bList i.rot{display:none}#bList{padding:0;width:40px;justify-content:center}}
+.pfr{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--bd);border-radius:14px;margin-bottom:8px;background:var(--card2)}
+.pfr.atual{border-color:var(--roxo)}
+.pfr .trt{flex:1;min-width:0}
+.pfr .pill{height:36px}
+.pfForm{flex:1;display:flex;flex-direction:column;gap:10px}
+.pfCores{display:flex;gap:10px;flex-wrap:wrap}
+.pfCor{width:32px;height:32px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.pfCor.on{border-color:#fff;box-shadow:0 0 0 2px var(--roxo)}
+.pfForm .btnLinha{margin:0}
 header span{font-size:12px;color:var(--tx2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:430px){header span{font-size:0}}
 button{font-family:inherit}
@@ -223,9 +237,10 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 </head>
 <body>
 <header>
-  <h1>Corpo <b>3D</b></h1><span>atlas muscular · v2.13</span>
+  <h1>Anato<b>Motion</b></h1><span></span>
   <button class="ic txt" id="bTreinos" aria-label="Meus treinos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/></svg>Treinos</button>
-  <button class="ic txt" id="bList" aria-label="Lista de músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Músculos</button>
+  <button class="ic txt" id="bList" aria-label="Lista de músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><i class="rot">Músculos</i></button>
+  <button class="avatar" id="bPerfil" aria-label="Perfil"></button>
 </header>
 <div id="chips"></div>
 <div id="view">
@@ -316,6 +331,15 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
     <p class="nota" style="text-align:center;margin-top:12px">Versão /*VER*/</p>
+  </div>
+</div>
+<div id="pfSheet" class="sheetw" hidden>
+  <div class="box">
+    <div style="display:flex;align-items:center;margin-bottom:6px"><span class="ttl">Perfis</span><button class="ic" id="bPfClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="nota" style="margin:0 0 10px">Cada perfil tem os próprios treinos, ajustes (repetições, ritmo, voz), músicas e preferências.</p>
+    <p class="msg" id="pfMsg"></p>
+    <div id="pfList"></div>
+    <div class="btnLinha"><button id="bPfNovo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo perfil</button></div>
   </div>
 </div>
 <div id="trSheet" class="sheetw" hidden>

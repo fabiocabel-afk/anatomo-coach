@@ -8,7 +8,7 @@ await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});
 await p.click('#bGrupo');await p.type('#exQ','abducao em pe');await p.click('#exList .li');await new Promise(r=>setTimeout(r,400));await p.click('#bPvFazer');await sleep(300);
 console.log('grupo',await p.$eval('#bGrupo',e=>e.textContent),'| sub',await p.$eval('#nSub',e=>e.textContent));
 await p.click('#bCfg');await p.click('#cCan button[data-v="5"]');await p.click('#bCfgSave');await sleep(200);
-console.log('após 5 kg:',await p.$eval('#nSub',e=>e.textContent),await p.evaluate(()=>localStorage.getItem('corpo3d.treino.v1')));
+console.log('após 5 kg:',await p.$eval('#nSub',e=>e.textContent),await p.evaluate(()=>localStorage.getItem('corpo3d.treino.v1@p1')));
 await p.click('#bPlay');await sleep(200);console.log('voz:',await p.evaluate(()=>__falas[0]));
 await p.click('#bGrupo');await p.$eval('#exQ',e=>{e.value=''});await p.type('#exQ','agachamento livre com barra');await p.click('#exList .li');await new Promise(r=>setTimeout(r,400));await p.click('#bPvFazer');await sleep(200);
 console.log('barra sub',await p.$eval('#nSub',e=>e.textContent),'grupo',await p.$eval('#bGrupo',e=>e.textContent));

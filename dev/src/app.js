@@ -1,4 +1,4 @@
-/* Corpo 3D — motor de exercícios (v2)
+/* AnatoMotion — motor de exercícios (antigo Corpo 3D)
  * Boneco muscular estilo atlas de anatomia, gerado 100% por código:
  *  - esqueleto padrão (nomes VRM) com dedos das mãos e osso de giro no antebraço;
  *  - corpo-base (camada profunda) + cabeça/mãos/pés estilo boneco articulável;
@@ -9,6 +9,29 @@
 (function () {
   'use strict';
   const THREE = window.THREE;
+
+  /* ---------- Perfis: cada pessoa tem seus treinos, ajustes, músicas e preferências ---------- */
+  const PERFIS_KEY = 'anatomotion.perfis.v1';
+  const BASES_PERFIL = ['corpo3d.treino.v1', 'corpo3d.treinos.v1', 'corpo3d.musica.v1', 'corpo3d.catalogo.v1'];
+  const CORES_PERFIL = ['#642A90', '#EC357D', '#FF9901', '#99CC33', '#0164C9', '#2BB3A3'];
+  let perfisErro = '';
+  const PERFIS = (function () {
+    let reg = null;
+    try { reg = JSON.parse(localStorage.getItem(PERFIS_KEY) || 'null'); } catch (e) { reg = null; }
+    if (!reg || !Array.isArray(reg.lista) || !reg.lista.length) {
+      reg = { v: 1, lista: [{ id: 'p1', nome: 'Perfil 1', cor: CORES_PERFIL[0], criado: Date.now() }], atual: 'p1' };
+      try {
+        // primeira vez: o que já estava salvo no aparelho passa a ser do Perfil 1 (o original fica guardado)
+        for (const b of BASES_PERFIL) { const v = localStorage.getItem(b); if (v !== null && localStorage.getItem(b + '@p1') === null) localStorage.setItem(b + '@p1', v); }
+        localStorage.setItem(PERFIS_KEY, JSON.stringify(reg));
+      } catch (e) { perfisErro = 'Não consegui gravar os perfis neste aparelho.'; }
+    }
+    reg.lista = reg.lista.filter(p => p && p.id && p.nome);
+    if (!reg.lista.some(p => p.id === reg.atual)) reg.atual = reg.lista[0].id;
+    return reg;
+  })();
+  const chave = base => base + '@' + PERFIS.atual;
+  if (window.Musica) Musica.definirPerfil(PERFIS.atual);
   const V3 = THREE.Vector3;
   const rad = d => d * Math.PI / 180;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1422,7 +1445,7 @@
     const on = chips.querySelector('.chip.on'); if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) { /* ok */ }
   }
   /* ---------- Catálogo: grupo (lista suspensa própria), lista ou miniaturas, e prévia ---------- */
-  const CAT_KEY = 'corpo3d.catalogo.v1';
+  const CAT_KEY = chave('corpo3d.catalogo.v1');
   const GRUPOS = [];
   for (const eq in EQUIP) for (const rg in REGIAO) { const n = EXERCICIOS.filter(e => e.equip === eq && e.regiao === rg).length; if (n) GRUPOS.push({ k: eq + '|' + rg, eq, rg, nome: EQUIP[eq] + ' · ' + REGIAO[rg], n }); }
   const CAT = (function () {
@@ -1595,7 +1618,7 @@
    *    estados: previa (anima sem contar), treino, pausado, descanso, fim,
    *    congelado (usado pelos testes)
    * ===================================================================== */
-  const CFG_KEY = 'corpo3d.treino.v1';
+  const CFG_KEY = chave('corpo3d.treino.v1');
   const CFG_PADRAO = { reps: 10, ciclos: 3, descanso: 30, voz: true, ritmo: 1, caneleira: 1 };
   const LIM = { reps: [1, 50, 1], ciclos: [1, 10, 1], descanso: [0, 300, 5], pausaRep: [0, 30, 1], depois: [0, 300, 5] };
   const RITMO_VALORES = [1.45, 1, 0.7, 0.5]; // lento, normal, rápido, turbo
@@ -1963,7 +1986,7 @@
   /* =====================================================================
    * 9. MEUS TREINOS (sequências salvas) e TRILHA SONORA
    * ===================================================================== */
-  const TREINOS_KEY = 'corpo3d.treinos.v1', MUSICA_KEY = 'corpo3d.musica.v1';
+  const TREINOS_KEY = chave('corpo3d.treinos.v1'), MUSICA_KEY = chave('corpo3d.musica.v1');
   const LIM_IT = { reps: [1, 50, 1], ciclos: [1, 10, 1], descanso: [0, 300, 5], pausaRep: [0, 30, 1], depois: [0, 300, 5] };
   const RITMOS = [[1.45, 'Lento'], [1, 'Normal'], [0.7, 'Rápido'], [0.5, 'Turbo']];
   const TRILHAS = [['padrao', 'Padrão'], ['app', 'Som do app'], ['minhas', 'Minhas músicas'], ['off', 'Sem música']];
@@ -2424,6 +2447,98 @@
     return { TAM, registrar, limpar, quadro, abrirPrevia, fecharPrevia, ativo: () => !!r2, previaQuadros: () => prev ? prev.n || 0 : -1 };
   })();
 
+  /* =====================================================================
+   * 11. PERFIS — tela para escolher, criar, renomear e apagar
+   * ===================================================================== */
+  function gravarPerfis(reg) {
+    try { const tx = JSON.stringify(reg); localStorage.setItem(PERFIS_KEY, tx); return localStorage.getItem(PERFIS_KEY) === tx; } catch (e) { return false; }
+  }
+  const perfilAtual = () => PERFIS.lista.find(p => p.id === PERFIS.atual);
+  const inicial = nome => (String(nome).trim()[0] || '?').toUpperCase();
+  function avatarUI() {
+    const p = perfilAtual(), b = $('bPerfil');
+    b.textContent = inicial(p.nome); b.style.background = p.cor;
+    b.setAttribute('aria-label', 'Perfil: ' + p.nome + '. Trocar perfil'); b.title = p.nome;
+  }
+  let pfEdit = null; // { id|null (novo), nome, cor }
+  function renderPerfis(msg) {
+    $('pfMsg').textContent = msg || perfisErro || '';
+    const box = $('pfList'); box.innerHTML = '';
+    for (const p of PERFIS.lista) {
+      const r = document.createElement('div'); r.className = 'pfr' + (p.id === PERFIS.atual ? ' atual' : '');
+      if (pfEdit && pfEdit.id === p.id) { r.appendChild(formPerfil()); box.appendChild(r); continue; }
+      const av = document.createElement('span'); av.className = 'avatar'; av.textContent = inicial(p.nome); av.style.background = p.cor; r.appendChild(av);
+      const tx = document.createElement('div'); tx.className = 'trt';
+      const b = document.createElement('b'); b.textContent = p.nome; tx.appendChild(b);
+      const sm = document.createElement('small'); sm.textContent = p.id === PERFIS.atual ? 'em uso agora' : 'toque em Entrar para usar'; tx.appendChild(sm);
+      r.appendChild(tx);
+      if (p.id !== PERFIS.atual) r.appendChild(botao('pill on', 'Entrar', 'Entrar como ' + p.nome, () => trocarPerfil(p.id)));
+      r.appendChild(botao('ic sm', IC.edit, 'Editar ' + p.nome, () => { pfEdit = { id: p.id, nome: p.nome, cor: p.cor }; renderPerfis(); }));
+      if (p.id !== PERFIS.atual) r.appendChild(botao('ic sm', IC.del, 'Apagar ' + p.nome, bt => confirmar(bt, 'Apagar?', () => apagarPerfil(p.id))));
+      box.appendChild(r);
+    }
+    if (pfEdit && !pfEdit.id) { const r = document.createElement('div'); r.className = 'pfr'; r.appendChild(formPerfil()); box.appendChild(r); }
+    $('bPfNovo').hidden = !!pfEdit || PERFIS.lista.length >= 8;
+  }
+  function formPerfil() {
+    const f = document.createElement('div'); f.className = 'pfForm';
+    const inp = document.createElement('input'); inp.className = 'inp'; inp.maxLength = 24; inp.placeholder = 'Nome da pessoa'; inp.value = pfEdit.nome; inp.id = 'pfNome';
+    inp.addEventListener('input', () => { pfEdit.nome = inp.value; });
+    f.appendChild(inp);
+    const cs = document.createElement('div'); cs.className = 'pfCores';
+    for (const c of CORES_PERFIL) {
+      const b = botao('pfCor' + (pfEdit.cor === c ? ' on' : ''), '', 'Cor ' + c, () => { pfEdit.cor = c; for (const x of cs.children) x.classList.toggle('on', x === b); });
+      b.style.background = c; cs.appendChild(b);
+    }
+    f.appendChild(cs);
+    const bt = document.createElement('div'); bt.className = 'btnLinha';
+    bt.appendChild(botao('', 'Cancelar', null, () => { pfEdit = null; renderPerfis(); }));
+    bt.appendChild(botao('pri', pfEdit.id ? 'Salvar' : 'Criar e entrar', null, salvarPerfil));
+    f.appendChild(bt);
+    setTimeout(() => inp.focus(), 50);
+    return f;
+  }
+  function salvarPerfil() {
+    const nome = String(pfEdit.nome || '').trim().slice(0, 24);
+    if (!nome) { $('pfMsg').textContent = 'Digite um nome.'; return; }
+    if (PERFIS.lista.some(p => p.id !== pfEdit.id && p.nome.toLowerCase() === nome.toLowerCase())) { $('pfMsg').textContent = 'Já existe um perfil com esse nome.'; return; }
+    const reg = JSON.parse(JSON.stringify(PERFIS));
+    let novoId = null;
+    if (pfEdit.id) { const p = reg.lista.find(x => x.id === pfEdit.id); p.nome = nome; p.cor = pfEdit.cor; }
+    else { novoId = 'p' + Date.now().toString(36); reg.lista.push({ id: novoId, nome, cor: pfEdit.cor, criado: Date.now() }); }
+    if (novoId) reg.atual = novoId;
+    if (!gravarPerfis(reg)) { $('pfMsg').textContent = 'Atenção: não consegui gravar neste aparelho. Nada foi alterado.'; return; }
+    Object.assign(PERFIS, reg); pfEdit = null;
+    if (novoId) { recarregarPerfil(); return; }
+    avatarUI(); renderPerfis('Perfil atualizado.');
+  }
+  function trocarPerfil(id) {
+    const reg = JSON.parse(JSON.stringify(PERFIS)); reg.atual = id;
+    if (!gravarPerfis(reg)) { renderPerfis('Atenção: não consegui trocar de perfil neste aparelho.'); return; }
+    recarregarPerfil();
+  }
+  function recarregarPerfil() {
+    // cada perfil carrega os próprios dados do zero: o jeito mais seguro é reabrir o app
+    try { calarVoz(); if (window.Musica) Musica.parar(true); } catch (e) { /* ok */ }
+    $('pfSheet').hidden = true;
+    location.reload();
+  }
+  async function apagarPerfil(id) {
+    if (id === PERFIS.atual) return;
+    const reg = JSON.parse(JSON.stringify(PERFIS)); reg.lista = reg.lista.filter(p => p.id !== id);
+    if (!gravarPerfis(reg)) { renderPerfis('Atenção: não consegui apagar neste aparelho.'); return; }
+    Object.assign(PERFIS, reg);
+    try { for (const b of BASES_PERFIL) localStorage.removeItem(b + '@' + id); } catch (e) { /* ok */ }
+    let aviso = 'Perfil apagado.';
+    if (window.Musica) { try { await Musica.apagarPerfil(id); } catch (e) { aviso = 'Perfil apagado, mas algumas músicas dele não foram removidas do aparelho.'; } }
+    renderPerfis(aviso);
+  }
+  $('bPerfil').addEventListener('click', () => { pfEdit = null; renderPerfis(); $('pfSheet').hidden = false; });
+  $('bPfClose').addEventListener('click', () => { pfEdit = null; $('pfSheet').hidden = true; });
+  $('pfSheet').addEventListener('click', e => { if (e.target.id === 'pfSheet') { pfEdit = null; $('pfSheet').hidden = true; } });
+  $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length] }; renderPerfis(); });
+  avatarUI();
+
   setExercise('repouso', true);
   painelTreino();
 
@@ -2458,6 +2573,7 @@
     executarTreino: id => executarTreino(id),
     musica: () => window.Musica ? Musica.estado() : null,
     classes: () => document.body.className,
+    perfis: () => JSON.parse(JSON.stringify(PERFIS)),
     catalogo2: () => ({ grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },

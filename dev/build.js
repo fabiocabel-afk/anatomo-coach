@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const VERSION = 'corpo3d-v2.15.1';
+const VERSION = 'corpo3d-v2.16.0';
 const three = fs.readFileSync(require.resolve('three/build/three.min.js'), 'utf8');
 const app = fs.readFileSync(path.join(__dirname, 'src/app.js'), 'utf8');
 const exs = fs.readFileSync(path.join(__dirname, 'src/exercicios.js'), 'utf8');
@@ -23,7 +23,7 @@ fs.writeFileSync('dist/pwa/index.html', fill(
   '<link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">',
   `<script>if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>`));
 fs.writeFileSync('dist/pwa/manifest.json', JSON.stringify({
-  name: 'Corpo 3D — Exercícios', short_name: 'Corpo 3D', start_url: './index.html', scope: './',
+  name: 'AnatoMotion', short_name: 'AnatoMotion', start_url: './index.html', scope: './',
   display: 'standalone', orientation: 'portrait', background_color: '#131016', theme_color: '#131016',
   icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
 }, null, 2));

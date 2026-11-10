@@ -1,5 +1,5 @@
 /* =========================================================================
- * Corpo 3D — trilha sonora
+ * AnatoMotion — trilha sonora
  *  - som do app: músicas sintetizadas na hora (Web Audio), sem arquivos e
  *    sem direitos autorais; estilos diferentes para treino e para pausa
  *  - minhas músicas: arquivos de áudio escolhidos pela pessoa (até 12 de
@@ -168,11 +168,13 @@ window.Musica = (function () {
       t.onabort = () => rej(t.error || new Error('Gravação cancelada (talvez falte espaço no aparelho).'));
     }));
   }
-  let cache = null; // metadados sem os arquivos, para a lista
+  let cache = null; // metadados (sem os arquivos) das músicas do perfil atual
+  let perfil = 'p1';
+  const perfilDe = v => v.perfil || 'p1'; // músicas antigas, de antes dos perfis, são do Perfil 1
   function listar() {
     return db().then(d => new Promise((res, rej) => {
       const out = [], r = d.transaction('faixas').objectStore('faixas').openCursor();
-      r.onsuccess = () => { const c = r.result; if (c) { const v = c.value; out.push({ id: v.id, nome: v.nome, lista: v.lista, ordem: v.ordem, tam: v.tam, tipo: v.tipo }); c.continue(); } else { out.sort((a, b) => a.ordem - b.ordem); cache = out; res(out.slice()); } };
+      r.onsuccess = () => { const c = r.result; if (c) { const v = c.value; if (perfilDe(v) === perfil) out.push({ id: v.id, nome: v.nome, lista: v.lista, ordem: v.ordem, tam: v.tam, tipo: v.tipo }); c.continue(); } else { out.sort((a, b) => a.ordem - b.ordem); cache = out; res(out.slice()); } };
       r.onerror = () => rej(r.error);
     }));
   }
@@ -190,7 +192,7 @@ window.Musica = (function () {
       if (f.type && !/^audio\//.test(f.type) && !/\.(mp3|m4a|aac|wav|ogg|oga|opus|flac|webm)$/i.test(f.name)) { res.recusadas.push(nome + ': não é um arquivo de áudio'); continue; }
       if (f.size > MAX_MB * 1048576) { res.recusadas.push(nome + ': maior que ' + MAX_MB + ' MB'); continue; }
       const id = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-      const reg = { id, nome, lista, ordem: ++ordem, tam: f.size, tipo: f.type || 'audio/mpeg', blob: f };
+      const reg = { id, nome, lista, perfil, ordem: ++ordem, tam: f.size, tipo: f.type || 'audio/mpeg', blob: f };
       try {
         await tx('readwrite', s => s.put(reg));
         // confere se ficou gravado de verdade
@@ -218,6 +220,17 @@ window.Musica = (function () {
     const l = await listar(); if (l.some(f => f.id === id)) throw new Error('A música não foi apagada');
     return true;
   }
+  // apaga todas as músicas de um perfil (quando o perfil é apagado)
+  async function apagarPerfil(pid) {
+    const d = await db();
+    await new Promise((res, rej) => {
+      const t = d.transaction('faixas', 'readwrite'), r = t.objectStore('faixas').openCursor();
+      r.onsuccess = () => { const c = r.result; if (c) { if (perfilDe(c.value) === pid) c.delete(); c.continue(); } };
+      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+    blobs.clear();
+  }
+  function definirPerfil(pid) { if (pid && pid !== perfil) { perfil = String(pid); cache = null; blobs.clear(); } }
   async function mover(id, dir) {
     const l = await listar(), f = l.find(x => x.id === id); if (!f) return;
     const irm = l.filter(x => x.lista === f.lista), i = irm.indexOf(f), j = i + dir;
@@ -395,7 +408,7 @@ window.Musica = (function () {
   setTimeout(() => { listar().catch(() => { cache = cache || []; }); }, 1500);
   return {
     desbloquear, tocar, pausar, retomar, parar, proxima, abaixar, soltarAbaixar, configurar, previa,
-    listar, adicionar, alterar, remover, mover, MAX_POR_LISTA, MAX_MB,
+    listar, adicionar, alterar, remover, mover, apagarPerfil, definirPerfil, MAX_POR_LISTA, MAX_MB,
     estilos: tipo => ESTILOS[tipo].map(e => e.nome),
     conf: () => Object.assign({}, conf),
     estado: () => ({ aviso: st.aviso || '', tocando: st.tocando, pausado: st.pausado, tipo: st.tipo, fonte: st.fonte, nome: st.nome, erro: st.erro, ctx: ctx ? ctx.state : 'sem', duck: duckG ? +duckG.gain.value.toFixed(2) : 1, rodada: { treino: st.rotTreino, pausa: st.rotPausa }, elTocando: !!(el && !el.paused) }),

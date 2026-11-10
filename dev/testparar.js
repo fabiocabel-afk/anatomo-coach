@@ -19,7 +19,7 @@ await p.evaluate(()=>{for(let i=0;i<800&&__corpo.treino().estado!=='descanso';i+
 await cl('#bParar');s=await st();ok(s.e==='pausado'&&s.caixa&&await p.evaluate(()=>document.getElementById('rest').hidden),'pausado no descanso: só a janela de pausa');
 await cl('#bEncerrar');
 // treino montado
-await p.evaluate(()=>{localStorage.setItem('corpo3d.treinos.v1',JSON.stringify({v:1,lista:[{id:'x',nome:'Pernas',trilha:'off',itens:[{ex:'agachamento',reps:5,ciclos:2,descanso:20,pausaRep:0,ritmo:1,depois:15},{ex:'prancha',reps:30,ciclos:1,descanso:10,pausaRep:0,ritmo:1,depois:60}]}]}));});
+await p.evaluate(()=>{localStorage.setItem('corpo3d.treinos.v1@p1',JSON.stringify({v:1,lista:[{id:'x',nome:'Pernas',trilha:'off',itens:[{ex:'agachamento',reps:5,ciclos:2,descanso:20,pausaRep:0,ritmo:1,depois:15},{ex:'prancha',reps:30,ciclos:1,descanso:10,pausaRep:0,ritmo:1,depois:60}]}]}));});
 await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});
 await p.evaluate(()=>__corpo.executarTreino('x'));await sleep(300);
 await cl('#bParar');s=await st();ok(s.caixa&&/Pernas/.test(s.info),'treino montado: janela mostra o treino: '+s.info.replace(/\n/g,' / '));

@@ -50,7 +50,7 @@ s=await p.evaluate(()=>__corpo.setPhase?1:1);
 await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});
 s=await p.evaluate(()=>__corpo.catalogo2());ok(s.grupo==='halteres|superior'&&s.modo==='mini','lembra grupo e modo');
 // modo escolha do treino: botão vira "Adicionar ao treino"
-await p.evaluate(()=>{localStorage.setItem('corpo3d.treinos.v1',JSON.stringify({v:1,lista:[]}));});
+await p.evaluate(()=>{localStorage.setItem('corpo3d.treinos.v1@p1',JSON.stringify({v:1,lista:[]}));});
 await cl('#bEscolher');await cl('#bTrNovo');await p.type('#edNome','T');await cl('#bEdAdd');await sleep(800);
 await p.evaluate(()=>document.querySelector('#exList .gi').click());await sleep(500);
 s=await p.evaluate(()=>document.getElementById('bPvFazer').textContent);ok(s==='Adicionar ao treino','no editor: "Adicionar ao treino"');

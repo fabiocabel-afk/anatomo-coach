@@ -18,7 +18,7 @@ for(let i=0;i<5;i++)await p.click('.stp[data-k="descanso"] button[data-d="-1"]')
 console.log('rascunho',await p.$$eval('.stp output',e=>e.map(x=>x.textContent)));
 await p.screenshot({path:'shots/cfg.png'});
 await p.click('#bCfgSave');await sleep(200);
-console.log('salvo',await p.evaluate(()=>localStorage.getItem('corpo3d.treino.v1')),'folha fechada',await p.evaluate(()=>document.getElementById('cfgSheet').hidden));
+console.log('salvo',await p.evaluate(()=>localStorage.getItem('corpo3d.treino.v1@p1')),'folha fechada',await p.evaluate(()=>document.getElementById('cfgSheet').hidden));
 console.log('painel',JSON.stringify(await painel()));
 // recarregar: precisa manter a configuração
 await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});
