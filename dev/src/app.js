@@ -1682,7 +1682,12 @@
     $('bPrev').disabled = SEQ ? false : cur.repouso;
     $('bNext').disabled = SEQ ? SEQ.idx >= SEQ.t.itens.length - 1 && S.estado === 'fim' : (!cur.repouso && i >= lista.length - 1);
     $('bPrev').setAttribute('aria-label', SEQ && SEQ.idx === 0 ? 'Recomeçar o exercício' : 'Exercício anterior');
-    $('rest').hidden = S.estado !== 'descanso' && !(S.estado === 'pausado' && S.antes === 'descanso');
+    $('rest').hidden = S.estado !== 'descanso';
+    // treino em andamento: "Parar" no lugar do recomeçar; pausado: janela com Continuar / Encerrar
+    const sessao = ['treino', 'preparo', 'descanso', 'concluindo', 'pausado'].includes(S.estado);
+    $('bParar').hidden = !sessao; $('bReset').hidden = sessao;
+    $('pausaBox').hidden = S.estado !== 'pausado';
+    if (S.estado === 'pausado') $('pausaInfo').textContent = (SEQ ? SEQ.t.nome + ' · exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + '\n' : '') + cur.nome + ' · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.antes === 'treino' ? ' · ' + S.rep + '/' + tc.reps : '');
     if (!$('rest').hidden) {
       $('restN').textContent = String(Math.max(0, Math.ceil(S.resto)));
       $('restNext').textContent = S.troca && SEQ ? 'Próximo: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
@@ -1826,6 +1831,17 @@
     }
   });
   $('bReset').addEventListener('click', () => resetTreino(false));
+  // parar: pausa e mostra as opções (continuar, encerrar, recomeçar)
+  $('bParar').addEventListener('click', () => { if (S.estado !== 'pausado') $('bPlay').click(); });
+  $('bContinuar').addEventListener('click', () => { if (S.estado === 'pausado') $('bPlay').click(); });
+  $('bRecomecarEx').addEventListener('click', () => { if (window.Musica) Musica.desbloquear(); resetTreino(false); iniciarTreino(); });
+  $('bEncerrar').addEventListener('click', encerrarTreino);
+  function encerrarTreino() {
+    calarVoz();
+    if (SEQ) sairSequencia(false); // treino montado: volta para o descanso (sentado)
+    else resetTreino(true);         // exercício avulso: volta para a prévia do exercício
+    falar('Treino encerrado.', true);
+  }
   // modo imersivo: durante o treino as informações recolhem e os controles ficam transparentes;
   // um toque na tela deixa tudo visível por alguns segundos
   const BC = document.body.classList;

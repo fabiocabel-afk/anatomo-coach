@@ -62,7 +62,7 @@ button{font-family:inherit}
 #exInfo>div{overflow:hidden;min-height:0}
 #bRecolher{display:none;margin:0 auto 2px;width:56px;height:26px;border-radius:999px;border:1px solid var(--bd);background:rgba(30,26,35,.85);color:var(--tx);align-items:center;justify-content:center;cursor:pointer;padding:0}
 #bRecolher svg{width:18px;height:18px;transition:transform .3s}
-body.imersivo #panel{position:absolute;left:0;right:0;bottom:0;z-index:5;min-height:0;background:linear-gradient(to bottom,rgba(18,16,22,0),rgba(18,16,22,.5) 45%);border-top-color:transparent;padding-top:4px;transition:background .3s}
+body.imersivo #panel{position:absolute;left:0;right:0;bottom:0;z-index:8;min-height:0;background:linear-gradient(to bottom,rgba(18,16,22,0),rgba(18,16,22,.5) 45%);border-top-color:transparent;padding-top:4px;transition:background .3s}
 body.imersivo #bRecolher{display:flex}
 body.imersivo #exInfo{grid-template-rows:0fr;opacity:0}
 body.imersivo .lg,body.imersivo #hint{display:none}
@@ -93,6 +93,17 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 #rest .rc span{display:block;font-size:13px;color:var(--tx2);text-transform:uppercase;letter-spacing:.08em}
 #rest .rc b{display:block;font-size:64px;font-weight:600;line-height:1.1;color:var(--tx)}
 #rest .rc small{display:block;font-size:13px;color:var(--tx2);margin-bottom:12px}
+#pausaBox{position:absolute;inset:0;display:grid;place-items:center;z-index:6;background:rgba(10,8,14,.35)}
+#pausaBox .rc{background:rgba(30,26,35,.96);border:1px solid var(--roxo-f);border-radius:20px;padding:18px 20px;text-align:center;width:min(300px,86%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+#pausaBox .rc span{display:block;font-size:13px;color:#C9A6FF;text-transform:uppercase;letter-spacing:.08em}
+#pausaBox .rc small{white-space:pre-line;display:block;font-size:13px;color:var(--tx2);margin:6px 0 14px}
+.pbBtns{display:flex;flex-direction:column;gap:10px}
+.pbBtns button{height:46px;border-radius:12px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-size:15px;font-family:inherit;cursor:pointer}
+.pbBtns .pri{background:var(--roxo-f);border-color:var(--roxo);color:#fff;font-weight:600}
+.pbBtns #bEncerrar{border-color:#8a2a3a;color:#FFB3BF}
+.pbBtns .lk{height:auto;border:0;background:none;color:#C9A6FF;font-size:13px}
+.pParar{display:flex;align-items:center;gap:6px;height:34px;padding:0 12px 0 10px;border-radius:999px;border:1px solid #8a2a3a;background:rgba(90,22,34,.55);color:#FFD0D8;font-size:13px;font-family:inherit;cursor:pointer;flex:none}
+.pParar svg{width:14px;height:14px}
 #rest .rc button{border:1px solid var(--bd);background:var(--card2);color:var(--tx);border-radius:999px;padding:9px 16px;font-size:13px;cursor:pointer}
 .sheetw{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:10}
 .sheetw .box{background:var(--card);width:100%;max-height:86vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom) + 14px)}
@@ -224,6 +235,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <button class="ic" id="bClose" aria-label="Ver corpo inteiro" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
   <div id="rest" hidden><div class="rc"><span>Descanso</span><b id="restN">30</b><small id="restNext"></small><button id="bSkip">Pular descanso</button></div></div>
+  <div id="pausaBox" hidden><div class="rc"><span>Treino pausado</span><small id="pausaInfo"></small><div class="pbBtns"><button class="pri" id="bContinuar">Continuar</button><button id="bEncerrar">Encerrar treino</button><button class="lk" id="bRecomecarEx">Recomeçar este exercício</button></div></div></div>
   <div id="hint">Toque num músculo · 1 dedo gira · 2 dedos movem e dão zoom</div>
 </div>
 <div id="panel">
@@ -237,6 +249,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="row">
       <div id="cont"><div><b id="nRep">0</b><span>/<span id="nRepTot">10</span> <span id="nUn">reps</span></span></div><small id="nSub"></small></div>
       <button class="ic sm" id="bReset" aria-label="Recomeçar" title="Recomeçar"></button>
+      <button class="pParar" id="bParar" hidden aria-label="Parar o treino"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>Parar</button>
     </div>
     <div id="player">
       <div class="cbw"><button class="cb" id="bEscolher" aria-label="Escolher treino ou exercício" title="Escolher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/></svg></button><span>Escolher</span></div>
@@ -302,7 +315,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.15.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.15.1</p>
   </div>
 </div>
 <div id="trSheet" class="sheetw" hidden>
@@ -3437,7 +3450,12 @@ window.CORPO3D_EXERCICIOS = function (H) {
     $('bPrev').disabled = SEQ ? false : cur.repouso;
     $('bNext').disabled = SEQ ? SEQ.idx >= SEQ.t.itens.length - 1 && S.estado === 'fim' : (!cur.repouso && i >= lista.length - 1);
     $('bPrev').setAttribute('aria-label', SEQ && SEQ.idx === 0 ? 'Recomeçar o exercício' : 'Exercício anterior');
-    $('rest').hidden = S.estado !== 'descanso' && !(S.estado === 'pausado' && S.antes === 'descanso');
+    $('rest').hidden = S.estado !== 'descanso';
+    // treino em andamento: "Parar" no lugar do recomeçar; pausado: janela com Continuar / Encerrar
+    const sessao = ['treino', 'preparo', 'descanso', 'concluindo', 'pausado'].includes(S.estado);
+    $('bParar').hidden = !sessao; $('bReset').hidden = sessao;
+    $('pausaBox').hidden = S.estado !== 'pausado';
+    if (S.estado === 'pausado') $('pausaInfo').textContent = (SEQ ? SEQ.t.nome + ' · exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + '\n' : '') + cur.nome + ' · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.antes === 'treino' ? ' · ' + S.rep + '/' + tc.reps : '');
     if (!$('rest').hidden) {
       $('restN').textContent = String(Math.max(0, Math.ceil(S.resto)));
       $('restNext').textContent = S.troca && SEQ ? 'Próximo: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
@@ -3581,6 +3599,17 @@ window.CORPO3D_EXERCICIOS = function (H) {
     }
   });
   $('bReset').addEventListener('click', () => resetTreino(false));
+  // parar: pausa e mostra as opções (continuar, encerrar, recomeçar)
+  $('bParar').addEventListener('click', () => { if (S.estado !== 'pausado') $('bPlay').click(); });
+  $('bContinuar').addEventListener('click', () => { if (S.estado === 'pausado') $('bPlay').click(); });
+  $('bRecomecarEx').addEventListener('click', () => { if (window.Musica) Musica.desbloquear(); resetTreino(false); iniciarTreino(); });
+  $('bEncerrar').addEventListener('click', encerrarTreino);
+  function encerrarTreino() {
+    calarVoz();
+    if (SEQ) sairSequencia(false); // treino montado: volta para o descanso (sentado)
+    else resetTreino(true);         // exercício avulso: volta para a prévia do exercício
+    falar('Treino encerrado.', true);
+  }
   // modo imersivo: durante o treino as informações recolhem e os controles ficam transparentes;
   // um toque na tela deixa tudo visível por alguns segundos
   const BC = document.body.classList;

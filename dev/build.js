@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const VERSION = 'corpo3d-v2.15.0';
+const VERSION = 'corpo3d-v2.15.1';
 const three = fs.readFileSync(require.resolve('three/build/three.min.js'), 'utf8');
 const app = fs.readFileSync(path.join(__dirname, 'src/app.js'), 'utf8');
 const exs = fs.readFileSync(path.join(__dirname, 'src/exercicios.js'), 'utf8');
