@@ -1,0 +1,25 @@
+const puppeteer=require('puppeteer-core');const path=require('path');const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const p=await b.newPage();await p.setViewport({width:390,height:844});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+await p.goto('file://'+path.resolve('dist/corpo3d.html'));await p.waitForFunction('window.__corpo',{timeout:60000});
+const ok=(c,m)=>{console.log((c?'OK  ':'FALHA ')+m);if(!c)process.exitCode=1;};
+const cl=async s=>{await p.evaluate(s=>document.querySelector(s).click(),s);await sleep(500);};
+const med=()=>p.evaluate(()=>{const r=e=>document.querySelector(e).getBoundingClientRect();const op=e=>+getComputedStyle(document.querySelector(e)).opacity;
+ return {cls:document.body.className,panelTop:Math.round(r('#panel').top),viewH:Math.round(r('#view').height),info:Math.round(r('#exInfo').height),play:Math.round(r('#bPlay').top),opPlayer:op('#player'),opRow:op('#cardEx .row'),seta:getComputedStyle(document.getElementById('bRecolher')).display};});
+await p.evaluate(()=>__corpo.setExercise('agachamento'));await sleep(800);
+const a=await med();ok(!/imersivo/.test(a.cls)&&a.info>40&&a.seta==='none','antes do play: informações visíveis '+JSON.stringify(a));
+await p.screenshot({path:'shots/im_0.png'});
+await cl('#bPlay');await sleep(5200); // espera o toque do clique expirar
+const b1=await med();ok(/imersivo/.test(b1.cls)&&b1.info<2&&b1.viewH>a.viewH+100&&b1.play>a.play&&b1.opPlayer<0.5&&b1.seta==='flex','treinando: recolheu, corpo maior, controles transparentes '+JSON.stringify(b1));
+await p.screenshot({path:'shots/im_1.png'});
+await p.mouse.click(200,300);await sleep(700);const foco1=await p.evaluate(()=>__corpo.classes());
+const c=await med();ok(/toque/.test(c.cls)&&!/musAberto/.test(c.cls)&&c.opPlayer>0.9,'tocar no corpo com controles apagados só mostra os controles (não abre músculo) '+JSON.stringify(c));
+await p.screenshot({path:'shots/im_2.png'});
+await p.mouse.click(200,300);await sleep(700);const cm=await med();ok(/musAberto/.test(cm.cls),'com controles visíveis, tocar no músculo abre a ficha');await p.screenshot({path:'shots/im_m.png'});await p.mouse.click(200,300);await sleep(400);await p.evaluate(()=>__corpo.clearFocus&&0);
+await sleep(4800);const c2=await med();ok(c2.opPlayer<0.5,'depois de alguns segundos volta a ficar transparente');
+await cl('#bRecolher');await sleep(500);const d=await med();ok(/infoAberta/.test(d.cls)&&d.info>40&&d.opPlayer>0.95,'setinha abre as informações '+JSON.stringify(d));
+await p.screenshot({path:'shots/im_3.png'});
+await cl('#bRecolher');await sleep(500);const e=await med();ok(!/infoAberta/.test(e.cls)&&e.info<2,'setinha fecha');
+await cl('#bPlay');await sleep(700);const f=await med();ok(/imersivo/.test(f.cls)&&!/rodando/.test(f.cls)&&f.opPlayer>0.95,'pausado: continua recolhido mas opaco '+JSON.stringify(f));
+await cl('#bReset');await sleep(700);const g=await med();ok(!/imersivo/.test(g.cls)&&g.info>40,'recomeçar: volta ao normal '+JSON.stringify(g));
+console.log('erros',errs);if(errs.length)process.exitCode=1;await b.close();})();

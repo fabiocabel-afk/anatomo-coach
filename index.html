@@ -11,7 +11,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
+body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;position:relative}
 header{padding:calc(env(safe-area-inset-top) + 10px) 12px 2px 16px;display:flex;align-items:center;gap:10px}
 header h1{font-size:19px;margin:0;font-weight:600;color:var(--tx)}
 header h1 b{color:var(--roxo);font-weight:600}
@@ -56,6 +56,22 @@ button{font-family:inherit}
 .pill.on{background:var(--roxo-f);border-color:var(--roxo);color:#fff}
 .pill svg{width:20px;height:20px}
 #cont{flex:1;min-width:0;line-height:1.15}
+/* modo treino: informações recolhidas, controles por cima do corpo e transparentes */
+#exInfo{display:grid;grid-template-rows:1fr;transition:grid-template-rows .35s ease,opacity .3s}
+#exInfo>div{overflow:hidden;min-height:0}
+#bRecolher{display:none;margin:0 auto 2px;width:56px;height:26px;border-radius:999px;border:1px solid var(--bd);background:rgba(30,26,35,.85);color:var(--tx);align-items:center;justify-content:center;cursor:pointer;padding:0}
+#bRecolher svg{width:18px;height:18px;transition:transform .3s}
+body.imersivo #panel{position:absolute;left:0;right:0;bottom:0;z-index:5;min-height:0;background:linear-gradient(to bottom,rgba(18,16,22,0),rgba(18,16,22,.5) 45%);border-top-color:transparent;padding-top:4px;transition:background .3s}
+body.imersivo #bRecolher{display:flex}
+body.imersivo #exInfo{grid-template-rows:0fr;opacity:0}
+body.imersivo .lg,body.imersivo #hint{display:none}
+body.imersivo.infoAberta #exInfo{grid-template-rows:1fr;opacity:1}
+body.imersivo.infoAberta #bRecolher svg{transform:rotate(180deg)}
+body.imersivo.infoAberta #panel,body.imersivo.musAberto #panel{background:rgba(30,26,35,.95);border-top-color:var(--bd)}
+body.imersivo #cardEx .row,body.imersivo #player,body.imersivo #bRecolher{transition:opacity .5s}
+body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #cardEx .row,
+body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #player,
+body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{opacity:.3}
 #player{display:flex;align-items:center;justify-content:space-between;max-width:340px;margin:8px auto 0}
 .cbw{display:flex;flex-direction:column;align-items:center;gap:3px;width:56px}
 .cbw span{font-size:11px;color:var(--tx2)}
@@ -163,7 +179,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 </head>
 <body>
 <header>
-  <h1>Corpo <b>3D</b></h1><span>atlas muscular · v2.11</span>
+  <h1>Corpo <b>3D</b></h1><span>atlas muscular · v2.12</span>
   <button class="ic txt" id="bTreinos" aria-label="Meus treinos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/></svg>Treinos</button>
   <button class="ic txt" id="bList" aria-label="Lista de músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Músculos</button>
 </header>
@@ -178,10 +194,13 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
   <div id="hint">Toque num músculo · 1 dedo gira · 2 dedos movem e dão zoom</div>
 </div>
 <div id="panel">
+  <button id="bRecolher" aria-label="Mostrar informações do exercício" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
   <div id="cardEx">
+    <div id="exInfo"><div>
     <div class="nrow"><p id="nome"></p><button id="bInfo" aria-label="Como fazer este exercício" title="Como fazer">i</button></div>
     <p id="desc"></p>
     <div id="mus"></div>
+    </div></div>
     <div class="row">
       <div id="cont"><div><b id="nRep">0</b><span>/<span id="nRepTot">10</span> <span id="nUn">reps</span></span></div><small id="nSub"></small></div>
       <button class="ic sm" id="bReset" aria-label="Recomeçar" title="Recomeçar"></button>
@@ -2886,10 +2905,10 @@ window.CORPO3D_EXERCICIOS = function (H) {
     const hid = [floor, shadow]; for (const o of hid) o.visible = false;
     const cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
     renderer.setClearColor(0x000000, 1);
-    camera.setViewOffset(r.width, r.height, Math.floor(x), Math.floor(y), 1, 1);
+    camera.setViewOffset(r.width, r.height, Math.floor(x), Math.floor(y) + desvioY, 1, 1);
     renderer.setRenderTarget(pickRT); renderer.render(scene, camera);
     renderer.readRenderTargetPixels(pickRT, 0, 0, 1, 1, pickBuf);
-    renderer.setRenderTarget(null); camera.clearViewOffset();
+    renderer.setRenderTarget(null); aplicarDesvio(); camera.updateProjectionMatrix();
     renderer.setClearColor(cc, ca);
     for (const o of hid) o.visible = true;
     for (const [m, mat] of saved) m.material = mat;
@@ -2978,7 +2997,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const pinchDist = () => { const a = [...ptrs.values()]; return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); };
   cv.addEventListener('pointerdown', e => {
     cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    downInfo = ptrs.size === 1 ? { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false } : null;
+    downInfo = ptrs.size === 1 ? { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false, soRevelar: revelarSo } : null;
     panMouse = e.pointerType === 'mouse' && (e.button === 2 || e.shiftKey);
     if (ptrs.size === 2) { pinch0 = pinchDist(); dist0 = cam.dist; midPrev = midpoint(); }
   });
@@ -2997,7 +3016,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     }
   });
   function ptrEnd(e) {
-    if (e.type === 'pointerup' && downInfo && !downInfo.moved && ptrs.size === 1 && e.timeStamp - downInfo.t < 1200) {
+    if (e.type === 'pointerup' && downInfo && !downInfo.moved && ptrs.size === 1 && e.timeStamp - downInfo.t < 1200 && !downInfo.soRevelar) {
       const hit = pickAt(e.clientX, e.clientY);
       // tocar de novo no músculo já selecionado remove a seleção
       if (hit && focusIds.has(hit.id)) clearFocus(false);
@@ -3008,7 +3027,23 @@ window.CORPO3D_EXERCICIOS = function (H) {
   }
   cv.addEventListener('pointerup', ptrEnd); cv.addEventListener('pointercancel', ptrEnd);
   cv.addEventListener('wheel', e => { e.preventDefault(); tweening = false; cam.dist = clamp(cam.dist * (1 + e.deltaY * 0.001), 0.6, 7); }, { passive: false });
-  function resize() { const w = view.clientWidth || 1, h = view.clientHeight || 1; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  // no modo treino a tela do corpo cresce por baixo dos controles: a câmera é ajustada para o
+  // corpo ficar centrado na parte livre (acima dos botões) e um pouco maior, sem cortar
+  const FOV0 = camera.fov; let alturaNormal = 0, desvioY = 0;
+  function aplicarDesvio() { if (desvioY) camera.setViewOffset(view.clientWidth || 1, view.clientHeight || 1, 0, desvioY, view.clientWidth || 1, view.clientHeight || 1); else camera.clearViewOffset(); }
+  function resize() {
+    const w = view.clientWidth || 1, h = view.clientHeight || 1; renderer.setSize(w, h, false); camera.aspect = w / h;
+    const imersivo = document.body.classList.contains('imersivo');
+    if (!imersivo || !alturaNormal) { if (!imersivo) alturaNormal = h; camera.fov = FOV0; desvioY = 0; }
+    else {
+      const pn = document.getElementById('panel'), info = document.getElementById('exInfo');
+      const ph = Math.max(0, Math.min(h * 0.45, pn.offsetHeight - (info ? info.offsetHeight : 0) - 10));
+      const livre = h - ph, m = Math.max(1, Math.sqrt(livre / alturaNormal)); // m = quanto o corpo cresce
+      camera.fov = 2 * Math.atan(Math.tan(rad(FOV0 / 2)) * (h / alturaNormal) / m) * 180 / Math.PI;
+      desvioY = Math.round(ph / 2);
+    }
+    aplicarDesvio(); camera.updateProjectionMatrix();
+  }
   if (window.ResizeObserver) new ResizeObserver(resize).observe(view);
   window.addEventListener('resize', resize); resize();
 
@@ -3258,6 +3293,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       $('restN').textContent = String(Math.max(0, Math.ceil(S.resto)));
       $('restNext').textContent = S.troca && SEQ ? 'Próximo: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
     }
+    modoImersivo(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'pausado', rodando);
     seqBarUI(); atualizarMusica(); telaAcesa(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'pausado');
   }
   function iniciarTreino() {
@@ -3341,6 +3377,31 @@ window.CORPO3D_EXERCICIOS = function (H) {
     else if (S.estado === 'pausado') { S.estado = S.antes; if (S.estado === 'treino') falar('Continuando.', true); painelTreino(); }
   });
   $('bReset').addEventListener('click', () => resetTreino(false));
+  // modo imersivo: durante o treino as informações recolhem e os controles ficam transparentes;
+  // um toque na tela deixa tudo visível por alguns segundos
+  const BC = document.body.classList;
+  let toqueTimer = 0, revelarSo = false;
+  function modoImersivo(on, rodando) {
+    if (!on && BC.contains('imersivo')) { BC.remove('infoAberta'); $('bRecolher').setAttribute('aria-expanded', 'false'); }
+    const mudou = BC.contains('imersivo') !== on;
+    BC.toggle('imersivo', on); BC.toggle('rodando', !!rodando);
+    if (mudou) { resize(); setTimeout(resize, 420); }
+  }
+  function mostrarControles(e) {
+    if (!BC.contains('imersivo')) return;
+    // com os controles apagados, o primeiro toque no corpo só faz eles aparecerem (não seleciona músculo)
+    revelarSo = BC.contains('rodando') && !BC.contains('toque') && !BC.contains('infoAberta') && !BC.contains('musAberto') && e && e.target === renderer.domElement;
+    BC.add('toque'); clearTimeout(toqueTimer);
+    toqueTimer = setTimeout(() => BC.remove('toque'), 4000);
+  }
+  document.addEventListener('pointerdown', mostrarControles, true);
+  $('bRecolher').addEventListener('click', () => {
+    const ab = BC.toggle('infoAberta');
+    $('bRecolher').setAttribute('aria-expanded', String(ab));
+    $('bRecolher').setAttribute('aria-label', ab ? 'Esconder informações do exercício' : 'Mostrar informações do exercício');
+  });
+  // ficha do músculo aberta durante o treino: painel fica opaco para dar leitura
+  new MutationObserver(() => BC.toggle('musAberto', !$('cardMus').hidden)).observe($('cardMus'), { attributes: true, attributeFilter: ['hidden'] });
   // ⏮ ⏭: dentro de um treino montado andam entre os exercícios dele;
   // fora, andam pelos exercícios do catálogo (na mesma ordem dos chips)
   const listaNavegacao = () => EXERCICIOS.filter(e => !e.repouso).map(e => e.id);
@@ -3800,6 +3861,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     seq: () => SEQ ? { id: SEQ.t.id, idx: SEQ.idx, troca: S.troca, espera: +S.espera.toFixed(2), tc: Object.assign({}, tc) } : null,
     executarTreino: id => executarTreino(id),
     musica: () => window.Musica ? Musica.estado() : null,
+    classes: () => document.body.className,
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
     setView: (th, ph, dist, ty) => { tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: 0, ty, tz: 0 }); },

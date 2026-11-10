@@ -1,0 +1,21 @@
+const puppeteer=require('puppeteer-core');const path=require('path');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const p=await b.newPage();await p.setViewport({width:390,height:844,deviceScaleFactor:2});const errs=[];
+p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+path.resolve('dist/corpo3d.html'));await p.waitForFunction('window.__corpo',{timeout:60000});
+await p.evaluate(()=>{__corpo.setExercise('rosca');__corpo.setPhase(0);__corpo.setView(30,6,3.2,1.0)});await sleep(1500);
+const st=()=>p.evaluate(()=>({foco:__corpo.foco().k,cardEx:!document.getElementById('cardEx').hidden,cardMus:!document.getElementById('cardMus').hidden}));
+const P=[0.205,1.26,0.06];
+const tap=async()=>{const s=await p.evaluate(P=>__corpo.project(...P),P);await p.mouse.click(s[0],s[1]);await sleep(800);await p.evaluate(()=>__corpo.fimAnimacao());await sleep(1500);};
+await tap();console.log('1º toque',JSON.stringify(await st()));
+const camA=await p.evaluate(()=>__corpo.cam());
+await tap();console.log('2º toque no mesmo',JSON.stringify(await st()));
+const camB=await p.evaluate(()=>__corpo.cam());console.log('câmera parada',JSON.stringify(camA)===JSON.stringify(camB));
+await tap();console.log('3º toque',JSON.stringify(await st()),await p.$eval('#mPopTxt',e=>e.textContent));
+await p.screenshot({path:'shots/t1.png'});
+await p.click('#mPop');await sleep(800);console.log('clique na cápsula',JSON.stringify(await st()));
+// pela lista (dois lados) e remover pela cápsula
+await p.evaluate(()=>{__corpo.focus('quadriceps'.length?'reto_femoral':'')});await sleep(500);console.log('lista',JSON.stringify(await st()));
+await p.click('#mPop');await sleep(800);console.log('cápsula',JSON.stringify(await st()));
+console.log('erros',errs);await b.close();})();
