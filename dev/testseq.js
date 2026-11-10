@@ -12,7 +12,7 @@ const esperar=async(fn,ms)=>{await p.waitForFunction(fn,{timeout:ms||8000,pollin
 fs.mkdirSync('shots/seq',{recursive:true});
 const shot=async n=>{await sleep(250);await p.screenshot({path:'shots/seq/'+n+'.png'});};
 const click=async sel=>{await p.evaluate(sel=>document.querySelector(sel).click(),sel);await sleep(150);};
-const clickTxt=async(sel,txt,exato)=>{const ok2=await p.evaluate((sel,txt,exato)=>{const e=[...document.querySelectorAll(sel)].find(x=>(exato?(x.querySelector('b')||x).firstChild.textContent.trim()===txt:x.textContent.trim().startsWith(txt))&&x.offsetParent);if(e){e.click();return true}return false},sel,txt,exato);if(!ok2)throw new Error('não achei '+sel+' '+txt);await sleep(150);};
+const clickTxt=async(sel,txt,exato)=>{const ok2=await p.evaluate((sel,txt,exato)=>{const e=[...document.querySelectorAll(sel)].find(x=>(exato?(x.querySelector('b')||x).firstChild.textContent.trim()===txt:x.textContent.trim().startsWith(txt))&&x.offsetParent);if(e){e.click();return true}return false},sel,txt,exato);if(!ok2)throw new Error('não achei '+sel+' '+txt);await sleep(150);if(sel.startsWith('#exList')){await p.evaluate(()=>document.getElementById('bPvFazer').click());await sleep(150);}};
 // 1) lista vazia
 await click('#bTreinos');ok(await p.$eval('#trList',e=>e.textContent.includes('Nenhum treino')),'lista vazia mostra orientação');await shot('1_vazio');
 // 2) novo treino pela interface

@@ -25,7 +25,7 @@ await p.click('.li');await new Promise(r=>setTimeout(r,1800));
 console.log('foco',await p.evaluate(()=>document.getElementById('mTec').textContent));
 await p.screenshot({path:'shots/ui_focus2.png'});
 // troca de exercício sai do foco
-await p.click('#bGrupo');await p.type('#exQ','agachamento livre');await p.click('#exList .li');await new Promise(r=>setTimeout(r,300));
+await p.click('#bGrupo');await p.type('#exQ','agachamento livre');await p.click('#exList .li');await new Promise(r=>setTimeout(r,400));await p.click('#bPvFazer');await new Promise(r=>setTimeout(r,300));
 console.log('ex',await p.evaluate(()=>document.getElementById('nome').textContent),'chips',await p.$$eval('#mus .m',e=>e.map(x=>x.textContent)));
 const t0=Date.now();await p.evaluate((x,y)=>__corpo.pickAt(x,y),200,400);console.log('pick ms',Date.now()-t0);
 console.log('erros',errs);await b.close();})();

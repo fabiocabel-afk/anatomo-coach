@@ -875,8 +875,10 @@
   }
 
   /* ---------- Modo repouso ---------- */
+  let miniRender = false; // desenhando uma miniatura: usa a pose do exercício, nunca a de descanso
   function repousoAtivo() {
     if (cur.repouso) return true;
+    if (miniRender) return false;
     try { return S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso'); } catch (e) { return false; }
   }
   const REP_FIX = Object.assign(grip(-25, -35, -20, -15), { hips: [-10, 0, 0], spine: [12, 0, 0], chest: [6, 0, 0], upperChest: [2, 0, 0], neck: [8, 0, 0] });
@@ -1111,6 +1113,7 @@
     bone.updateMatrixWorld(true);
   }
   function applyFlexao(p) {
+    PIVO = cur.pivo === 'joelhos' ? GR.pivoJoelhos : GR.pivoPes; // cada flexão com o seu ponto de apoio
     const A = cur.A;
     for (const b of boneList) { const a = A[b.name] || ZERO; b.rotation.set(rad(a[0]), rad(a[1]), rad(a[2])); }
     poseCorpo(cur._theta0 + (cur._theta1 - cur._theta0) * p);
@@ -1398,7 +1401,7 @@
     chips.innerHTML = '';
     const g = document.createElement('button'); g.className = 'chip grp'; g.id = 'bGrupo';
     g.innerHTML = ICON_LISTA + '<span></span>'; g.lastChild.textContent = EQUIP[grupo.equip] + ' · ' + REGIAO[grupo.regiao];
-    g.setAttribute('aria-label', 'Todos os exercícios'); g.addEventListener('click', abrirCatalogo); chips.appendChild(g);
+    g.setAttribute('aria-label', 'Escolher exercício deste grupo'); g.addEventListener('click', () => abrirCatalogo(null, grupo.equip + '|' + grupo.regiao)); chips.appendChild(g);
     for (const ex of EXERCICIOS.filter(e => e.equip === grupo.equip && e.regiao === grupo.regiao)) {
       const b = document.createElement('button'); b.className = 'chip'; b.dataset.id = ex.id; b.textContent = ex.nome;
       b.classList.toggle('on', ex.id === cur.id);
@@ -1418,37 +1421,125 @@
     if (!grupo || grupo.equip !== cur.equip || grupo.regiao !== cur.regiao) { grupo = { equip: cur.equip, regiao: cur.regiao }; renderChips(); }
     const on = chips.querySelector('.chip.on'); if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) { /* ok */ }
   }
+  /* ---------- Catálogo: grupo (lista suspensa própria), lista ou miniaturas, e prévia ---------- */
+  const CAT_KEY = 'corpo3d.catalogo.v1';
+  const GRUPOS = [];
+  for (const eq in EQUIP) for (const rg in REGIAO) { const n = EXERCICIOS.filter(e => e.equip === eq && e.regiao === rg).length; if (n) GRUPOS.push({ k: eq + '|' + rg, eq, rg, nome: EQUIP[eq] + ' · ' + REGIAO[rg], n }); }
+  const CAT = (function () {
+    const c = { grupo: 'todos', modo: 'lista' };
+    try { const o = JSON.parse(localStorage.getItem(CAT_KEY) || '{}') || {}; if (o.grupo === 'todos' || GRUPOS.some(g => g.k === o.grupo)) c.grupo = o.grupo; if (o.modo === 'mini' || o.modo === 'lista') c.modo = o.modo; } catch (e) { /* padrão */ }
+    return c;
+  })();
+  function gravarCat() { try { localStorage.setItem(CAT_KEY, JSON.stringify(CAT)); } catch (e) { /* só preferência de tela */ } }
+  const grupoNome = k => k === 'todos' ? 'Todos os grupos (' + EXERCICIOS.length + ')' : (g => g.nome + ' (' + g.n + ')')(GRUPOS.find(g => g.k === k));
+  function renderGrupoMenu() {
+    const m = $('exGrupoMenu'); m.innerHTML = '';
+    const op = (k, nome, n) => {
+      const b = document.createElement('button'); b.className = 'ddOp' + (CAT.grupo === k ? ' on' : ''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', String(CAT.grupo === k)); b.dataset.k = k;
+      b.textContent = nome; const em = document.createElement('em'); em.textContent = String(n); b.appendChild(em);
+      b.addEventListener('click', () => { CAT.grupo = k; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; });
+      m.appendChild(b);
+    };
+    op('todos', 'Todos os grupos', EXERCICIOS.length);
+    let eqAnt = null;
+    for (const g of GRUPOS) {
+      if (g.eq !== eqAnt) { eqAnt = g.eq; const h = document.createElement('div'); h.className = 'ddSep'; h.textContent = EQUIP[g.eq]; m.appendChild(h); }
+      op(g.k, REGIAO[g.rg], g.n);
+    }
+  }
+  function abrirGrupoMenu() { renderGrupoMenu(); $('exGrupoMenu').hidden = false; $('exGrupoBtn').setAttribute('aria-expanded', 'true'); const on = $('exGrupoMenu').querySelector('.on'); if (on) { on.focus({ preventScroll: true }); on.scrollIntoView({ block: 'nearest' }); } }
+  function fecharGrupoMenu() { $('exGrupoMenu').hidden = true; $('exGrupoBtn').setAttribute('aria-expanded', 'false'); }
+  $('exGrupoBtn').addEventListener('click', e => { e.stopPropagation(); if ($('exGrupoMenu').hidden) abrirGrupoMenu(); else fecharGrupoMenu(); });
+  document.addEventListener('click', e => { if (!$('exGrupoMenu').hidden && !$('exGrupo').contains(e.target)) fecharGrupoMenu(); });
+  $('exGrupoMenu').addEventListener('keydown', e => {
+    const ops = [...$('exGrupoMenu').querySelectorAll('.ddOp')], i = ops.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); (ops[i + 1] || ops[0]).focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); (ops[i - 1] || ops[ops.length - 1]).focus(); }
+    else if (e.key === 'Escape') { fecharGrupoMenu(); $('exGrupoBtn').focus(); }
+  });
+  for (const o of $('exModo').children) o.addEventListener('click', () => { CAT.modo = o.dataset.v; gravarCat(); renderCatalogo($('exQ').value); });
+
+  function filtrarCatalogo(q) {
+    const nq = norm(q || '');
+    return EXERCICIOS.filter(e => (CAT.grupo === 'todos' || e.equip + '|' + e.regiao === CAT.grupo) &&
+      (!nq || norm(e.nome + ' ' + e.prim.concat(e.sec).map(k => INFO[k][0] + ' ' + INFO[k][1]).join(' ')).includes(nq)));
+  }
   function renderCatalogo(q) {
-    const box = $('exList'); box.innerHTML = ''; const nq = norm(q || '');
-    for (const eq in EQUIP) for (const rg in REGIAO) {
-      const lista = EXERCICIOS.filter(e => e.equip === eq && e.regiao === rg &&
-        (!nq || norm(e.nome + ' ' + e.prim.concat(e.sec).map(k => INFO[k][0] + ' ' + INFO[k][1]).join(' ')).includes(nq)));
+    $('exGrupoTxt').textContent = grupoNome(CAT.grupo);
+    for (const o of $('exModo').children) { o.classList.toggle('on', o.dataset.v === CAT.modo); o.setAttribute('aria-pressed', String(o.dataset.v === CAT.modo)); }
+    const box = $('exList'); box.innerHTML = ''; MINI.limpar();
+    let todos = filtrarCatalogo(q);
+    // buscou e não há nada no grupo escolhido: mostra o que existe nos outros grupos
+    if (q && !todos.length && CAT.grupo !== 'todos') {
+      const g0 = CAT.grupo; CAT.grupo = 'todos'; todos = filtrarCatalogo(q); CAT.grupo = g0;
+      if (todos.length) { const av = document.createElement('p'); av.className = 'empty'; av.style.margin = '10px 0 0'; av.textContent = 'Nada neste grupo. Encontrados em outros grupos:'; box.appendChild(av); }
+    }
+    for (const g of GRUPOS) {
+      const lista = todos.filter(e => e.equip === g.eq && e.regiao === g.rg);
       if (!lista.length) continue;
-      const h = document.createElement('div'); h.className = 'lh'; h.textContent = EQUIP[eq] + ' · ' + REGIAO[rg] + ' (' + lista.length + ')'; box.appendChild(h);
+      if (CAT.grupo === 'todos' || q) { const h = document.createElement('div'); h.className = 'lh'; h.textContent = g.nome + ' (' + lista.length + ')'; box.appendChild(h); }
+      const alvo = CAT.modo === 'mini' ? box.appendChild(Object.assign(document.createElement('div'), { className: 'gal' })) : box;
       for (const ex of lista) {
-        const it = document.createElement('button'); it.className = 'li';
-        it.innerHTML = '<b></b><span></span>';
-        it.firstChild.textContent = ex.nome;
-        if (ex.alt) { const tg = document.createElement('span'); tg.className = 'tg'; tg.textContent = 'alternado'; it.firstChild.appendChild(tg); }
-        it.lastChild.textContent = musculosTxt(ex);
-        if (ex.id === cur.id && !escolhaCb) it.style.background = 'rgba(100,42,144,.18)';
-        it.addEventListener('click', () => { $('exSheet').hidden = true; if (escolhaCb) { const cb = escolhaCb; escolhaCb = null; cb(ex.id); } else setExercise(ex.id); });
-        box.appendChild(it);
+        const it = document.createElement('button');
+        if (CAT.modo === 'mini') {
+          it.className = 'gi' + (ex.id === cur.id && !escolhaCb ? ' on' : '');
+          const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MINI.TAM; it.appendChild(cv2);
+          const b = document.createElement('b'); b.textContent = ex.nome; it.appendChild(b);
+          const sp = document.createElement('span'); sp.textContent = musculosTxt(ex); it.appendChild(sp);
+          MINI.registrar(cv2, ex);
+        } else {
+          it.className = 'li';
+          it.innerHTML = '<b></b><span></span>';
+          it.firstChild.textContent = ex.nome;
+          if (ex.alt) { const tg = document.createElement('span'); tg.className = 'tg'; tg.textContent = 'alternado'; it.firstChild.appendChild(tg); }
+          it.lastChild.textContent = musculosTxt(ex);
+          if (ex.id === cur.id && !escolhaCb) it.style.background = 'rgba(100,42,144,.18)';
+        }
+        it.dataset.id = ex.id;
+        it.addEventListener('click', () => abrirPrevia(ex));
+        alvo.appendChild(it);
       }
     }
-    if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum exercício encontrado.</p>';
+    if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum exercício encontrado' + (CAT.grupo !== 'todos' ? ' neste grupo' : '') + '.</p>';
   }
   let escolhaCb = null; // quando o catálogo é aberto para escolher um exercício do treino
-  function abrirCatalogo(cb) {
+  function abrirCatalogo(cb, grupoK) {
     escolhaCb = typeof cb === 'function' ? cb : null;
+    if (typeof grupoK === 'string' && (grupoK === 'todos' || GRUPOS.some(g => g.k === grupoK))) { CAT.grupo = grupoK; gravarCat(); }
     $('exTit').textContent = escolhaCb ? 'Escolha o exercício para o treino' : '';
     $('exTit').hidden = !escolhaCb;
-    $('exQ').value = ''; renderCatalogo(''); $('exSheet').hidden = false;
+    $('exQ').value = ''; fecharGrupoMenu(); renderCatalogo(''); $('exSheet').hidden = false;
   }
-  $('bExClose').addEventListener('click', () => { $('exSheet').hidden = true; escolhaCb = null; });
+  function fecharCatalogo() { $('exSheet').hidden = true; escolhaCb = null; fecharGrupoMenu(); MINI.limpar(); }
+  $('bExClose').addEventListener('click', fecharCatalogo);
   $('exQ').addEventListener('input', e => renderCatalogo(e.target.value));
-  function abrirInfo() {
-    const ex = cur, inf = ex.info || {};
+
+  /* ---------- Prévia: janela com o exercício em movimento antes de começar ---------- */
+  let previaEx = null;
+  function abrirPrevia(ex) {
+    previaEx = ex;
+    $('pvNome').textContent = ex.nome;
+    $('pvGrupo').textContent = EQUIP[ex.equip] + ' · ' + REGIAO[ex.regiao] + (ex.alt ? ' · alterna os lados' : '') + (ex.isometria ? ' · isométrico' : '');
+    $('pvMus').textContent = 'Trabalha: ' + musculosTxt(ex);
+    $('bPvFazer').textContent = escolhaCb ? 'Adicionar ao treino' : 'Começar exercício';
+    $('pvSheet').hidden = false;
+    MINI.abrirPrevia(ex, $('pvCena'));
+    $('bPvFazer').focus({ preventScroll: true });
+  }
+  function fecharPrevia() { $('pvSheet').hidden = true; previaEx = null; MINI.fecharPrevia(); }
+  $('bPvVoltar').addEventListener('click', fecharPrevia);
+  $('pvSheet').addEventListener('click', e => { if (e.target.id === 'pvSheet') fecharPrevia(); });
+  $('bPvFazer').addEventListener('click', () => {
+    const ex = previaEx; if (!ex) return;
+    const cb = escolhaCb;
+    fecharPrevia(); fecharCatalogo();
+    if (cb) cb(ex.id); else setExercise(ex.id);
+  });
+  $('bPvInfo').addEventListener('click', () => { if (previaEx) abrirInfo(previaEx); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('pvSheet').hidden) fecharPrevia(); });
+
+  function abrirInfo(exArg) {
+    const ex = exArg && exArg.id ? exArg : cur, inf = ex.info || {};
     $('infoNome').textContent = ex.nome;
     const tags = $('infoTags'); tags.innerHTML = '';
     for (const tx of [EQUIP[ex.equip], REGIAO[ex.regiao], ex.alt ? 'Alterna os lados' : null].filter(Boolean)) { const s2 = document.createElement('span'); s2.className = 'tag'; s2.textContent = tx; tags.appendChild(s2); }
@@ -1470,9 +1561,9 @@
     if (inf.resp) { const p = document.createElement('p'); p.textContent = inf.resp; secao('Respiração', p); }
     $('infoSheet').hidden = false;
   }
-  $('bInfo').addEventListener('click', abrirInfo);
+  $('bInfo').addEventListener('click', () => abrirInfo());
   $('bInfoClose').addEventListener('click', () => { $('infoSheet').hidden = true; });
-  for (const id of ['exSheet', 'infoSheet', 'cfgSheet', 'sheet', 'trSheet']) $(id).addEventListener('click', e => { if (e.target.id === id) { $(id).hidden = true; if (id === 'exSheet') escolhaCb = null; } });
+  for (const id of ['exSheet', 'infoSheet', 'cfgSheet', 'sheet', 'trSheet']) $(id).addEventListener('click', e => { if (e.target.id === id) { if (id === 'exSheet') fecharCatalogo(); else $(id).hidden = true; } });
   $('bBest').addEventListener('click', () => { if (focusKey) centerFocused(); else bestAngle(false); });
   $('bClose').addEventListener('click', () => clearFocus(true));
   $('bBack').addEventListener('click', () => clearFocus(true));
@@ -2221,6 +2312,102 @@
   } else $('bTrMusica').hidden = true;
   $('bMuClose').addEventListener('click', fecharMusica);
 
+  /* =====================================================================
+   * 10. MINIATURAS: o mesmo corpo 3D desenhado pequeno, um exercício por vez
+   *     Um segundo desenhador (WebGL) só para as miniaturas e a prévia. A cada
+   *     quadro, algumas miniaturas visíveis recebem a pose do seu exercício,
+   *     são desenhadas e copiadas para o seu quadradinho; as que estão fora da
+   *     tela ficam paradas.
+   * ===================================================================== */
+  const MINI = (function () {
+    const TAM = Math.round(150 * Math.min(window.devicePixelRatio || 1, 1.6));
+    let r2 = null, camM = null, falhou = false;
+    const itens = []; let fila = 0, obs = null, tempo = 0, prev = null, tamAtual = 0;
+    function garantir() {
+      if (r2 || falhou) return !!r2;
+      try {
+        r2 = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        r2.setPixelRatio(1); r2.setClearColor(0x131016, 1);
+        camM = new THREE.PerspectiveCamera(32, 1, 0.03, 60);
+      } catch (e) { falhou = true; r2 = null; }
+      return !!r2;
+    }
+    function tamanho(px) { if (tamAtual !== px) { r2.setSize(px, px, false); tamAtual = px; } }
+    // guarda o que é do exercício principal e que a pose de outro exercício altera
+    function salvarPrincipal() {
+      return { cur, lado, focusKey, pivo: PIVO, garr: garrafas.map(g => [g.visible, g.position.clone()]), sombra: shadow.scale.clone(), sp: shadow.position.clone() };
+    }
+    function restaurarPrincipal(sv) {
+      cur = sv.cur; lado = sv.lado; focusKey = sv.focusKey; PIVO = sv.pivo;
+      garrafas.forEach((g, i) => { g.visible = sv.garr[i][0]; g.position.copy(sv.garr[i][1]); });
+      shadow.scale.copy(sv.sombra); shadow.position.copy(sv.sp);
+    }
+    function desenhar(ex, tt) {
+      cur = ex; focusKey = null;
+      if (!ex._mini) {
+        calibrate();
+        ex._mini = { garr: garrafas.map(g => [g.visible, g.position.clone()]), sombra: shadow.scale.clone() };
+      } else {
+        garrafas.forEach((g, i) => { g.visible = ex._mini.garr[i][0]; g.position.copy(ex._mini.garr[i][1]); });
+        shadow.scale.copy(ex._mini.sombra);
+      }
+      const per = ex.isometria ? 1 : ex.periodo;
+      const ph = (1 - Math.cos(2 * Math.PI * tt / per)) / 2;
+      lado = ex.alt ? Math.floor(tt / per) % 2 : 0;
+      applyPose(ph); applyMuscles(ph);
+      const c = ex.cam, cp = Math.cos(rad(c.ph));
+      camM.position.set((c.tx || 0) + c.dist * Math.sin(rad(c.th)) * cp, c.ty + c.dist * Math.sin(rad(c.ph)), (c.tz || 0) + c.dist * Math.cos(rad(c.th)) * cp);
+      camM.lookAt(c.tx || 0, c.ty, c.tz || 0);
+      r2.render(scene, camM);
+    }
+    function registrar(canvas, ex) {
+      const it = { canvas, ex, ctx: canvas.getContext('2d'), visivel: false, desenhado: false, offset: (itens.length * 0.37) % 3 };
+      itens.push(it);
+      if (!obs && 'IntersectionObserver' in window) obs = new IntersectionObserver(es => { for (const e of es) { const x = itens.find(i => i.canvas === e.target); if (x) x.visivel = e.isIntersecting; } }, { root: $('exList'), rootMargin: '60px' });
+      if (obs) obs.observe(canvas); else it.visivel = true;
+    }
+    function limpar() { if (obs) obs.disconnect(); obs = null; itens.length = 0; fila = 0; }
+    function abrirPrevia(ex, alvo) {
+      if (!garantir()) { alvo.innerHTML = '<p class="empty" style="margin:0">Prévia indisponível neste aparelho.</p>'; return; }
+      const px = Math.round(Math.min(alvo.clientWidth || 340, 480) * Math.min(window.devicePixelRatio || 1, 2));
+      tamanho(px);
+      alvo.innerHTML = ''; alvo.appendChild(r2.domElement);
+      prev = { ex, t0: tempo };
+    }
+    function fecharPrevia() { prev = null; if (r2 && r2.domElement.parentNode) r2.domElement.parentNode.removeChild(r2.domElement); }
+    // chamado a cada quadro; devolve true se a tela principal está coberta
+    function quadro(dt) {
+      tempo += dt;
+      const galeria = !$('exSheet').hidden && CAT.modo === 'mini' && itens.length > 0;
+      const previa = !!prev && !$('pvSheet').hidden;
+      if (!galeria && !previa) return false;
+      if (!garantir()) return false;
+      const sv = salvarPrincipal();
+      miniRender = true;
+      try {
+        if (previa) { desenhar(prev.ex, tempo - prev.t0); prev.n = (prev.n || 0) + 1; }
+        else {
+          tamanho(TAM);
+          // orçamento de tempo por quadro: algumas miniaturas por vez, em rodízio
+          const vis = itens.filter(i => i.visivel || !i.desenhado);
+          const t0 = performance.now();
+          for (let k = 0; k < vis.length; k++) {
+            const it = vis[(fila + k) % vis.length];
+            desenhar(it.ex, tempo + it.offset);
+            it.ctx.drawImage(r2.domElement, 0, 0, it.canvas.width, it.canvas.height);
+            it.desenhado = true;
+            if (performance.now() - t0 > 7) { fila = (fila + k + 1) % Math.max(1, vis.length); break; }
+            if (k === vis.length - 1) fila = 0;
+          }
+        }
+      } catch (e) { /* uma miniatura com problema não derruba o app */ }
+      miniRender = false;
+      restaurarPrincipal(sv);
+      return true;
+    }
+    return { TAM, registrar, limpar, quadro, abrirPrevia, fecharPrevia, ativo: () => !!r2, previaQuadros: () => prev ? prev.n || 0 : -1 };
+  })();
+
   setExercise('repouso', true);
   painelTreino();
 
@@ -2229,8 +2416,12 @@
     if (last === null) last = ts;
     const dt = Math.min((ts - last) / 1000, 0.1); last = ts;
     passo(dt);
-    applyPose(phase); aplicarBlend(dt); applyMuscles(phase); placeCamera();
-    renderer.render(scene, camera);
+    // com a galeria ou a prévia cobrindo a tela, o corpo principal não precisa ser redesenhado
+    const coberto = MINI.quadro(dt);
+    if (!coberto) {
+      applyPose(phase); aplicarBlend(dt); applyMuscles(phase); placeCamera();
+      renderer.render(scene, camera);
+    }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
@@ -2251,6 +2442,7 @@
     executarTreino: id => executarTreino(id),
     musica: () => window.Musica ? Musica.estado() : null,
     classes: () => document.body.className,
+    catalogo2: () => ({ grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
     setView: (th, ph, dist, ty) => { tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: 0, ty, tz: 0 }); },

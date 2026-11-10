@@ -15,7 +15,7 @@ await p.type('#exQ','gluteo');await sleep(200);
 console.log('busca gluteo',(await p.$$eval('#exList .li b',e=>e.map(x=>x.firstChild.textContent))).length);
 await p.$eval('#exQ',e=>{e.value='';e.dispatchEvent(new Event('input'))});
 await p.type('#exQ','volante');await sleep(200);
-await p.click('#exList .li');await sleep(600);
+await p.click('#exList .li');await sleep(400);await p.click('#bPvFazer');await sleep(600);
 console.log('escolheu',await p.$eval('#nome',e=>e.textContent),'| chips',await p.$$eval('#chips .chip',e=>e.map(x=>x.textContent).join(' / ')));
 await p.click('#bInfo');await sleep(300);
 console.log('ficha',await p.$eval('#infoSheet',e=>!e.hidden),await p.$$eval('#infoBody .ih',e=>e.map(x=>x.textContent)));

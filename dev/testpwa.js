@@ -5,6 +5,6 @@ await p.goto('http://localhost:8765/index.html');await p.waitForFunction('window
 await p.evaluate(()=>navigator.serviceWorker.ready);
 const r=await p.evaluate(async()=>({keys:await caches.keys(),n:(await (await caches.open((await caches.keys())[0])).keys()).length,manifest:(await (await fetch('manifest.json')).json()).short_name}));
 // clique real nos chips e no play
-await p.click('#bGrupo');await p.type('#exQ','flexao');await p.click('#exList .li');await new Promise(r=>setTimeout(r,500));
+await p.click('#bGrupo');await p.type('#exQ','flexao');await p.click('#exList .li');await new Promise(r=>setTimeout(r,400));await p.click('#bPvFazer');await new Promise(r=>setTimeout(r,500));
 const nome=await p.$eval('#nome',e=>e.textContent);
 console.log(JSON.stringify(r),nome,'erros:',errs.length?errs:'nenhum');await b.close();})();

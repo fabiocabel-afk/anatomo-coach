@@ -42,6 +42,6 @@ console.log('falas',JSON.stringify(await p.evaluate(()=>__falas.filter(x=>x!=='<
 await p.click('#bPlay');console.log('repetir',(await st()).estado);
 await p.click('#bReset');console.log('recomeçar',JSON.stringify(await st()));
 // troca de exercício volta para prévia
-await p.click('#bPlay');await p.click('#bGrupo');await p.type('#exQ','rosca direta');await p.click('#exList .li');console.log('troca exercício',(await st()).estado);
+await p.click('#bPlay');await p.click('#bGrupo');await p.type('#exQ','rosca direta');await p.click('#exList .li');await new Promise(r=>setTimeout(r,400));await p.click('#bPvFazer');console.log('troca exercício',(await st()).estado);
 await sleep(500);await p.screenshot({path:'shots/painel.png'});
 console.log('erros',errs);await b.close();})();
