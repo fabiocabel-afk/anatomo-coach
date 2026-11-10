@@ -15,7 +15,7 @@ await p.screenshot({path:'shots/im_1.png'});
 await p.mouse.click(200,300);await sleep(700);const foco1=await p.evaluate(()=>__corpo.classes());
 const c=await med();ok(/toque/.test(c.cls)&&!/musAberto/.test(c.cls)&&c.opPlayer>0.9,'tocar no corpo com controles apagados só mostra os controles (não abre músculo) '+JSON.stringify(c));
 await p.screenshot({path:'shots/im_2.png'});
-await p.mouse.click(200,300);await sleep(700);const cm=await med();ok(/musAberto/.test(cm.cls),'com controles visíveis, tocar no músculo abre a ficha');await p.screenshot({path:'shots/im_m.png'});await p.mouse.click(200,300);await sleep(400);await p.evaluate(()=>__corpo.clearFocus&&0);
+await p.mouse.click(200,300);await sleep(700);const cm=await med();ok(/musAberto/.test(cm.cls),'com controles visíveis, tocar no músculo abre a ficha');await p.screenshot({path:'shots/im_m.png'});await p.evaluate(()=>{const c=document.getElementById('bClose');if(c&&!c.hidden)c.click();});await sleep(600);
 await sleep(4800);const c2=await med();ok(c2.opPlayer<0.5,'depois de alguns segundos volta a ficar transparente');
 await cl('#bRecolher');await sleep(500);const d=await med();ok(/infoAberta/.test(d.cls)&&d.info>40&&d.opPlayer>0.95,'setinha abre as informações '+JSON.stringify(d));
 await p.screenshot({path:'shots/im_3.png'});

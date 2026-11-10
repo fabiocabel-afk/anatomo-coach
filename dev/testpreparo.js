@@ -5,7 +5,7 @@ const p=await b.newPage();await p.setViewport({width:390,height:844});const errs
 await p.evaluateOnNewDocument(()=>{window.__falas=[];const ss={speaking:false,pending:false,paused:false,_q:[],_tm:null,getVoices(){return []},addEventListener(){},removeEventListener(){},
  cancel(){clearTimeout(this._tm);const q=this._q;this._q=[];for(const u of q){u.dispatchEvent(new Event('error'))}this.speaking=false;},
  speak(u){this._q.push(u);if(!this.speaking)this._prox();},
- _prox(){const u=this._q[0];if(!u){this.speaking=false;return;}this.speaking=true;window.__falas.push({t:performance.now(),txt:u.text});u.dispatchEvent(new Event('start'));this._cur=u;this._tm=setTimeout(()=>{this._q.shift();this._cur=null;this.speaking=false;u.dispatchEvent(new Event('end'));if(!this.speaking)this._prox();},u.text.length*25);}};
+ _prox(){const u=this._q[0];if(!u){this.speaking=false;return;}this.speaking=true;window.__falas.push({t:performance.now(),txt:u.text});u.dispatchEvent(new Event('start'));this._cur=u;this._tm=setTimeout(()=>{this._q.shift();this._cur=null;this.speaking=false;u.dispatchEvent(new Event('end'));if(!this.speaking)this._prox();},u.text.length*(window.__msPorLetra===undefined?25:window.__msPorLetra));}};
  Object.defineProperty(window,'speechSynthesis',{value:ss,configurable:true});});
 await p.goto('file://'+path.resolve('dist/corpo3d.html'));await p.waitForFunction('window.__corpo',{timeout:60000});
 const ok=(c,m)=>{console.log((c?'OK  ':'FALHA ')+m);if(!c)process.exitCode=1;};
@@ -39,6 +39,14 @@ await sleep(1500);s=await p.evaluate(()=>__corpo.treino().estado);ok(s==='pausad
 await p.evaluate(()=>{window.__falas=[];document.getElementById('bPlay').click();});
 await p.waitForFunction(()=>__corpo.treino().estado==='treino',{timeout:8000});
 f=await p.evaluate(()=>window.__falas.map(x=>x.txt));ok(f[0]==='Começa!','continuar fala "Começa!" e inicia');
+// celular que avisa 'terminou' na hora (sem falar de verdade): mesmo assim espera o tempo do texto
+await p.evaluate(()=>{document.getElementById('bReset').click();});await sleep(300);
+await p.evaluate(()=>{window.__msPorLetra=0;window.__falas=[];});
+const t1=Date.now();await p.evaluate(()=>document.getElementById('bPlay').click());
+await p.waitForFunction(()=>__corpo.treino().estado==='treino',{timeout:15000});const d1=(Date.now()-t1)/1000;
+const txt1=await p.evaluate(()=>window.__falas[0].txt);const minimo=txt1.length*0.07*0.75;
+ok(d1>=minimo,'aviso de fim adiantado não faz começar antes ('+d1.toFixed(1)+' s ≥ '+minimo.toFixed(1)+' s)');
+await p.evaluate(()=>{window.__msPorLetra=25;});
 // sem voz: espera por tempo
 await p.evaluate(()=>{document.getElementById('bReset').click();});
 await p.evaluate(()=>{localStorage.setItem('corpo3d.treino.v1',JSON.stringify({reps:2,ciclos:1,descanso:5,voz:false,ritmo:1,caneleira:1}));});

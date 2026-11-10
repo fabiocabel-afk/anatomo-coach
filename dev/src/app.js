@@ -1543,7 +1543,8 @@
   function falar(txt, interromper, forcar, aoTerminar) {
     if ((!cfg.voz && !forcar) || !VOZ_OK) return false;
     try {
-      if (interromper) window.speechSynthesis.cancel();
+      // só cancela se houver algo falando: em alguns Androids cancelar e falar em seguida faz a fala nova "terminar" na hora
+      if (interromper && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(txt);
       u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.08;
       if (window.Musica) {
@@ -1602,23 +1603,30 @@
   }
   // antes de contar: o corpo fica na posição inicial, só respirando, enquanto a voz anuncia;
   // depois a voz diz "Começa!" e só então a contagem começa
+  // tempo real (não depende da animação). A voz avisa quando termina, mas alguns celulares avisam
+  // cedo demais: por isso há um tempo mínimo proporcional ao texto, e um máximo caso o aviso nunca chegue
+  const agora = () => performance.now();
   function preparar(texto) {
     if (window.__semPreparo) { S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.prep = null; falar(texto + ' Começa!', true); painelTreino(); return; }
     fotografarPose();
     S.estado = 'preparo'; t = 0; lastCycle = 0; phase = 0;
-    const tok = {};
-    S.prep = { tok, etapa: 'anuncio', tempo: 0, limite: 2.5 };
-    const falou = falar(texto, true, false, () => { if (S.prep && S.prep.tok === tok && S.prep.etapa === 'anuncio') dizerComeca(); });
-    // sem voz (ou se o aviso de fim não chegar): segue por tempo
-    if (falou) S.prep.limite = 2 + texto.length * 0.085;
+    const tok = {}, est = texto.length * 70; // ~70 ms por letra na voz em português
+    S.prep = { tok, etapa: 'anuncio', t0: agora(), min: est * 0.75, max: 2500 + est * 1.6, terminou: false };
+    const falou = falar(texto, true, false, () => { if (S.prep && S.prep.tok === tok && S.prep.etapa === 'anuncio') S.prep.terminou = true; });
+    if (!falou) { S.prep.min = 2500; S.prep.terminou = true; } // sem voz: espera uns segundos parado
     painelTreino();
   }
   function dizerComeca() {
-    if (!S.prep) return;
+    if (!S.prep) S.prep = { tok: {} };
     const tok = S.prep.tok;
-    S.prep.etapa = 'comeca'; S.prep.tempo = 0; S.prep.limite = 1.4;
-    const falou = falar('Começa!', true, false, () => { if (S.prep && S.prep.tok === tok) comecarContagem(); });
-    if (!falou) S.prep.limite = 0.6;
+    Object.assign(S.prep, { etapa: 'comeca', t0: agora(), min: 600, max: 2200, terminou: false });
+    const falou = falar('Começa!', true, false, () => { if (S.prep && S.prep.tok === tok && S.prep.etapa === 'comeca') S.prep.terminou = true; });
+    if (!falou) { S.prep.min = 500; S.prep.terminou = true; }
+  }
+  function conferirPreparo() {
+    const pr = S.prep; if (!pr) return;
+    const el = agora() - pr.t0;
+    if ((pr.terminou && el >= pr.min) || el >= pr.max) { if (pr.etapa === 'anuncio') dizerComeca(); else comecarContagem(); }
   }
   function comecarContagem() {
     S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0;
@@ -1670,10 +1678,7 @@
     if (S.estado === 'preparo') {
       // parado na posição inicial, com um leve balanço de quem está pronto
       t += dt; phase = 0.035 * (1 - Math.cos(2 * Math.PI * t / 2.6)) / 2; lado = 0;
-      if (S.prep) {
-        S.prep.tempo += dt;
-        if (S.prep.tempo > S.prep.limite) { if (S.prep.etapa === 'anuncio') dizerComeca(); else comecarContagem(); }
-      }
+      conferirPreparo();
     } else if (S.estado === 'treino' && S.espera > 0) {
       S.espera -= dt; phase = 0;
       if (S.espera <= 0) { S.espera = 0; painelTreino(); }
