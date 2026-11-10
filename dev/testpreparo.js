@@ -39,6 +39,17 @@ await sleep(1500);s=await p.evaluate(()=>__corpo.treino().estado);ok(s==='pausad
 await p.evaluate(()=>{window.__falas=[];document.getElementById('bPlay').click();});
 await p.waitForFunction(()=>__corpo.treino().estado==='treino',{timeout:8000});
 f=await p.evaluate(()=>window.__falas.map(x=>x.txt));ok(f[0]==='Começa!','continuar fala "Começa!" e inicia');
+// fim do ciclo: continua de pé até terminar de avisar, só depois senta
+await p.evaluate(()=>{document.getElementById('bReset').click();});await sleep(300);
+await p.evaluate(()=>{window.__msPorLetra=40;});
+await p.evaluate(()=>{const c=JSON.parse(localStorage.getItem('corpo3d.treino.v1'));});
+await p.evaluate(()=>document.getElementById('bPlay').click());
+await p.waitForFunction(()=>__corpo.treino().estado==='treino',{timeout:15000});
+await p.waitForFunction(()=>__corpo.treino().estado!=='treino',{timeout:20000});
+const fimCiclo=[];for(let i=0;i<40;i++){const x=await p.evaluate(()=>({e:__corpo.treino().estado,rep:__corpo.repouso(),f:window.__falas.slice(-1)[0].txt,falando:speechSynthesis.speaking}));fimCiclo.push(x);if(x.e==='descanso')break;await sleep(100);}
+const conc=fimCiclo.filter(x=>x.e==='concluindo');
+ok(conc.length>2&&conc.every(x=>!x.rep),'fim do ciclo: fica de pé ('+conc.length+' amostras) enquanto fala "'+conc[0].f+'"');
+const sentou=fimCiclo.find(x=>x.e==='descanso');ok(sentou&&sentou.rep&&!sentou.falando,'só senta para descansar depois que a fala terminou');
 // celular que avisa 'terminou' na hora (sem falar de verdade): mesmo assim espera o tempo do texto
 await p.evaluate(()=>{document.getElementById('bReset').click();});await sleep(300);
 await p.evaluate(()=>{window.__msPorLetra=0;window.__falas=[];});

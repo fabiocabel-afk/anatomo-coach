@@ -255,7 +255,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.14.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.14.1</p>
   </div>
 </div>
 <div id="trSheet" class="sheetw" hidden>
@@ -3281,6 +3281,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (S.estado === 'fim') sub = 'Treino concluído';
     else if (S.troca && (S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso'))) sub = 'Descanso · próximo exercício';
     else if (S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso')) sub = 'Descanso · ' + S.ciclo + '/' + tc.ciclos + ' feitos';
+    else if (S.estado === 'concluindo' || (S.estado === 'pausado' && S.antes === 'concluindo')) sub = 'Ciclo ' + S.ciclo + ' concluído' + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (S.estado === 'preparo' || (S.estado === 'pausado' && S.antes === 'preparo')) sub = 'Prepare-se · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (ativo) sub = 'Ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : S.espera > 0 ? ' · pausa' : '');
     else sub = (usaCaneleira() ? 'Caneleira ' + cfg.caneleira + ' kg · ' : '') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + (tc.descanso ? ' · desc. ' + tc.descanso + ' s' : '');
@@ -3289,7 +3290,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     $('nSub').textContent = sub;
     $('cont').firstElementChild.style.display = cur.repouso ? 'none' : '';
     const b = $('bPlay');
-    const rodando = S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo';
+    const rodando = S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo' || S.estado === 'concluindo';
     const rot = cur.repouso ? 'Escolher' : rodando ? 'Pausar' : S.estado === 'pausado' ? 'Continuar' : S.estado === 'fim' ? 'Repetir' : 'Iniciar';
     b.innerHTML = rodando ? ICON_PAUSE : ICON_PLAY;
     b.setAttribute('aria-label', rot); b.title = rot;
@@ -3335,7 +3336,26 @@ window.CORPO3D_EXERCICIOS = function (H) {
   function conferirPreparo() {
     const pr = S.prep; if (!pr) return;
     const el = agora() - pr.t0;
-    if ((pr.terminou && el >= pr.min) || el >= pr.max) { if (pr.etapa === 'anuncio') dizerComeca(); else comecarContagem(); }
+    if ((pr.terminou && el >= pr.min) || el >= pr.max) {
+      if (pr.etapa === 'anuncio') dizerComeca();
+      else if (pr.etapa === 'conclui') { const f = pr.depois; S.prep = null; f(); }
+      else comecarContagem();
+    }
+  }
+  // fim de ciclo/exercício: continua de pé na posição inicial até a voz terminar de avisar;
+  // só então senta para descansar (ou segue)
+  function concluir(texto, depois) {
+    if (window.__semPreparo) { falar(texto, true); depois(); return; }
+    S.estado = 'concluindo'; t = 0; phase = 0; S.espera = 0;
+    const tok = {}, est = texto.length * 70;
+    S.prep = { tok, etapa: 'conclui', t0: agora(), min: est * 0.75, max: 2500 + est * 1.6, terminou: false, depois };
+    const falou = falar(texto, true, false, () => { if (S.prep && S.prep.tok === tok) S.prep.terminou = true; });
+    if (!falou) { S.prep.min = 1200; S.prep.terminou = true; }
+    painelTreino();
+  }
+  function irDescansar(seg) {
+    fotografarPose(); S.estado = 'descanso'; S.resto = seg; S.restoInt = Math.ceil(seg); aimCamera(REPOUSO.cam); musicaNova = true;
+    painelTreino();
   }
   function comecarContagem() {
     S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0;
@@ -3361,30 +3381,29 @@ window.CORPO3D_EXERCICIOS = function (H) {
         if (SEQ && SEQ.idx < SEQ.t.itens.length - 1) {
           const dep = tc.depois || 0;
           S.troca = true;
-          if (dep > 0) {
-            fotografarPose(); S.estado = 'descanso'; S.resto = dep; S.restoInt = Math.ceil(dep); aimCamera(REPOUSO.cam); musicaNova = true;
-            falar(S.rep + '. Exercício concluído. Descanse ' + dep + ' segundos. Depois: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) + '.');
-          } else { falar(S.rep + '. Exercício concluído.'); proximoExercicio(); return; }
+          if (dep > 0) concluir(S.rep + '. Exercício concluído. Descanse ' + dep + ' segundos. Depois: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) + '.', () => irDescansar(dep));
+          else concluir(S.rep + '. Exercício concluído.', proximoExercicio);
+          return;
         } else {
           S.estado = 'fim';
-          falar(S.rep + (SEQ ? '. Treino ' + SEQ.t.nome + ' concluído. Parabéns!' : '. Treino concluído. Muito bem!'));
+          falar(S.rep + (SEQ ? '. Treino ' + SEQ.t.nome + ' concluído. Parabéns!' : '. Treino concluído. Muito bem!'), true);
         }
       } else if (tc.descanso > 0) {
-        fotografarPose(); S.estado = 'descanso'; S.resto = tc.descanso; S.restoInt = Math.ceil(tc.descanso); aimCamera(REPOUSO.cam); musicaNova = true;
-        falar(S.rep + '. Ciclo ' + S.ciclo + ' concluído. Descanse ' + tc.descanso + ' segundos.');
+        concluir(S.rep + '. Ciclo ' + S.ciclo + ' concluído. Descanse ' + tc.descanso + ' segundos.', () => irDescansar(tc.descanso));
+        return;
       } else {
-        falar(S.rep + '. Ciclo ' + S.ciclo + ' concluído.');
-        proximoCiclo(); return;
+        concluir(S.rep + '. Ciclo ' + S.ciclo + ' concluído.', proximoCiclo);
+        return;
       }
     } else {
-      if (!cur.isometria && tc.reps >= 4 && S.rep === tc.reps - 1) falar(S.rep + '. Mais uma!');
-      else falar(String(S.rep));
+      if (!cur.isometria && tc.reps >= 4 && S.rep === tc.reps - 1) falar(S.rep + '. Mais uma!', true);
+      else falar(String(S.rep), true);
       if (tc.pausaRep > 0 && !cur.isometria) S.espera = tc.pausaRep;
     }
     painelTreino();
   }
   function passo(dt) {
-    if (S.estado === 'preparo') {
+    if (S.estado === 'preparo' || S.estado === 'concluindo') {
       // parado na posição inicial, com um leve balanço de quem está pronto
       t += dt; phase = 0.035 * (1 - Math.cos(2 * Math.PI * t / 2.6)) / 2; lado = 0;
       conferirPreparo();
@@ -3416,9 +3435,10 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (cur.repouso) { abrirTreinos(); return; }
     if (S.estado === 'fim' && SEQ) { executarTreino(SEQ.t.id); return; }
     if (S.estado === 'previa' || S.estado === 'fim' || S.estado === 'congelado') iniciarTreino();
-    else if (S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo') { S.antes = S.estado; S.estado = 'pausado'; calarVoz(); painelTreino(); }
+    else if (S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo' || S.estado === 'concluindo') { S.antes = S.estado; S.estado = 'pausado'; calarVoz(); painelTreino(); }
     else if (S.estado === 'pausado') {
       if (S.antes === 'preparo') { S.estado = 'preparo'; dizerComeca(); painelTreino(); return; }
+      if (S.antes === 'concluindo') { const f = S.prep && S.prep.depois; S.prep = null; if (f) f(); else proximoCiclo(); return; }
       S.estado = S.antes; if (S.estado === 'treino') falar('Continuando.', true); painelTreino();
     }
   });
@@ -3801,7 +3821,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       navigator.wakeLock.request('screen').then(w => { wake = w; wakePedindo = false; w.addEventListener('release', () => { wake = null; }); }).catch(() => { wakePedindo = false; });
     } else if (!on && wake) { try { wake.release(); } catch (e) { /* ok */ } wake = null; }
   }
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') telaAcesa(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'pausado' || S.estado === 'preparo'); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') telaAcesa(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'pausado' || S.estado === 'preparo' || S.estado === 'concluindo'); });
 
   /* ---------- música acompanhando o treino ---------- */
   function lerMusicaCfg() {
@@ -3818,7 +3838,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (!window.Musica) return;
     const modo = SEQ ? SEQ.t.trilha : 'padrao';
     if (cur.repouso && S.estado === 'previa') { Musica.parar(true); return; }
-    if (S.estado === 'treino' || S.estado === 'preparo') { Musica.tocar('treino', { modo, nova: musicaNova, ritmo: tc.ritmo }); musicaNova = false; }
+    if (S.estado === 'treino' || S.estado === 'preparo' || S.estado === 'concluindo') { Musica.tocar('treino', { modo, nova: musicaNova, ritmo: tc.ritmo }); musicaNova = false; }
     else if (S.estado === 'descanso') { Musica.tocar('pausa', { modo, nova: musicaNova }); musicaNova = false; }
     else if (S.estado === 'pausado') Musica.pausar();
     else Musica.parar(S.estado === 'fim' || S.estado === 'previa');
@@ -3886,7 +3906,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     inp.addEventListener('blur', () => fim(true));
   }
   function abrirMusica() { if (!window.Musica) return; Musica.desbloquear(); renderMusica(''); $('muSheet').hidden = false; }
-  function fecharMusica() { $('muSheet').hidden = true; if (window.Musica && !(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo')) Musica.parar(true); }
+  function fecharMusica() { $('muSheet').hidden = true; if (window.Musica && !(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo' || S.estado === 'concluindo')) Musica.parar(true); }
   if (window.Musica) {
     for (const o of $('muModo').children) o.addEventListener('click', () => { mcfg.modo = o.dataset.v; Musica.configurar(mcfg); const ok = gravarMusicaCfg(); renderMusica(ok ? '' : 'Atenção: não consegui gravar a escolha neste aparelho.'); });
     $('muVol').addEventListener('input', e => { mcfg.vol = Number(e.target.value) / 100; Musica.configurar(mcfg); });
