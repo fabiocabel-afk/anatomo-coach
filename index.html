@@ -179,7 +179,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 </head>
 <body>
 <header>
-  <h1>Corpo <b>3D</b></h1><span>atlas muscular · v2.12</span>
+  <h1>Corpo <b>3D</b></h1><span>atlas muscular · v2.13</span>
   <button class="ic txt" id="bTreinos" aria-label="Meus treinos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/></svg>Treinos</button>
   <button class="ic txt" id="bList" aria-label="Lista de músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Músculos</button>
 </header>
@@ -3243,8 +3243,8 @@ window.CORPO3D_EXERCICIOS = function (H) {
     } catch (e) { vozPt = null; }
   }
   if (VOZ_OK) { escolherVoz(); try { window.speechSynthesis.addEventListener('voiceschanged', escolherVoz); } catch (e) { /* navegador antigo */ } }
-  function falar(txt, interromper, forcar) {
-    if ((!cfg.voz && !forcar) || !VOZ_OK) return;
+  function falar(txt, interromper, forcar, aoTerminar) {
+    if ((!cfg.voz && !forcar) || !VOZ_OK) return false;
     try {
       if (interromper) window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(txt);
@@ -3254,12 +3254,14 @@ window.CORPO3D_EXERCICIOS = function (H) {
         u.onstart = () => Musica.abaixar(true); u.onend = soltar; u.onerror = soltar;
         setTimeout(() => { if (!solto && u.onstart) soltar(); }, 9000);
       }
+      if (aoTerminar) u.addEventListener('end', () => aoTerminar());
       window.speechSynthesis.speak(u);
-    } catch (e) { /* sem voz: o contador na tela continua valendo */ }
+      return true;
+    } catch (e) { return false; /* sem voz: o contador na tela continua valendo */ }
   }
   function calarVoz() { if (VOZ_OK) try { window.speechSynthesis.cancel(); } catch (e) { /* ignora */ } if (window.Musica) Musica.soltarAbaixar(); }
 
-  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false };
+  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null };
   const ICON_RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>';
   $('bReset').innerHTML = ICON_RESET;
 
@@ -3272,6 +3274,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (S.estado === 'fim') sub = 'Treino concluído';
     else if (S.troca && (S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso'))) sub = 'Descanso · próximo exercício';
     else if (S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso')) sub = 'Descanso · ' + S.ciclo + '/' + tc.ciclos + ' feitos';
+    else if (S.estado === 'preparo' || (S.estado === 'pausado' && S.antes === 'preparo')) sub = 'Prepare-se · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (ativo) sub = 'Ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : S.espera > 0 ? ' · pausa' : '');
     else sub = (usaCaneleira() ? 'Caneleira ' + cfg.caneleira + ' kg · ' : '') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + (tc.descanso ? ' · desc. ' + tc.descanso + ' s' : '');
     if (cur.repouso) sub = 'Escolha um exercício';
@@ -3279,7 +3282,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     $('nSub').textContent = sub;
     $('cont').firstElementChild.style.display = cur.repouso ? 'none' : '';
     const b = $('bPlay');
-    const rodando = S.estado === 'treino' || S.estado === 'descanso';
+    const rodando = S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo';
     const rot = cur.repouso ? 'Escolher' : rodando ? 'Pausar' : S.estado === 'pausado' ? 'Continuar' : S.estado === 'fim' ? 'Repetir' : 'Iniciar';
     b.innerHTML = rodando ? ICON_PAUSE : ICON_PLAY;
     b.setAttribute('aria-label', rot); b.title = rot;
@@ -3293,26 +3296,48 @@ window.CORPO3D_EXERCICIOS = function (H) {
       $('restN').textContent = String(Math.max(0, Math.ceil(S.resto)));
       $('restNext').textContent = S.troca && SEQ ? 'Próximo: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
     }
-    modoImersivo(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'pausado', rodando);
-    seqBarUI(); atualizarMusica(); telaAcesa(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'pausado');
+    modoImersivo(rodando || S.estado === 'pausado', rodando);
+    seqBarUI(); atualizarMusica(); telaAcesa(rodando || S.estado === 'pausado');
   }
   function iniciarTreino() {
-    S.estado = 'treino'; S.ciclo = 1; S.rep = 0; t = 0; lastCycle = 0; phase = 0; S.espera = 0; S.troca = false; musicaNova = true;
-    falar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos, ' : ' repetições, ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '. Ciclo 1. Vai!', true);
+    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; musicaNova = true;
+    preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos, ' : ' repetições, ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
+  }
+  // antes de contar: o corpo fica na posição inicial, só respirando, enquanto a voz anuncia;
+  // depois a voz diz "Começa!" e só então a contagem começa
+  function preparar(texto) {
+    if (window.__semPreparo) { S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.prep = null; falar(texto + ' Começa!', true); painelTreino(); return; }
+    fotografarPose();
+    S.estado = 'preparo'; t = 0; lastCycle = 0; phase = 0;
+    const tok = {};
+    S.prep = { tok, etapa: 'anuncio', tempo: 0, limite: 2.5 };
+    const falou = falar(texto, true, false, () => { if (S.prep && S.prep.tok === tok && S.prep.etapa === 'anuncio') dizerComeca(); });
+    // sem voz (ou se o aviso de fim não chegar): segue por tempo
+    if (falou) S.prep.limite = 2 + texto.length * 0.085;
+    painelTreino();
+  }
+  function dizerComeca() {
+    if (!S.prep) return;
+    const tok = S.prep.tok;
+    S.prep.etapa = 'comeca'; S.prep.tempo = 0; S.prep.limite = 1.4;
+    const falou = falar('Começa!', true, false, () => { if (S.prep && S.prep.tok === tok) comecarContagem(); });
+    if (!falou) S.prep.limite = 0.6;
+  }
+  function comecarContagem() {
+    S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0;
     painelTreino();
   }
   function resetTreino(silencioso) {
     if ((S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso')) && !cur.repouso) { fotografarPose(); bestAngle(false); }
-    S.estado = 'previa'; S.ciclo = 1; S.rep = 0; S.resto = 0; t = 0; lastCycle = 0; S.espera = 0; S.troca = false;
+    S.estado = 'previa'; S.ciclo = 1; S.rep = 0; S.resto = 0; t = 0; lastCycle = 0; S.espera = 0; S.troca = false; S.prep = null;
     if (!silencioso) calarVoz();
     painelTreino();
   }
   function proximoCiclo() {
     if (S.troca) { proximoExercicio(); return; }
     if (S.estado === 'descanso' || S.estado === 'pausado') { fotografarPose(); bestAngle(false); }
-    S.ciclo++; S.espera = 0; S.rep = 0; t = 0; lastCycle = 0; phase = 0; S.estado = 'treino';
-    falar('Ciclo ' + S.ciclo + ' de ' + tc.ciclos + '. Vai!', true);
-    painelTreino();
+    S.ciclo++; S.espera = 0; S.rep = 0;
+    preparar('Ciclo ' + S.ciclo + ' de ' + tc.ciclos + '.');
   }
   function repCompleta() {
     S.rep++;
@@ -3345,7 +3370,14 @@ window.CORPO3D_EXERCICIOS = function (H) {
     painelTreino();
   }
   function passo(dt) {
-    if (S.estado === 'treino' && S.espera > 0) {
+    if (S.estado === 'preparo') {
+      // parado na posição inicial, com um leve balanço de quem está pronto
+      t += dt; phase = 0.035 * (1 - Math.cos(2 * Math.PI * t / 2.6)) / 2; lado = 0;
+      if (S.prep) {
+        S.prep.tempo += dt;
+        if (S.prep.tempo > S.prep.limite) { if (S.prep.etapa === 'anuncio') dizerComeca(); else comecarContagem(); }
+      }
+    } else if (S.estado === 'treino' && S.espera > 0) {
       S.espera -= dt; phase = 0;
       if (S.espera <= 0) { S.espera = 0; painelTreino(); }
     } else if (S.estado === 'previa' || S.estado === 'treino') {
@@ -3373,8 +3405,11 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (cur.repouso) { abrirTreinos(); return; }
     if (S.estado === 'fim' && SEQ) { executarTreino(SEQ.t.id); return; }
     if (S.estado === 'previa' || S.estado === 'fim' || S.estado === 'congelado') iniciarTreino();
-    else if (S.estado === 'treino' || S.estado === 'descanso') { S.antes = S.estado; S.estado = 'pausado'; calarVoz(); painelTreino(); }
-    else if (S.estado === 'pausado') { S.estado = S.antes; if (S.estado === 'treino') falar('Continuando.', true); painelTreino(); }
+    else if (S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo') { S.antes = S.estado; S.estado = 'pausado'; calarVoz(); painelTreino(); }
+    else if (S.estado === 'pausado') {
+      if (S.antes === 'preparo') { S.estado = 'preparo'; dizerComeca(); painelTreino(); return; }
+      S.estado = S.antes; if (S.estado === 'treino') falar('Continuando.', true); painelTreino();
+    }
   });
   $('bReset').addEventListener('click', () => resetTreino(false));
   // modo imersivo: durante o treino as informações recolhem e os controles ficam transparentes;
@@ -3724,7 +3759,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       navigator.wakeLock.request('screen').then(w => { wake = w; wakePedindo = false; w.addEventListener('release', () => { wake = null; }); }).catch(() => { wakePedindo = false; });
     } else if (!on && wake) { try { wake.release(); } catch (e) { /* ok */ } wake = null; }
   }
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') telaAcesa(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'pausado'); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') telaAcesa(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'pausado' || S.estado === 'preparo'); });
 
   /* ---------- música acompanhando o treino ---------- */
   function lerMusicaCfg() {
@@ -3741,7 +3776,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (!window.Musica) return;
     const modo = SEQ ? SEQ.t.trilha : 'padrao';
     if (cur.repouso && S.estado === 'previa') { Musica.parar(true); return; }
-    if (S.estado === 'treino') { Musica.tocar('treino', { modo, nova: musicaNova, ritmo: tc.ritmo }); musicaNova = false; }
+    if (S.estado === 'treino' || S.estado === 'preparo') { Musica.tocar('treino', { modo, nova: musicaNova, ritmo: tc.ritmo }); musicaNova = false; }
     else if (S.estado === 'descanso') { Musica.tocar('pausa', { modo, nova: musicaNova }); musicaNova = false; }
     else if (S.estado === 'pausado') Musica.pausar();
     else Musica.parar(S.estado === 'fim' || S.estado === 'previa');
@@ -3809,7 +3844,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     inp.addEventListener('blur', () => fim(true));
   }
   function abrirMusica() { if (!window.Musica) return; Musica.desbloquear(); renderMusica(''); $('muSheet').hidden = false; }
-  function fecharMusica() { $('muSheet').hidden = true; if (window.Musica && !(S.estado === 'treino' || S.estado === 'descanso')) Musica.parar(true); }
+  function fecharMusica() { $('muSheet').hidden = true; if (window.Musica && !(S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo')) Musica.parar(true); }
   if (window.Musica) {
     for (const o of $('muModo').children) o.addEventListener('click', () => { mcfg.modo = o.dataset.v; Musica.configurar(mcfg); const ok = gravarMusicaCfg(); renderMusica(ok ? '' : 'Atenção: não consegui gravar a escolha neste aparelho.'); });
     $('muVol').addEventListener('input', e => { mcfg.vol = Number(e.target.value) / 100; Musica.configurar(mcfg); });
