@@ -1,7 +1,7 @@
 const puppeteer=require('puppeteer-core');const path=require('path');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-const p=await b.newPage();await p.evaluateOnNewDocument('window.__semPreparo=true');await p.setViewport({width:390,height:844,deviceScaleFactor:2});const errs=[];
+const p=await b.newPage();await p.evaluateOnNewDocument('window.__semPreparo=true;window.__autoResposta="nao"');await p.setViewport({width:390,height:844,deviceScaleFactor:2});const errs=[];
 p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});p.on('pageerror',e=>errs.push(e.message));
 await p.evaluateOnNewDocument(()=>{window.__falas=[];const fake={speak:u=>window.__falas.push(u.text),cancel:()=>window.__falas.push('<cancel>'),getVoices:()=>[{lang:'pt-BR',name:'Teste'}],addEventListener(){}};
  Object.defineProperty(window,'speechSynthesis',{value:fake});window.SpeechSynthesisUtterance=function(t){this.text=t};});

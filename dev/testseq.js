@@ -4,7 +4,7 @@ const URL='http://localhost:8766/index.html';
 (async()=>{
 const dir='/tmp/prof_seq';fs.rmSync(dir,{recursive:true,force:true});
 const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:'new',userDataDir:dir,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required']});
-const p=await b.newPage();await p.evaluateOnNewDocument('window.__semPreparo=true');await p.setViewport({width:390,height:844,deviceScaleFactor:1});const errs=[];
+const p=await b.newPage();await p.evaluateOnNewDocument('window.__semPreparo=true;window.__autoResposta="nao"');await p.setViewport({width:390,height:844,deviceScaleFactor:1});const errs=[];
 p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});p.on('pageerror',e=>errs.push(e.message));
 await p.goto(URL);await p.waitForFunction('window.__corpo',{timeout:60000});
 const ok=(c,m)=>{console.log((c?'OK  ':'FALHA ')+m);if(!c)process.exitCode=1;};

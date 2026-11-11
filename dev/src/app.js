@@ -1687,6 +1687,7 @@
     if (S.estado === 'fim') sub = SEQ ? 'Fim do treino' : 'Fim do exercício';
     else if (S.troca && (S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso'))) sub = 'Descanso · próximo exercício';
     else if (S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso')) sub = 'Descanso · ' + S.ciclo + '/' + tc.ciclos + ' feitos';
+    else if (S.estado === 'pergunta') sub = 'Concluiu o exercício? Responda na tela';
     else if (S.estado === 'concluindo' || (S.estado === 'pausado' && S.antes === 'concluindo')) sub = 'Ciclo ' + S.ciclo + ' concluído' + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (S.estado === 'preparo' || (S.estado === 'pausado' && S.antes === 'preparo')) sub = 'Prepare-se · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (ativo) sub = 'Ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : S.espera > 0 ? ' · pausa' : '');
@@ -1707,7 +1708,8 @@
     $('bPrev').setAttribute('aria-label', SEQ && SEQ.idx === 0 ? 'Recomeçar o exercício' : 'Exercício anterior');
     $('rest').hidden = S.estado !== 'descanso';
     // treino em andamento: "Parar" no lugar do recomeçar; pausado: janela com Continuar / Encerrar
-    const sessao = ['treino', 'preparo', 'descanso', 'concluindo', 'pausado'].includes(S.estado);
+    const sessao = ['treino', 'preparo', 'descanso', 'concluindo', 'pausado', 'pergunta'].includes(S.estado);
+    if (S.estado === 'pausado' && S.antes === 'pergunta') $('concBox').hidden = true;
     $('bParar').hidden = !sessao; $('bReset').hidden = sessao;
     $('pausaBox').hidden = S.estado !== 'pausado';
     if (S.estado === 'pausado') $('pausaInfo').textContent = (SEQ ? SEQ.t.nome + ' · exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + '\n' : '') + cur.nome + ' · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.antes === 'treino' ? ' · ' + S.rep + '/' + tc.reps : '');
@@ -1802,18 +1804,26 @@
       t = 0; lastCycle = 0; phase = 0;
       if (S.ciclo >= tc.ciclos) {
         const reg = registroDoExercicio(); S.reg = null;
-        if (SEQ) SEQ.feitos.push(reg);
         if (SEQ && SEQ.idx < SEQ.t.itens.length - 1) {
-          const dep = tc.depois || 0;
+          // treino montado: pergunta ao fim de CADA exercício (se for interrompido depois, o que já fez fica registrado);
+          // só depois da resposta começa o descanso até o próximo
+          const dep = tc.depois || 0, prox = nomeEx(SEQ.t.itens[SEQ.idx + 1].ex), seq0 = SEQ;
           S.troca = true;
-          if (dep > 0) concluir(S.rep + '. Fim do exercício. Descanse ' + dep + ' segundos. Depois: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) + '.', () => irDescansar(dep));
-          else concluir(S.rep + '. Fim do exercício.', proximoExercicio);
+          concluir(S.rep + '. Fim do exercício. Você concluiu?', () => {
+            S.estado = 'pergunta'; painelTreino();
+            perguntarConclusao([reg], registrou => {
+              if (SEQ !== seq0 || S.estado !== 'pergunta') return; // saiu do treino enquanto respondia
+              const ini = registrou ? 'Registrado. ' : 'Certo, não registrado. ';
+              if (dep > 0) { falar(ini + 'Descanse ' + dep + ' segundos. Depois: ' + prox + '.', true); irDescansar(dep); }
+              else { falar(ini, true); proximoExercicio(); }
+            });
+          });
           return;
         } else {
           // em vez de afirmar, pergunta: só entra no histórico se a pessoa confirmar
           S.estado = 'fim';
-          if (SEQ) { falar(S.rep + '. Fim do treino ' + SEQ.t.nome + '. Marque os exercícios que você concluiu.', true); perguntarConclusao(SEQ.feitos.slice()); }
-          else { falar(S.rep + '. Fim do exercício. Você concluiu o exercício?', true); perguntarConclusao([reg]); }
+          falar(S.rep + (SEQ ? '. Fim do treino ' + SEQ.t.nome + '. Você concluiu este último exercício?' : '. Fim do exercício. Você concluiu o exercício?'), true);
+          perguntarConclusao([reg]);
         }
       } else if (tc.descanso > 0) {
         concluir(S.rep + '. Ciclo ' + S.ciclo + ' concluído. Descanse ' + tc.descanso + ' segundos.', () => irDescansar(tc.descanso));
@@ -1830,7 +1840,7 @@
     painelTreino();
   }
   function passo(dt) {
-    if (S.estado === 'preparo' || S.estado === 'concluindo') {
+    if (S.estado === 'preparo' || S.estado === 'concluindo' || S.estado === 'pergunta') {
       // parado na posição inicial, com um leve balanço de quem está pronto
       t += dt; phase = 0.035 * (1 - Math.cos(2 * Math.PI * t / 2.6)) / 2; lado = 0;
       conferirPreparo();
@@ -1862,12 +1872,13 @@
     if (cur.repouso) { abrirTreinos(); return; }
     if (S.estado === 'fim' && SEQ) { executarTreino(SEQ.t.id); return; }
     if (S.estado === 'previa' || S.estado === 'fim' || S.estado === 'congelado') iniciarTreino();
-    else if (S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo' || S.estado === 'concluindo') { S.antes = S.estado; S.estado = 'pausado'; if (S.reg) S.reg.pausaDesde = Date.now(); calarVoz(); painelTreino(); }
+    else if (S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo' || S.estado === 'concluindo' || S.estado === 'pergunta') { S.antes = S.estado; S.estado = 'pausado'; if (S.reg) S.reg.pausaDesde = Date.now(); calarVoz(); painelTreino(); }
     else if (S.estado === 'pausado') {
       if (S.reg && S.reg.pausaDesde) { S.reg.pausadoMs += Date.now() - S.reg.pausaDesde; S.reg.pausaDesde = null; }
       if (S.antes === 'preparo') { S.estado = 'preparo'; dizerComeca(); painelTreino(); return; }
       if (S.antes === 'concluindo') { const f = S.prep && S.prep.depois; S.prep = null; if (f) f(); else proximoCiclo(); return; }
       S.estado = S.antes; if (S.estado === 'treino') falar('Continuando.', true); painelTreino();
+      if (S.estado === 'pergunta' && concPend) $('concBox').hidden = false;
     }
   });
   $('bReset').addEventListener('click', () => resetTreino(false));
@@ -1878,10 +1889,10 @@
   $('bEncerrar').addEventListener('click', encerrarTreino);
   function encerrarTreino() {
     calarVoz();
-    const feitos = SEQ ? SEQ.feitos.slice() : [];
+    const pend = concPend; // pergunta ainda sem resposta: continua na tela para poder registrar
     if (SEQ) sairSequencia(false); // treino montado: volta para o descanso (sentado)
     else resetTreino(true);         // exercício avulso: volta para a prévia do exercício
-    if (feitos.length) { falar('Treino encerrado. Marque os exercícios que você concluiu.', true); perguntarConclusao(feitos); }
+    if (pend) { perguntarConclusao(pend.map(r => { const o = Object.assign({}, r); delete o.marcado; return o; })); falar('Treino encerrado. Você concluiu o último exercício?', true); }
     else falar('Treino encerrado.', true);
   }
   // modo imersivo: durante o treino as informações recolhem e os controles ficam transparentes;
@@ -2280,7 +2291,7 @@
     const modo = SEQ ? SEQ.t.trilha : 'padrao';
     if (cur.repouso && S.estado === 'previa') { Musica.parar(true); return; }
     if (S.estado === 'treino') { Musica.tocar('treino', { modo, nova: musicaNova, ritmo: tc.ritmo }); musicaNova = false; }
-    else if (S.estado === 'preparo') Musica.pausar();   // anunciando: espera o "Começa!"
+    else if (S.estado === 'preparo' || S.estado === 'pergunta') Musica.pausar();   // anunciando ou perguntando: espera
     else if (S.estado === 'concluindo') { /* segue tocando baixinho enquanto avisa o fim */ }
     else if (S.estado === 'descanso') { Musica.tocar('pausa', { modo, nova: musicaNova }); musicaNova = false; }
     else if (S.estado === 'pausado') Musica.pausar();
@@ -2545,8 +2556,9 @@
   const regTxt = r => r.ciclos + '×' + r.reps + (r.iso ? ' s' : '') + ' · ' + (r.ritmoNome || '').toLowerCase() + (r.caneleira ? ' · ' + r.caneleira + ' kg' : '');
 
   /* ---------- Pergunta no fim: "Você concluiu?" ---------- */
-  let concPend = null;
-  function perguntarConclusao(regs) {
+  let concPend = null, concCb = null; // concCb: o que fazer depois da resposta (treino montado segue)
+  function perguntarConclusao(regs, depois) {
+    concCb = typeof depois === 'function' ? depois : null;
     concPend = regs.map(r => Object.assign({}, r, { marcado: true }));
     const um = concPend.length === 1;
     $('concTit').textContent = um ? 'Você concluiu o exercício?' : 'Quais exercícios você concluiu?';
@@ -2563,9 +2575,11 @@
     $('bConcNao').textContent = um ? 'Não' : 'Não registrar';
     $('concMsg').textContent = 'Fica no histórico de ' + perfilAtual().nome + '.';
     $('concBox').hidden = false;
+    if (window.__autoResposta && concCb) setTimeout(() => $(window.__autoResposta === 'sim' ? 'bConcSim' : 'bConcNao').click(), 0); // só para testes automáticos
   }
-  function esconderConclusao() { $('concBox').hidden = true; concPend = null; }
-  $('bConcNao').addEventListener('click', esconderConclusao);
+  function esconderConclusao() { $('concBox').hidden = true; concPend = null; concCb = null; }
+  function respondeu(registrou) { const cb = concCb; concCb = null; if (cb) cb(registrou); }
+  $('bConcNao').addEventListener('click', () => { const cb = concCb; esconderConclusao(); if (cb) cb(false); });
   $('bConcSim').addEventListener('click', () => {
     if (!concPend) return;
     const novos = concPend.filter(r => r.marcado).map(r => { const o = Object.assign({}, r); delete o.marcado; return o; });
@@ -2573,9 +2587,9 @@
     const lista = lerHistorico(PERFIS.atual).concat(novos);
     if (!gravarHistorico(PERFIS.atual, lista)) { $('concMsg').textContent = 'Atenção: não consegui gravar no histórico deste aparelho. Toque de novo para tentar.'; return; }
     $('concMsg').textContent = novos.length === 1 ? 'Registrado no histórico.' : novos.length + ' exercícios registrados.';
-    falar('Registrado. Muito bem!', true);
     concPend = null;
-    setTimeout(() => { if (!concPend) $('concBox').hidden = true; }, 1300);
+    if (concCb) { setTimeout(() => { if (!concPend) $('concBox').hidden = true; }, 700); respondeu(true); }
+    else { falar('Registrado. Muito bem!', true); setTimeout(() => { if (!concPend) $('concBox').hidden = true; }, 1300); }
   });
 
   /* ---------- Gráficos simples em SVG (uma série, roxo do app) ---------- */

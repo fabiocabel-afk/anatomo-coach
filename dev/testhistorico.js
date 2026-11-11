@@ -42,19 +42,28 @@ ok(h.length===1&&h[0].ex==='agachamento'&&h[0].ciclos===2&&h[0].reps===2&&h[0].r
 await p.evaluate(()=>{localStorage.setItem('corpo3d.treinos.v1@p1',JSON.stringify({v:1,lista:[{id:'x',nome:'Rápido',trilha:'off',itens:[{ex:'agachamento',reps:2,ciclos:1,descanso:5,pausaRep:0,ritmo:0.5,depois:2},{ex:'rosca',reps:2,ciclos:1,descanso:5,pausaRep:0,ritmo:0.5,depois:5}]}]}));});
 await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});
 await p.evaluate(()=>__corpo.executarTreino('x'));
-await p.waitForFunction(()=>__corpo.treino().estado==='fim',{timeout:90000});await sleep(300);
-x=await p.evaluate(()=>({tit:document.getElementById('concTit').textContent,itens:[...document.querySelectorAll('#concLista .concIt b')].map(b=>b.textContent),cb:document.querySelectorAll('#concLista input:checked').length}));
-ok(x.tit==='Quais exercícios você concluiu?'&&x.itens.length===2&&x.cb===2,'fim do treino montado: lista com os 2 marcados '+JSON.stringify(x));
+await p.waitForFunction(()=>!document.getElementById('concBox').hidden,{timeout:90000});
+x=await p.evaluate(()=>({e:__corpo.treino().estado,seq:__corpo.seq().idx,tit:document.getElementById('concTit').textContent,itens:[...document.querySelectorAll('#concLista .concIt b')].map(b=>b.textContent),sentado:__corpo.repouso(),resto:document.getElementById('rest').hidden}));
+ok(x.e==='pergunta'&&x.seq===0&&x.tit==='Você concluiu o exercício?'&&x.itens.join()==='Agachamento livre'&&!x.sentado&&x.resto,'treino montado: pergunta no fim do 1º exercício, de pé, descanso ainda não começou '+JSON.stringify(x));
 await p.screenshot({path:'shots/hist_lista.png'});
-await p.evaluate(()=>document.querySelectorAll('#concLista input')[1].click());await cl('#bConcSim');await sleep(300);
-h=await p.evaluate(()=>__corpo.historico());ok(h.length===2&&h[1].treino&&h[1].treino.nome==='Rápido'&&h[1].ex==='agachamento','desmarcou um: só o marcado entra (com o nome do treino)');
-// encerrar no meio: pergunta pelos que já terminaram
+await sleep(1500);ok((await p.evaluate(()=>__corpo.treino().estado))==='pergunta','espera a resposta (não segue sozinho)');
+await cl('#bConcSim');await sleep(400);
+x=await p.evaluate(()=>({e:__corpo.treino().estado,h:__corpo.historico().length,sentado:__corpo.repouso(),f:window.__falas.slice(-1)[0]}));
+ok(x.e==='descanso'&&x.h===2&&x.sentado&&/Registrado\. Descanse 2 segundos/.test(x.f),'Sim: registra na hora e só então começa o descanso '+JSON.stringify(x));
+h=await p.evaluate(()=>__corpo.historico());ok(h[1].treino&&h[1].treino.nome==='Rápido'&&h[1].ex==='agachamento','registro com o nome do treino');
+await p.waitForFunction(()=>!document.getElementById('concBox').hidden&&__corpo.treino().estado==='fim',{timeout:90000});
+x=await p.evaluate(()=>({tit:document.getElementById('concTit').textContent,itens:[...document.querySelectorAll('#concLista .concIt b')].map(b=>b.textContent)}));
+ok(x.itens.join()==='Rosca direta','último exercício: pergunta dele '+JSON.stringify(x));
+await cl('#bConcNao');ok((await p.evaluate(()=>__corpo.historico().length))===2,'Não no último: não registra');
+// interrompido no meio: o que já respondeu fica; encerrar com a pergunta aberta mantém a pergunta
 await p.evaluate(()=>__corpo.executarTreino('x'));
-await p.waitForFunction(()=>__corpo.seq()&&__corpo.seq().idx===1,{timeout:60000});
-await cl('#bParar');await cl('#bEncerrar');await sleep(300);
-x=await p.evaluate(()=>({vis:!document.getElementById('concBox').hidden,itens:[...document.querySelectorAll('#concLista .concIt b')].map(b=>b.textContent)}));
-ok(x.vis&&x.itens.length===1,'encerrar no meio: pergunta pelo exercício já terminado '+JSON.stringify(x));
-await cl('#bConcSim');await sleep(300);h=await p.evaluate(()=>__corpo.historico());ok(h.length===3,'registrado');
+await p.waitForFunction(()=>__corpo.treino().estado==='pergunta',{timeout:90000});await sleep(200);
+await cl('#bParar');x=await p.evaluate(()=>({e:__corpo.treino().estado,conc:!document.getElementById('concBox').hidden,pausa:!document.getElementById('pausaBox').hidden}));
+ok(x.e==='pausado'&&!x.conc&&x.pausa,'parar durante a pergunta mostra a janela de pausa');
+await cl('#bEncerrar');await sleep(200);
+x=await p.evaluate(()=>({seq:!!__corpo.seq(),conc:!document.getElementById('concBox').hidden,itens:[...document.querySelectorAll('#concLista .concIt b')].map(b=>b.textContent)}));
+ok(!x.seq&&x.conc&&x.itens.join()==='Agachamento livre','encerrar com pergunta aberta: sai do treino mas ainda deixa registrar');
+await cl('#bConcSim');await sleep(300);h=await p.evaluate(()=>__corpo.historico());ok(h.length===3&&!(await p.evaluate(()=>!!__corpo.seq())),'registrado sem voltar ao treino');
 // tela de exercícios feitos
 await cl('#bPerfil');await p.evaluate(()=>document.querySelector('#pfList .pfr.clic').click());await sleep(300);
 x=await p.evaluate(()=>document.getElementById('pfList').textContent);ok(/Exercícios feitos\s*3/.test(x),'ver perfil: resumo de exercícios '+x.slice(0,120));

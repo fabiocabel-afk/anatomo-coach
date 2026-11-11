@@ -1,7 +1,7 @@
 const puppeteer=require('puppeteer-core');const path=require('path');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-const p=await b.newPage();await p.evaluateOnNewDocument('window.__semPreparo=true');await p.setViewport({width:390,height:844,deviceScaleFactor:2});const errs=[];
+const p=await b.newPage();await p.evaluateOnNewDocument('window.__semPreparo=true;window.__autoResposta="nao"');await p.setViewport({width:390,height:844,deviceScaleFactor:2});const errs=[];
 p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});p.on('pageerror',e=>errs.push(e.message));
 await p.evaluateOnNewDocument(()=>{window.__falas=[];Object.defineProperty(window,'speechSynthesis',{value:{speak:u=>__falas.push(u.text),cancel(){},getVoices:()=>[],addEventListener(){}}});window.SpeechSynthesisUtterance=function(t){this.text=t};});
 await p.goto('file://'+path.resolve('dist/corpo3d.html'));await p.waitForFunction('window.__corpo',{timeout:60000});
