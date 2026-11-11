@@ -1448,27 +1448,36 @@
   const CAT_KEY = chave('corpo3d.catalogo.v1');
   const GRUPOS = [];
   for (const eq in EQUIP) for (const rg in REGIAO) { const n = EXERCICIOS.filter(e => e.equip === eq && e.regiao === rg).length; if (n) GRUPOS.push({ k: eq + '|' + rg, eq, rg, nome: EQUIP[eq] + ' · ' + REGIAO[rg], n }); }
+  // grupos: 'todos', um equipamento inteiro ('eq:halteres') ou equipamento+região ('halteres|superior')
+  const EQUIPS = []; for (const g of GRUPOS) if (!EQUIPS.includes(g.eq)) EQUIPS.push(g.eq);
+  const totalEq = eq => GRUPOS.filter(g => g.eq === eq).reduce((a, g) => a + g.n, 0);
+  const grupoValido = k => k === 'todos' || (typeof k === 'string' && (k.startsWith('eq:') ? EQUIPS.includes(k.slice(3)) : GRUPOS.some(g => g.k === k)));
   const CAT = (function () {
     const c = { grupo: 'todos', modo: 'lista' };
-    try { const o = JSON.parse(localStorage.getItem(CAT_KEY) || '{}') || {}; if (o.grupo === 'todos' || GRUPOS.some(g => g.k === o.grupo)) c.grupo = o.grupo; if (o.modo === 'mini' || o.modo === 'lista') c.modo = o.modo; } catch (e) { /* padrão */ }
+    try { const o = JSON.parse(localStorage.getItem(CAT_KEY) || '{}') || {}; if (grupoValido(o.grupo)) c.grupo = o.grupo; if (o.modo === 'mini' || o.modo === 'lista') c.modo = o.modo; } catch (e) { /* padrão */ }
     return c;
   })();
   function gravarCat() { try { localStorage.setItem(CAT_KEY, JSON.stringify(CAT)); } catch (e) { /* só preferência de tela */ } }
-  const grupoNome = k => k === 'todos' ? 'Todos os grupos (' + EXERCICIOS.length + ')' : (g => g.nome + ' (' + g.n + ')')(GRUPOS.find(g => g.k === k));
+  const grupoNome = k => k === 'todos' ? 'Todos os grupos (' + EXERCICIOS.length + ')' : k.startsWith('eq:') ? EQUIP[k.slice(3)] + ' · todos (' + totalEq(k.slice(3)) + ')' : (g => g.nome + ' (' + g.n + ')')(GRUPOS.find(g => g.k === k));
+  // lista em árvore: Todos → equipamento → região, com as linhas em "L" ligando os níveis
   function renderGrupoMenu() {
     const m = $('exGrupoMenu'); m.innerHTML = '';
-    const op = (k, nome, n) => {
-      const b = document.createElement('button'); b.className = 'ddOp' + (CAT.grupo === k ? ' on' : ''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', String(CAT.grupo === k)); b.dataset.k = k;
-      b.textContent = nome; const em = document.createElement('em'); em.textContent = String(n); b.appendChild(em);
+    // guias: para cada nível acima, se a linha vertical continua (│); no nível do item, ├ ou └
+    const op = (k, nome, n, guias) => {
+      const b = document.createElement('button'); b.className = 'ddOp' + (CAT.grupo === k ? ' on' : '') + (guias.length === 1 ? ' eq' : guias.length === 0 ? ' raiz' : ''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', String(CAT.grupo === k)); b.dataset.k = k;
+      for (const g of guias) { const sp = document.createElement('span'); sp.className = 'gv ' + g; sp.setAttribute('aria-hidden', 'true'); b.appendChild(sp); }
+      const tx = document.createElement('span'); tx.className = 'ddTx'; tx.textContent = nome; b.appendChild(tx);
+      const em = document.createElement('em'); em.textContent = String(n); b.appendChild(em);
       b.addEventListener('click', () => { CAT.grupo = k; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; });
       m.appendChild(b);
     };
-    op('todos', 'Todos os grupos', EXERCICIOS.length);
-    let eqAnt = null;
-    for (const g of GRUPOS) {
-      if (g.eq !== eqAnt) { eqAnt = g.eq; const h = document.createElement('div'); h.className = 'ddSep'; h.textContent = EQUIP[g.eq]; m.appendChild(h); }
-      op(g.k, REGIAO[g.rg], g.n);
-    }
+    op('todos', 'Todos os grupos', EXERCICIOS.length, []);
+    EQUIPS.forEach((eq, i) => {
+      const ultEq = i === EQUIPS.length - 1;
+      op('eq:' + eq, EQUIP[eq], totalEq(eq), [ultEq ? 'l' : 't']);
+      const regs = GRUPOS.filter(g => g.eq === eq);
+      regs.forEach((g, j) => op(g.k, REGIAO[g.rg], g.n, [ultEq ? 'n' : 'v', j === regs.length - 1 ? 'l' : 't']));
+    });
   }
   function abrirGrupoMenu() { renderGrupoMenu(); $('exGrupoMenu').hidden = false; $('exGrupoBtn').setAttribute('aria-expanded', 'true'); const on = $('exGrupoMenu').querySelector('.on'); if (on) { on.focus({ preventScroll: true }); on.scrollIntoView({ block: 'nearest' }); } }
   function fecharGrupoMenu() { $('exGrupoMenu').hidden = true; $('exGrupoBtn').setAttribute('aria-expanded', 'false'); }
@@ -1484,7 +1493,7 @@
 
   function filtrarCatalogo(q) {
     const nq = norm(q || '');
-    return EXERCICIOS.filter(e => (CAT.grupo === 'todos' || e.equip + '|' + e.regiao === CAT.grupo) &&
+    return EXERCICIOS.filter(e => (CAT.grupo === 'todos' || (CAT.grupo.startsWith('eq:') ? e.equip === CAT.grupo.slice(3) : e.equip + '|' + e.regiao === CAT.grupo)) &&
       (!nq || norm(e.nome + ' ' + e.prim.concat(e.sec).map(k => INFO[k][0] + ' ' + INFO[k][1]).join(' ')).includes(nq)));
   }
   function renderCatalogo(q) {
@@ -1500,7 +1509,7 @@
     for (const g of GRUPOS) {
       const lista = todos.filter(e => e.equip === g.eq && e.regiao === g.rg);
       if (!lista.length) continue;
-      if (CAT.grupo === 'todos' || q) { const h = document.createElement('div'); h.className = 'lh'; h.textContent = g.nome + ' (' + lista.length + ')'; box.appendChild(h); }
+      if (CAT.grupo === 'todos' || CAT.grupo.startsWith('eq:') || q) { const h = document.createElement('div'); h.className = 'lh'; h.textContent = g.nome + ' (' + lista.length + ')'; box.appendChild(h); }
       const alvo = CAT.modo === 'mini' ? box.appendChild(Object.assign(document.createElement('div'), { className: 'gal' })) : box;
       for (const ex of lista) {
         const it = document.createElement('button');
@@ -1528,7 +1537,7 @@
   let escolhaCb = null; // quando o catálogo é aberto para escolher um exercício do treino
   function abrirCatalogo(cb, grupoK) {
     escolhaCb = typeof cb === 'function' ? cb : null;
-    if (typeof grupoK === 'string' && (grupoK === 'todos' || GRUPOS.some(g => g.k === grupoK))) { CAT.grupo = grupoK; gravarCat(); }
+    if (grupoValido(grupoK)) { CAT.grupo = grupoK; gravarCat(); }
     $('exTit').textContent = escolhaCb ? 'Escolha o exercício para o treino' : '';
     $('exTit').hidden = !escolhaCb;
     $('exQ').value = ''; fecharGrupoMenu(); renderCatalogo(''); $('exSheet').hidden = false;
