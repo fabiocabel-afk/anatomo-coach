@@ -12,7 +12,7 @@
 
   /* ---------- Perfis: cada pessoa tem seus treinos, ajustes, músicas e preferências ---------- */
   const PERFIS_KEY = 'anatomotion.perfis.v1';
-  const BASES_PERFIL = ['corpo3d.treino.v1', 'corpo3d.treinos.v1', 'corpo3d.musica.v1', 'corpo3d.catalogo.v1'];
+  const BASES_PERFIL = ['corpo3d.treino.v1', 'corpo3d.treinos.v1', 'corpo3d.musica.v1', 'corpo3d.catalogo.v1', 'anatomotion.corpo.v1'];
   const CORES_PERFIL = ['#642A90', '#EC357D', '#FF9901', '#99CC33', '#0164C9', '#2BB3A3'];
   let perfisErro = '';
   const PERFIS = (function () {
@@ -2460,57 +2460,169 @@
     b.textContent = inicial(p.nome); b.style.background = p.cor;
     b.setAttribute('aria-label', 'Perfil: ' + p.nome + '. Trocar perfil'); b.title = p.nome;
   }
-  let pfEdit = null; // { id|null (novo), nome, cor }
+  /* ---------- Dados do corpo de cada perfil (opcionais) ----------
+   * { v:1, sexo:'M'|'F'|'', altura:cm, idade, idadeEm:'AAAA-MM-DD',
+   *   medidas: { peso: [{ d:'AAAA-MM-DD', v:kg, t:ms }] } }
+   * Um registro por dia em cada medida (o último do dia vale). "medidas" já
+   * comporta outras (braço, coxa, peitoral...) no futuro, cada uma com seu histórico. */
+  const CORPO_BASE = 'anatomotion.corpo.v1';
+  const hojeStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  function lerCorpo(pid) {
+    const c = { v: 1, sexo: '', altura: null, idade: null, idadeEm: null, medidas: { peso: [] } };
+    try {
+      const o = JSON.parse(localStorage.getItem(CORPO_BASE + '@' + pid) || '{}') || {};
+      if (o.sexo === 'M' || o.sexo === 'F') c.sexo = o.sexo;
+      if (Number.isFinite(o.altura)) c.altura = o.altura;
+      if (Number.isFinite(o.idade)) { c.idade = o.idade; c.idadeEm = o.idadeEm || hojeStr(); }
+      if (o.medidas && typeof o.medidas === 'object') for (const k in o.medidas) if (Array.isArray(o.medidas[k])) c.medidas[k] = o.medidas[k].filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.d) && Number.isFinite(r.v)).sort((a, b) => a.d < b.d ? -1 : 1);
+    } catch (e) { /* sem dados */ }
+    return c;
+  }
+  function gravarCorpo(pid, c) {
+    try { const tx = JSON.stringify(c); localStorage.setItem(CORPO_BASE + '@' + pid, tx); return localStorage.getItem(CORPO_BASE + '@' + pid) === tx; } catch (e) { return false; }
+  }
+  // registra uma medida no dia (substitui a do mesmo dia)
+  function registrarMedida(c, tipo, valor, dia) {
+    const l = c.medidas[tipo] || (c.medidas[tipo] = []);
+    dia = dia || hojeStr();
+    const i = l.findIndex(r => r.d === dia);
+    const reg = { d: dia, v: valor, t: Date.now() };
+    if (i >= 0) l[i] = reg; else { l.push(reg); l.sort((a, b) => a.d < b.d ? -1 : 1); }
+  }
+  // idade guardada com a data: com o passar dos anos, a idade mostrada acompanha
+  function idadeAtual(c) {
+    if (!Number.isFinite(c.idade)) return null;
+    const [y, m, d] = (c.idadeEm || hojeStr()).split('-').map(Number), h = new Date();
+    let anos = h.getFullYear() - y; if (h.getMonth() + 1 < m || (h.getMonth() + 1 === m && h.getDate() < d)) anos--;
+    return c.idade + Math.max(0, anos);
+  }
+  const numBR = (v, casas) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas || 0, maximumFractionDigits: casas === undefined ? 1 : casas });
+  const lerNum = txt => { const v = parseFloat(String(txt || '').replace(/\s/g, '').replace(',', '.')); return Number.isFinite(v) ? v : null; };
+  const dataBR = d => d.split('-').reverse().join('/');
+  function resumoCorpo(pid) {
+    const c = lerCorpo(pid), p = [], pesos = c.medidas.peso;
+    if (c.sexo) p.push(c.sexo === 'M' ? 'Masculino' : 'Feminino');
+    const id = idadeAtual(c); if (id !== null) p.push(id + ' anos');
+    if (c.altura) p.push(numBR(c.altura / 100, 2) + ' m');
+    if (pesos.length) p.push(numBR(pesos[pesos.length - 1].v) + ' kg');
+    return p.join(' · ');
+  }
+
+  let pfEdit = null; // { id|null (novo), nome, cor, corpo }
   function renderPerfis(msg) {
     $('pfMsg').textContent = msg || perfisErro || '';
     const box = $('pfList'); box.innerHTML = '';
     for (const p of PERFIS.lista) {
       const r = document.createElement('div'); r.className = 'pfr' + (p.id === PERFIS.atual ? ' atual' : '');
-      if (pfEdit && pfEdit.id === p.id) { r.appendChild(formPerfil()); box.appendChild(r); continue; }
+      if (pfEdit && pfEdit.id === p.id) { r.classList.add('editando'); r.appendChild(formPerfil()); box.appendChild(r); continue; }
       const av = document.createElement('span'); av.className = 'avatar'; av.textContent = inicial(p.nome); av.style.background = p.cor; r.appendChild(av);
       const tx = document.createElement('div'); tx.className = 'trt';
       const b = document.createElement('b'); b.textContent = p.nome; tx.appendChild(b);
-      const sm = document.createElement('small'); sm.textContent = p.id === PERFIS.atual ? 'em uso agora' : 'toque em Entrar para usar'; tx.appendChild(sm);
+      const sm = document.createElement('small'); const rs = resumoCorpo(p.id);
+      sm.textContent = (p.id === PERFIS.atual ? 'em uso agora' : 'toque em Entrar para usar') + (rs ? ' · ' + rs : ''); tx.appendChild(sm);
       r.appendChild(tx);
       if (p.id !== PERFIS.atual) r.appendChild(botao('pill on', 'Entrar', 'Entrar como ' + p.nome, () => trocarPerfil(p.id)));
-      r.appendChild(botao('ic sm', IC.edit, 'Editar ' + p.nome, () => { pfEdit = { id: p.id, nome: p.nome, cor: p.cor }; renderPerfis(); }));
-      if (p.id !== PERFIS.atual) r.appendChild(botao('ic sm', IC.del, 'Apagar ' + p.nome, bt => confirmar(bt, 'Apagar?', () => apagarPerfil(p.id))));
+      r.appendChild(botao('ic sm', IC.edit, 'Editar ' + p.nome, () => { pfEdit = { id: p.id, nome: p.nome, cor: p.cor, corpo: lerCorpo(p.id) }; renderPerfis(); }));
       box.appendChild(r);
     }
-    if (pfEdit && !pfEdit.id) { const r = document.createElement('div'); r.className = 'pfr'; r.appendChild(formPerfil()); box.appendChild(r); }
+    if (pfEdit && !pfEdit.id) { const r = document.createElement('div'); r.className = 'pfr editando'; r.appendChild(formPerfil()); box.appendChild(r); }
     $('bPfNovo').hidden = !!pfEdit || PERFIS.lista.length >= 8;
   }
+  function campoNum(rot, sufixo, valor, id, dica) {
+    const w = document.createElement('label'); w.className = 'pfCampo';
+    const t = document.createElement('span'); t.textContent = rot; w.appendChild(t);
+    const lin = document.createElement('div'); lin.className = 'pfNum';
+    const inp = document.createElement('input'); inp.className = 'inp'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.id = id; inp.autocomplete = 'off';
+    inp.value = valor === null || valor === undefined ? '' : String(valor).replace('.', ','); if (dica) inp.placeholder = dica;
+    lin.appendChild(inp);
+    const u = document.createElement('em'); u.textContent = sufixo; lin.appendChild(u);
+    w.appendChild(lin); return w;
+  }
   function formPerfil() {
+    const c = pfEdit.corpo || (pfEdit.corpo = lerCorpo('__novo__'));
     const f = document.createElement('div'); f.className = 'pfForm';
     const inp = document.createElement('input'); inp.className = 'inp'; inp.maxLength = 24; inp.placeholder = 'Nome da pessoa'; inp.value = pfEdit.nome; inp.id = 'pfNome';
     inp.addEventListener('input', () => { pfEdit.nome = inp.value; });
     f.appendChild(inp);
     const cs = document.createElement('div'); cs.className = 'pfCores';
-    for (const c of CORES_PERFIL) {
-      const b = botao('pfCor' + (pfEdit.cor === c ? ' on' : ''), '', 'Cor ' + c, () => { pfEdit.cor = c; for (const x of cs.children) x.classList.toggle('on', x === b); });
-      b.style.background = c; cs.appendChild(b);
+    for (const cor of CORES_PERFIL) {
+      const b = botao('pfCor' + (pfEdit.cor === cor ? ' on' : ''), '', 'Cor ' + cor, () => { pfEdit.cor = cor; for (const x of cs.children) x.classList.toggle('on', x === b); });
+      b.style.background = cor; cs.appendChild(b);
     }
     f.appendChild(cs);
+    // dados do corpo (todos opcionais)
+    const tt = document.createElement('div'); tt.className = 'ttl2'; tt.innerHTML = '<span>Dados do corpo</span><em>opcional</em>'; f.appendChild(tt);
+    const sx = document.createElement('div'); sx.className = 'seg'; sx.id = 'pfSexo';
+    for (const [v, nm] of [['M', 'Masculino'], ['F', 'Feminino'], ['', 'Não informar']]) {
+      const b = botao(c.sexo === v ? 'on' : '', nm, null, () => { c.sexo = v; for (const x of sx.children) x.classList.toggle('on', x === b); });
+      b.dataset.v = v; sx.appendChild(b);
+    }
+    f.appendChild(sx);
+    const g = document.createElement('div'); g.className = 'pfGrade';
+    g.appendChild(campoNum('Idade', 'anos', idadeAtual(c), 'pfIdade'));
+    g.appendChild(campoNum('Altura', 'cm', c.altura, 'pfAltura', 'ex.: 175'));
+    const pesos = c.medidas.peso, hoje = pesos.find(r => r.d === hojeStr());
+    g.appendChild(campoNum('Peso de hoje', 'kg', hoje ? hoje.v : null, 'pfPeso', pesos.length ? 'último: ' + numBR(pesos[pesos.length - 1].v) : 'ex.: 72,5'));
+    f.appendChild(g);
+    // histórico do peso (um valor por dia; o último registrado no dia vale)
+    if (pesos.length) {
+      const h = document.createElement('div'); h.className = 'pfHist'; h.id = 'pfHist';
+      const ti = document.createElement('div'); ti.className = 'pfHistT'; ti.textContent = 'Histórico do peso'; h.appendChild(ti);
+      const lista = pesos.slice().reverse();
+      lista.forEach((r, i) => {
+        const ant = lista[i + 1], ln = document.createElement('div'); ln.className = 'pfHl';
+        const d = document.createElement('span'); d.textContent = r.d === hojeStr() ? 'Hoje' : dataBR(r.d); ln.appendChild(d);
+        const v = document.createElement('b'); v.textContent = numBR(r.v) + ' kg'; ln.appendChild(v);
+        const df = document.createElement('em');
+        if (ant) { const x = Math.round((r.v - ant.v) * 10) / 10; df.textContent = x === 0 ? '=' : (x > 0 ? '+' : '−') + numBR(Math.abs(x)); df.className = x > 0 ? 'sobe' : x < 0 ? 'desce' : ''; }
+        ln.appendChild(df);
+        ln.appendChild(botao('ic sm', IC.x, 'Apagar registro de ' + dataBR(r.d), bt => confirmar(bt, 'Apagar?', () => { c.medidas.peso = c.medidas.peso.filter(x => x.d !== r.d); renderPerfis(); })));
+        h.appendChild(ln);
+      });
+      f.appendChild(h);
+    }
     const bt = document.createElement('div'); bt.className = 'btnLinha';
     bt.appendChild(botao('', 'Cancelar', null, () => { pfEdit = null; renderPerfis(); }));
     bt.appendChild(botao('pri', pfEdit.id ? 'Salvar' : 'Criar e entrar', null, salvarPerfil));
     f.appendChild(bt);
-    setTimeout(() => inp.focus(), 50);
+    if (pfEdit.id) {
+      const so = PERFIS.lista.length === 1;
+      const del = botao('pfApagar', IC.del + '<span>Apagar este perfil</span>', 'Apagar o perfil ' + pfEdit.nome, b => confirmar(b, so ? 'Tocar de novo apaga tudo e começa do zero' : 'Tocar de novo apaga o perfil e os dados dele', () => apagarPerfil(pfEdit.id)));
+      f.appendChild(del);
+    }
+    if (!pfEdit.id) setTimeout(() => inp.focus(), 50);
     return f;
   }
   function salvarPerfil() {
     const nome = String(pfEdit.nome || '').trim().slice(0, 24);
     if (!nome) { $('pfMsg').textContent = 'Digite um nome.'; return; }
     if (PERFIS.lista.some(p => p.id !== pfEdit.id && p.nome.toLowerCase() === nome.toLowerCase())) { $('pfMsg').textContent = 'Já existe um perfil com esse nome.'; return; }
+    // dados do corpo: vazio = não informado; preenchido precisa fazer sentido
+    const c = pfEdit.corpo, tIdade = $('pfIdade').value.trim(), tAlt = $('pfAltura').value.trim(), tPeso = $('pfPeso').value.trim();
+    const idade = lerNum(tIdade), alt = lerNum(tAlt), peso = lerNum(tPeso);
+    if (tIdade && (idade === null || idade < 5 || idade > 110)) { $('pfMsg').textContent = 'Idade: use um número entre 5 e 110.'; return; }
+    let altCm = alt; if (altCm !== null && altCm < 3) altCm = altCm * 100; // aceita "1,75"
+    if (tAlt && (altCm === null || altCm < 80 || altCm > 250)) { $('pfMsg').textContent = 'Altura em centímetros, entre 80 e 250 (ex.: 175).'; return; }
+    if (tPeso && (peso === null || peso < 20 || peso > 350)) { $('pfMsg').textContent = 'Peso em kg, entre 20 e 350 (ex.: 72,5).'; return; }
+    const atualIdade = idadeAtual(c);
+    if (!tIdade) { c.idade = null; c.idadeEm = null; }
+    else if (Math.round(idade) !== atualIdade) { c.idade = Math.round(idade); c.idadeEm = hojeStr(); }
+    c.altura = tAlt ? Math.round(altCm) : null;
+    const hj = c.medidas.peso.find(r => r.d === hojeStr());
+    if (tPeso) { const v = Math.round(peso * 10) / 10; if (!hj || hj.v !== v) registrarMedida(c, 'peso', v); }
+    else if (hj) c.medidas.peso = c.medidas.peso.filter(r => r.d !== hojeStr()); // apagou o peso de hoje
+
     const reg = JSON.parse(JSON.stringify(PERFIS));
     let novoId = null;
     if (pfEdit.id) { const p = reg.lista.find(x => x.id === pfEdit.id); p.nome = nome; p.cor = pfEdit.cor; }
     else { novoId = 'p' + Date.now().toString(36); reg.lista.push({ id: novoId, nome, cor: pfEdit.cor, criado: Date.now() }); }
     if (novoId) reg.atual = novoId;
+    const pid = pfEdit.id || novoId;
+    if (!gravarCorpo(pid, c)) { $('pfMsg').textContent = 'Atenção: não consegui gravar os dados do corpo neste aparelho. Nada foi alterado.'; return; }
     if (!gravarPerfis(reg)) { $('pfMsg').textContent = 'Atenção: não consegui gravar neste aparelho. Nada foi alterado.'; return; }
     Object.assign(PERFIS, reg); pfEdit = null;
     if (novoId) { recarregarPerfil(); return; }
-    avatarUI(); renderPerfis('Perfil atualizado.');
+    avatarUI(); renderPerfis('Perfil salvo.');
   }
   function trocarPerfil(id) {
     const reg = JSON.parse(JSON.stringify(PERFIS)); reg.atual = id;
@@ -2524,19 +2636,22 @@
     location.reload();
   }
   async function apagarPerfil(id) {
-    if (id === PERFIS.atual) return;
     const reg = JSON.parse(JSON.stringify(PERFIS)); reg.lista = reg.lista.filter(p => p.id !== id);
+    const eraAtual = id === PERFIS.atual;
+    if (!reg.lista.length) reg.lista.push({ id: 'p' + Date.now().toString(36), nome: 'Perfil 1', cor: CORES_PERFIL[0], criado: Date.now() }); // era o único: começa do zero
+    if (eraAtual) reg.atual = reg.lista[0].id;
     if (!gravarPerfis(reg)) { renderPerfis('Atenção: não consegui apagar neste aparelho.'); return; }
-    Object.assign(PERFIS, reg);
+    Object.assign(PERFIS, reg); pfEdit = null;
     try { for (const b of BASES_PERFIL) localStorage.removeItem(b + '@' + id); } catch (e) { /* ok */ }
     let aviso = 'Perfil apagado.';
     if (window.Musica) { try { await Musica.apagarPerfil(id); } catch (e) { aviso = 'Perfil apagado, mas algumas músicas dele não foram removidas do aparelho.'; } }
+    if (eraAtual) { recarregarPerfil(); return; }
     renderPerfis(aviso);
   }
   $('bPerfil').addEventListener('click', () => { pfEdit = null; renderPerfis(); $('pfSheet').hidden = false; });
   $('bPfClose').addEventListener('click', () => { pfEdit = null; $('pfSheet').hidden = true; });
   $('pfSheet').addEventListener('click', e => { if (e.target.id === 'pfSheet') { pfEdit = null; $('pfSheet').hidden = true; } });
-  $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length] }; renderPerfis(); });
+  $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length], corpo: lerCorpo('__novo__') }; renderPerfis(); });
   avatarUI();
 
   setExercise('repouso', true);
@@ -2574,6 +2689,7 @@
     musica: () => window.Musica ? Musica.estado() : null,
     classes: () => document.body.className,
     perfis: () => JSON.parse(JSON.stringify(PERFIS)),
+    corpo: pid => lerCorpo(pid || PERFIS.atual),
     catalogo2: () => ({ grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },

@@ -29,6 +29,26 @@ i.rot{font-style:normal}
 .pfCor{width:32px;height:32px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
 .pfCor.on{border-color:#fff;box-shadow:0 0 0 2px var(--roxo)}
 .pfForm .btnLinha{margin:0}
+.pfr.editando{align-items:stretch}
+.pfForm .ttl2{margin:6px 0 0}
+.pfForm .seg{align-self:flex-start}
+.pfGrade{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pfCampo{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pfCampo>span{font-size:12px;color:var(--tx2)}
+.pfNum{display:flex;align-items:center;gap:4px}
+.pfNum .inp{height:42px;padding:0 8px;min-width:0;font-size:16px}
+.pfNum .inp::placeholder{font-size:12px}
+.pfNum em{font-style:normal;font-size:12px;color:var(--tx2)}
+.pfHist{border:1px solid var(--bd);border-radius:12px;padding:6px 10px;max-height:220px;overflow-y:auto}
+.pfHistT{font-size:12px;color:#C9A6FF;padding:4px 0}
+.pfHl{display:flex;align-items:center;gap:8px;padding:2px 0;border-top:1px solid var(--bd)}
+.pfHl span{flex:1;font-size:13px;color:var(--tx2)}.pfHl b{font-size:14px;font-weight:600}
+.pfHl em{font-style:normal;font-size:12px;min-width:34px;text-align:right;color:var(--tx2)}
+.pfHl em.sobe{color:#FF9901}.pfHl em.desce{color:#99CC33}
+.pfHl .ic.sm{width:30px;height:30px}
+.pfApagar{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:12px;border:1px solid #8a2a3a;background:transparent;color:#FFB3BF;font-size:14px;font-family:inherit;cursor:pointer;padding:0 12px}
+.pfApagar svg{width:18px;height:18px}
+.pfApagar.perigo{background:#5a1622;color:#fff}
 header span{font-size:12px;color:var(--tx2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:430px){header span{font-size:0}}
 button{font-family:inherit}

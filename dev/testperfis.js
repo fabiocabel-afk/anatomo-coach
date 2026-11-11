@@ -49,9 +49,50 @@ const idAna=await p.evaluate(()=>__corpo.perfis().atual);
 // Fabio apaga a Ana
 await cl('#bPerfil');
 await Promise.all([p.waitForNavigation({timeout:60000}),p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Entrar').click())]);await carregar();
-await cl('#bPerfil');ok(!(await p.evaluate(()=>!!document.querySelector('.pfr.atual [aria-label^="Apagar"]'))),'perfil em uso não pode ser apagado');
-await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Apagar"]').click());await sleep(150);
-await p.evaluate(()=>document.querySelector('#pfList .perigo').click());await sleep(1500);
+await cl('#bPerfil');
+// apagar fica dentro do editar
+await p.evaluate(()=>document.querySelectorAll('#pfList [aria-label^="Editar"]')[1].click());await sleep(200);
+ok(await p.evaluate(()=>!!document.querySelector('.pfApagar')),'editar mostra "Apagar este perfil"');
+await p.evaluate(()=>document.querySelector('.pfApagar').click());await sleep(150);
+ok((await p.evaluate(()=>__corpo.perfis().lista.length))===2,'apagar pede um segundo toque');
+await p.evaluate(()=>document.querySelector('.pfApagar').click());await sleep(1500);
 s=await p.evaluate(async id=>{const d=await new Promise(r=>{const q=indexedDB.open('corpo3d',1);q.onsuccess=()=>r(q.result);});const todas=await new Promise(r=>{const q=d.transaction('faixas').objectStore('faixas').getAll();q.onsuccess=()=>r(q.result);});return {pf:__corpo.perfis().lista.length,chaves:Object.keys(localStorage).filter(k=>k.endsWith('@'+id)),faixas:todas.length,msg:document.getElementById('pfMsg').textContent};},idAna);
 ok(s.pf===1&&s.chaves.length===0&&s.faixas===0,'apagar perfil remove os dados e músicas dele '+JSON.stringify(s));
+// dados do corpo e histórico do peso
+await cl('#bPerfil');await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+let r0=await p.evaluate(()=>({sexo:[...document.querySelectorAll('#pfSexo button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(' '),idade:document.getElementById('pfIdade').value,hist:!!document.getElementById('pfHist')}));
+ok(/Não informar\*/.test(r0.sexo)&&r0.idade===''&&!r0.hist,'sem dados: campos vazios e sem histórico');
+await p.evaluate(()=>[...document.querySelectorAll('#pfSexo button')].find(b=>b.textContent==='Masculino').click());
+await p.type('#pfIdade','41');await p.type('#pfAltura','1,78');await p.type('#pfPeso','84,6');
+await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(300);
+let c=await p.evaluate(()=>__corpo.corpo());
+ok(c.sexo==='M'&&c.idade===41&&c.altura===178&&c.medidas.peso.length===1&&c.medidas.peso[0].v===84.6,'salvou sexo, idade, altura (1,78 → 178 cm) e peso '+JSON.stringify(c));
+const res=await p.evaluate(()=>document.querySelector('.pfr.atual small').textContent);ok(/Masculino · 41 anos · 1,78 m · 84,6 kg/.test(res),'resumo no perfil: '+res);
+// mesmo dia: vale o último
+await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+await p.$eval('#pfPeso',e=>{e.value='';});await p.type('#pfPeso','84,1');
+await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(300);
+c=await p.evaluate(()=>__corpo.corpo());ok(c.medidas.peso.length===1&&c.medidas.peso[0].v===84.1,'mesmo dia: só um registro, vale o último (84,1)');
+// dias anteriores (simulados) aparecem no histórico com a diferença
+await p.evaluate(()=>{const k='anatomotion.corpo.v1@'+__corpo.perfis().atual;const o=JSON.parse(localStorage.getItem(k));o.medidas.peso.unshift({d:'2026-11-01',v:86,t:1},{d:'2026-11-05',v:85.2,t:2});localStorage.setItem(k,JSON.stringify(o));});
+await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+const h=await p.evaluate(()=>[...document.querySelectorAll('#pfHist .pfHl')].map(l=>[...l.children].slice(0,3).map(x=>x.textContent).join(' ')));
+ok(h.length===3&&/^Hoje 84,1 kg −1,1/.test(h[0])&&/05\/11\/2026 85,2 kg −0,8/.test(h[1])&&/01\/11\/2026 86 kg/.test(h[2]),'histórico do peso: '+JSON.stringify(h));
+await p.screenshot({path:'shots/perfil_corpo.png'});
+// apagar um registro
+await p.evaluate(()=>document.querySelectorAll('#pfHist [aria-label^="Apagar registro"]')[1].click());await sleep(100);await p.evaluate(()=>document.querySelector('#pfHist .perigo').click());await sleep(200);
+await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(300);
+c=await p.evaluate(()=>__corpo.corpo());ok(c.medidas.peso.map(r=>r.d).join()==='2026-11-01,'+c.medidas.peso[1].d&&c.medidas.peso.length===2,'apagar um registro do histórico');
+// valor inválido não grava
+await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+await p.$eval('#pfAltura',e=>{e.value='';});await p.type('#pfAltura','17');
+await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(200);
+const m=await p.evaluate(()=>document.getElementById('pfMsg').textContent);ok(/Altura/.test(m)&&(await p.evaluate(()=>__corpo.corpo().altura))===178,'valor inválido avisa e não grava: '+m);
+await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Cancelar').click());await sleep(200);
+// apagar o único perfil: começa do zero
+await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+await p.evaluate(()=>document.querySelector('.pfApagar').click());await sleep(150);
+await Promise.all([p.waitForNavigation({timeout:60000}),p.evaluate(()=>document.querySelector('.pfApagar').click())]);await carregar();
+s=await p.evaluate(()=>({pf:__corpo.perfis(),cfg:__corpo.cfgAtual(),tr:__corpo.treinos().length,corpo:__corpo.corpo()}));
+ok(s.pf.lista.length===1&&s.pf.lista[0].nome==='Perfil 1'&&s.cfg.reps===10&&s.tr===0&&s.corpo.medidas.peso.length===0,'apagar o único perfil começa do zero');
 console.log('erros',errs);if(errs.length)process.exitCode=1;await b.close();})().catch(e=>{console.error('EXC',e);process.exit(1);});
