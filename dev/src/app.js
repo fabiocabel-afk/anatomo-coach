@@ -2640,7 +2640,7 @@
   /* ---------- Telas do perfil: lista → ver → editar / medidas / exercícios feitos ---------- */
   let pfEdit = null; // { id|null (novo), nome, cor, corpo }
   let pfTela = { modo: 'lista', id: null, dias: 14 };
-  function irPf(modo, id) { pfTela.modo = modo; if (id !== undefined) pfTela.id = id; if (modo !== 'editar') pfEdit = null; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }
+  function irPf(modo, id) { pfTela.modo = modo; if (id !== undefined) pfTela.id = id; if (modo !== 'editar') pfEdit = null; if (modo !== 'medidas') pfNova = null; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }
   function renderPerfis(msg) {
     $('pfMsg').textContent = msg || perfisErro || '';
     const m = pfTela.modo, p = PERFIS.lista.find(x => x.id === pfTela.id);
@@ -2649,6 +2649,8 @@
     $('pfNota').hidden = m !== 'lista';
     $('pfTitulo').textContent = m === 'lista' ? 'Perfis' : m === 'editar' ? (pfEdit && !pfEdit.id ? 'Novo perfil' : 'Editar perfil') : m === 'medidas' ? 'Medidas · ' + p.nome : m === 'historico' ? 'Exercícios feitos · ' + p.nome : 'Perfil';
     $('bPfNovo').hidden = m !== 'lista' || PERFIS.lista.length >= 8;
+    $('bPfEditar').hidden = m !== 'ver';
+    $('bPfAdd').hidden = m !== 'medidas';
     const box = $('pfList'); box.innerHTML = '';
     if (m === 'lista') telaLista(box);
     else if (m === 'ver') telaVer(box, p);
@@ -2700,17 +2702,46 @@
     }
     const acoes = document.createElement('div'); acoes.className = 'pfAcoes';
     if (p.id !== PERFIS.atual) acoes.appendChild(botao('pri', 'Entrar neste perfil', null, () => trocarPerfil(p.id)));
-    acoes.appendChild(botao('', IC.edit + '<span>Editar</span>', 'Editar o perfil', () => { pfEdit = { id: p.id, nome: p.nome, cor: p.cor, corpo: lerCorpo(p.id) }; irPf('editar', p.id); }));
     acoes.appendChild(botao('', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19l5-6 4 3 7-9"/><path d="M4 4v15h16"/></svg><span>Ver medidas</span>', 'Ver medidas e histórico do peso', () => irPf('medidas', p.id)));
     acoes.appendChild(botao('', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><span>Exercícios feitos</span>', 'Ver exercícios feitos', () => irPf('historico', p.id)));
     box.appendChild(acoes);
-    const so = PERFIS.lista.length === 1;
-    box.appendChild(botao('pfApagar', IC.del + '<span>Excluir perfil</span>', 'Excluir o perfil ' + p.nome, bt => confirmar(bt, so ? 'Tocar de novo apaga tudo e começa do zero' : 'Tocar de novo exclui o perfil e os dados dele', () => apagarPerfil(p.id))));
+  }
+  // tipos de medida: por enquanto só o peso; outras entram nesta lista depois
+  const TIPOS_MEDIDA = [{ k: 'peso', nome: 'Peso', un: 'kg', min: 20, max: 350, ex: '72,5' }];
+  let pfNova = null; // { tipo, dia, valor } enquanto o formulário de nova medida está aberto
+  function formNovaMedida(box, p) {
+    const f = document.createElement('div'); f.className = 'pfNova'; f.id = 'pfNova';
+    const tt = document.createElement('div'); tt.className = 'ttl2'; tt.style.margin = '0'; tt.innerHTML = '<span>Nova medida</span>'; f.appendChild(tt);
+    const sg = document.createElement('div'); sg.className = 'seg'; sg.id = 'pfNovaTipo';
+    for (const tp of TIPOS_MEDIDA) { const b = botao(pfNova.tipo === tp.k ? 'on' : '', tp.nome, null, () => { pfNova.tipo = tp.k; renderPerfis(); }); b.dataset.v = tp.k; sg.appendChild(b); }
+    f.appendChild(sg);
+    const tp = TIPOS_MEDIDA.find(x => x.k === pfNova.tipo);
+    const lin = document.createElement('div'); lin.className = 'lin';
+    const wd = document.createElement('label'); wd.className = 'pfCampo'; wd.innerHTML = '<span>Data</span>';
+    const di = document.createElement('input'); di.type = 'date'; di.className = 'inp'; di.id = 'pfNovaDia'; di.max = hojeStr(); di.value = pfNova.dia; di.addEventListener('change', () => { pfNova.dia = di.value; });
+    wd.appendChild(di); lin.appendChild(wd);
+    lin.appendChild(campoNum(tp.nome, tp.un, pfNova.valor, 'pfNovaValor', 'ex.: ' + tp.ex));
+    f.appendChild(lin);
+    const n = document.createElement('p'); n.className = 'nota'; n.style.margin = '0'; n.textContent = 'Um registro por dia: se já houver ' + tp.nome.toLowerCase() + ' nessa data, ele é substituído.'; f.appendChild(n);
+    const bt = document.createElement('div'); bt.className = 'btnLinha'; bt.style.margin = '0';
+    bt.appendChild(botao('', 'Cancelar', null, () => { pfNova = null; renderPerfis(); }));
+    bt.appendChild(botao('pri', 'Salvar medida', null, () => {
+      const dia = $('pfNovaDia').value, txt = $('pfNovaValor').value.trim(), v = lerNum(txt);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || dia > hojeStr()) { $('pfMsg').textContent = 'Escolha uma data até hoje.'; return; }
+      if (v === null || v < tp.min || v > tp.max) { $('pfMsg').textContent = tp.nome + ' em ' + tp.un + ', entre ' + tp.min + ' e ' + tp.max + ' (ex.: ' + tp.ex + ').'; return; }
+      const c2 = lerCorpo(p.id); registrarMedida(c2, tp.k, Math.round(v * 10) / 10, dia);
+      if (!gravarCorpo(p.id, c2)) { $('pfMsg').textContent = 'Atenção: não consegui gravar neste aparelho. Nada foi alterado.'; return; }
+      pfNova = null; renderPerfis('Medida registrada.');
+    }));
+    f.appendChild(bt);
+    box.appendChild(f);
+    setTimeout(() => { const i = $('pfNovaValor'); if (i) i.focus(); }, 50);
   }
   function telaMedidas(box, p) {
+    if (pfNova) formNovaMedida(box, p);
     const c = lerCorpo(p.id), ps = c.medidas.peso;
     const tt = document.createElement('div'); tt.className = 'ttl2'; tt.innerHTML = '<span>Peso</span>'; box.appendChild(tt);
-    if (!ps.length) { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Nenhum peso registrado ainda. Registre em Editar → Peso de hoje (um registro por dia; o último do dia vale).'; box.appendChild(e); return; }
+    if (!ps.length) { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Nenhum peso registrado ainda. Toque no + acima ou use Editar → Peso de hoje (um registro por dia; o último do dia vale).'; box.appendChild(e); return; }
     const ult = ps[ps.length - 1], pri = ps[0];
     const g = document.createElement('div'); g.className = 'pfDados';
     const dif = Math.round((ult.v - pri.v) * 10) / 10;
@@ -2812,6 +2843,11 @@
     bt.appendChild(botao('', 'Cancelar', null, () => { const id = pfEdit.id; pfEdit = null; irPf(id ? 'ver' : 'lista', id); }));
     bt.appendChild(botao('pri', pfEdit.id ? 'Salvar' : 'Criar e entrar', null, salvarPerfil));
     f.appendChild(bt);
+    // excluir fica aqui dentro do editar, longe dos botões do dia a dia
+    if (pfEdit.id) {
+      const so = PERFIS.lista.length === 1, idEx = pfEdit.id;
+      f.appendChild(botao('pfApagar', IC.del + '<span>Excluir perfil</span>', 'Excluir o perfil ' + pfEdit.nome, b => confirmar(b, so ? 'Tocar de novo apaga tudo e começa do zero' : 'Tocar de novo exclui o perfil e os dados dele', () => apagarPerfil(idEx))));
+    }
     if (!pfEdit.id) setTimeout(() => inp.focus(), 50);
     return f;
   }
@@ -2871,6 +2907,8 @@
     pfTela.modo = 'lista'; renderPerfis(aviso);
   }
   $('bPerfil').addEventListener('click', () => { pfEdit = null; pfTela.modo = 'lista'; renderPerfis(); $('pfSheet').hidden = false; });
+  $('bPfEditar').addEventListener('click', () => { const p = PERFIS.lista.find(x => x.id === pfTela.id); if (!p) return; pfEdit = { id: p.id, nome: p.nome, cor: p.cor, corpo: lerCorpo(p.id) }; irPf('editar', p.id); });
+  $('bPfAdd').addEventListener('click', () => { pfNova = pfNova ? null : { tipo: 'peso', dia: hojeStr(), valor: null }; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; });
   $('bPfVoltar').addEventListener('click', () => { const m = pfTela.modo; if (m === 'editar' && pfEdit && !pfEdit.id) { pfEdit = null; irPf('lista'); } else irPf(m === 'ver' ? 'lista' : 'ver'); });
   $('bPfClose').addEventListener('click', () => { pfEdit = null; $('pfSheet').hidden = true; });
   $('pfSheet').addEventListener('click', e => { if (e.target.id === 'pfSheet') { pfEdit = null; $('pfSheet').hidden = true; } });

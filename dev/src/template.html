@@ -58,6 +58,10 @@ i.rot{font-style:normal}
 .pfAcoes button{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:12px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-size:15px;font-family:inherit;cursor:pointer}
 .pfAcoes button.pri{background:var(--roxo-f);border-color:var(--roxo);color:#fff;font-weight:600}
 .pfAcoes svg{width:18px;height:18px}
+.pfNova{border:1px solid var(--roxo-f);border-radius:14px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;background:var(--card2)}
+.pfNova .lin{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pfNova input[type=date]{color-scheme:dark}
+.pfForm .pfApagar{margin-top:6px}
 .pfApagar{width:100%;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:12px;border:1px solid #8a2a3a;background:transparent;color:#FFB3BF;font-size:14px;font-family:inherit;cursor:pointer;padding:0 12px}
 .pfApagar svg{width:18px;height:18px}
 .pfApagar.perigo{background:#5a1622;color:#fff}
@@ -398,7 +402,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 </div>
 <div id="pfSheet" class="sheetw" hidden>
   <div class="box">
-    <div style="display:flex;align-items:center;margin-bottom:6px;gap:6px"><button class="ic sm" id="bPfVoltar" aria-label="Voltar" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><span class="ttl" id="pfTitulo">Perfis</span><button class="ic" id="bPfClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div style="display:flex;align-items:center;margin-bottom:6px;gap:6px"><button class="ic sm" id="bPfVoltar" aria-label="Voltar" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><span class="ttl" id="pfTitulo">Perfis</span><button class="ic sm" id="bPfAdd" aria-label="Adicionar medida" title="Adicionar medida" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button><button class="ic sm" id="bPfEditar" aria-label="Editar perfil" title="Editar perfil" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg></button><button class="ic" id="bPfClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <p class="nota" id="pfNota" style="margin:0 0 10px">Cada perfil tem os próprios treinos, ajustes (repetições, ritmo, voz), músicas e preferências.</p>
     <p class="msg" id="pfMsg"></p>
     <div id="pfList"></div>
