@@ -46,7 +46,19 @@ i.rot{font-style:normal}
 .pfHl em{font-style:normal;font-size:12px;min-width:34px;text-align:right;color:var(--tx2)}
 .pfHl em.sobe{color:#FF9901}.pfHl em.desce{color:#99CC33}
 .pfHl .ic.sm{width:30px;height:30px}
-.pfApagar{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:12px;border:1px solid #8a2a3a;background:transparent;color:#FFB3BF;font-size:14px;font-family:inherit;cursor:pointer;padding:0 12px}
+.pfr.clic{cursor:pointer}.pfr.clic:active{transform:scale(.99)}
+.pfChev{color:var(--tx2);display:grid;place-items:center}.pfChev svg{width:20px;height:20px}
+.pfTopo{display:flex;align-items:center;gap:14px;margin:4px 0 14px}
+.avatar.grande{width:64px;height:64px;font-size:26px}
+.pfTopo .trt b{font-size:20px}
+.pfDados{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-bottom:12px}
+.pfDados>div{background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.pfDados span{font-size:11px;color:var(--tx2)}.pfDados b{font-size:16px;font-weight:600}.pfDados small{font-size:11px;color:var(--tx2)}
+.pfAcoes{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px}
+.pfAcoes button{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:12px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-size:15px;font-family:inherit;cursor:pointer}
+.pfAcoes button.pri{background:var(--roxo-f);border-color:var(--roxo);color:#fff;font-weight:600}
+.pfAcoes svg{width:18px;height:18px}
+.pfApagar{width:100%;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:12px;border:1px solid #8a2a3a;background:transparent;color:#FFB3BF;font-size:14px;font-family:inherit;cursor:pointer;padding:0 12px}
 .pfApagar svg{width:18px;height:18px}
 .pfApagar.perigo{background:#5a1622;color:#fff}
 header span{font-size:12px;color:var(--tx2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -127,6 +139,36 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 #rest .rc span{display:block;font-size:13px;color:var(--tx2);text-transform:uppercase;letter-spacing:.08em}
 #rest .rc b{display:block;font-size:64px;font-weight:600;line-height:1.1;color:var(--tx)}
 #rest .rc small{display:block;font-size:13px;color:var(--tx2);margin-bottom:12px}
+#concBox{position:absolute;inset:0;display:grid;place-items:center;z-index:7;background:rgba(10,8,14,.45)}
+#concBox .rc{background:rgba(30,26,35,.97);border:1px solid var(--roxo-f);border-radius:20px;padding:18px;width:min(340px,90%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+#concTit{display:block;font-size:17px;font-weight:600;text-align:center;margin-bottom:12px}
+#concLista{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow-y:auto}
+.concIt{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:9px 10px;cursor:pointer}
+.concIt input{width:20px;height:20px;accent-color:#9D5FE0;flex:none}
+.concIt .trt{flex:1;min-width:0}
+#concMsg{display:block;font-size:12px;color:var(--tx2);text-align:center;margin:10px 0}
+.pbBtns.lado{flex-direction:row}.pbBtns.lado button{flex:1}
+.gWrap{position:relative;margin:4px 0 10px}
+.graf{width:100%;height:auto;display:block;touch-action:pan-y}
+.gGrade{stroke:rgba(255,255,255,.07);stroke-width:1}
+.gBase{stroke:rgba(255,255,255,.25);stroke-width:1}
+.gEixo{fill:#8f8799;font-size:10px;font-family:inherit}
+.gBarra{fill:#9D5FE0}
+.gLinha{fill:none;stroke:#9D5FE0;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.gPonto{fill:#9D5FE0;stroke:var(--card);stroke-width:2}
+.gRealce{stroke:rgba(255,255,255,.28);stroke-width:1;stroke-dasharray:3 3}
+.gToque{fill:transparent;cursor:pointer}
+.gDica{position:absolute;transform:translate(-50%,-100%);background:#2b2533;border:1px solid var(--roxo-f);border-radius:8px;padding:5px 9px;font-size:12px;white-space:nowrap;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.gDica b{font-weight:500}
+.tab{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+.tab th{text-align:left;font-weight:500;color:var(--tx2);font-size:11px;padding:4px 6px;border-bottom:1px solid var(--bd)}
+.tab td{padding:5px 6px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.tab td b{display:block;font-weight:500}.tab td small{display:block;font-size:11px;color:var(--tx2)}
+.tab td.sobe{color:#FF9901}.tab td.desce{color:#99CC33}
+.tab td.hora,.tab td.num{white-space:nowrap;color:var(--tx2);font-size:12px}
+.tab td:last-child{width:34px}.tab .ic.sm{width:30px;height:30px}
+.histDia{font-size:12px;color:#C9A6FF;margin:12px 0 2px;text-transform:capitalize}
+#histDias{margin-bottom:10px}
 #pausaBox{position:absolute;inset:0;display:grid;place-items:center;z-index:6;background:rgba(10,8,14,.35)}
 #pausaBox .rc{background:rgba(30,26,35,.96);border:1px solid var(--roxo-f);border-radius:20px;padding:18px 20px;text-align:center;width:min(300px,86%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
 #pausaBox .rc span{display:block;font-size:13px;color:#C9A6FF;text-transform:uppercase;letter-spacing:.08em}
@@ -271,6 +313,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
   </div>
   <div id="rest" hidden><div class="rc"><span>Descanso</span><b id="restN">30</b><small id="restNext"></small><button id="bSkip">Pular descanso</button></div></div>
   <div id="pausaBox" hidden><div class="rc"><span>Treino pausado</span><small id="pausaInfo"></small><div class="pbBtns"><button class="pri" id="bContinuar">Continuar</button><button id="bEncerrar">Encerrar treino</button><button class="lk" id="bRecomecarEx">Recomeçar este exercício</button></div></div></div>
+  <div id="concBox" hidden><div class="rc"><span id="concTit">Você concluiu o exercício?</span><div id="concLista"></div><small id="concMsg"></small><div class="pbBtns lado"><button id="bConcNao">Não</button><button class="pri" id="bConcSim">Sim, concluí</button></div></div></div>
   <div id="hint">Toque num músculo · 1 dedo gira · 2 dedos movem e dão zoom</div>
 </div>
 <div id="panel">
@@ -355,8 +398,8 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 </div>
 <div id="pfSheet" class="sheetw" hidden>
   <div class="box">
-    <div style="display:flex;align-items:center;margin-bottom:6px"><span class="ttl">Perfis</span><button class="ic" id="bPfClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <p class="nota" style="margin:0 0 10px">Cada perfil tem os próprios treinos, ajustes (repetições, ritmo, voz), músicas e preferências.</p>
+    <div style="display:flex;align-items:center;margin-bottom:6px;gap:6px"><button class="ic sm" id="bPfVoltar" aria-label="Voltar" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><span class="ttl" id="pfTitulo">Perfis</span><button class="ic" id="bPfClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="nota" id="pfNota" style="margin:0 0 10px">Cada perfil tem os próprios treinos, ajustes (repetições, ritmo, voz), músicas e preferências.</p>
     <p class="msg" id="pfMsg"></p>
     <div id="pfList"></div>
     <div class="btnLinha"><button id="bPfNovo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo perfil</button></div>

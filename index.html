@@ -46,7 +46,19 @@ i.rot{font-style:normal}
 .pfHl em{font-style:normal;font-size:12px;min-width:34px;text-align:right;color:var(--tx2)}
 .pfHl em.sobe{color:#FF9901}.pfHl em.desce{color:#99CC33}
 .pfHl .ic.sm{width:30px;height:30px}
-.pfApagar{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:12px;border:1px solid #8a2a3a;background:transparent;color:#FFB3BF;font-size:14px;font-family:inherit;cursor:pointer;padding:0 12px}
+.pfr.clic{cursor:pointer}.pfr.clic:active{transform:scale(.99)}
+.pfChev{color:var(--tx2);display:grid;place-items:center}.pfChev svg{width:20px;height:20px}
+.pfTopo{display:flex;align-items:center;gap:14px;margin:4px 0 14px}
+.avatar.grande{width:64px;height:64px;font-size:26px}
+.pfTopo .trt b{font-size:20px}
+.pfDados{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-bottom:12px}
+.pfDados>div{background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.pfDados span{font-size:11px;color:var(--tx2)}.pfDados b{font-size:16px;font-weight:600}.pfDados small{font-size:11px;color:var(--tx2)}
+.pfAcoes{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px}
+.pfAcoes button{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:12px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-size:15px;font-family:inherit;cursor:pointer}
+.pfAcoes button.pri{background:var(--roxo-f);border-color:var(--roxo);color:#fff;font-weight:600}
+.pfAcoes svg{width:18px;height:18px}
+.pfApagar{width:100%;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:12px;border:1px solid #8a2a3a;background:transparent;color:#FFB3BF;font-size:14px;font-family:inherit;cursor:pointer;padding:0 12px}
 .pfApagar svg{width:18px;height:18px}
 .pfApagar.perigo{background:#5a1622;color:#fff}
 header span{font-size:12px;color:var(--tx2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -127,6 +139,36 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 #rest .rc span{display:block;font-size:13px;color:var(--tx2);text-transform:uppercase;letter-spacing:.08em}
 #rest .rc b{display:block;font-size:64px;font-weight:600;line-height:1.1;color:var(--tx)}
 #rest .rc small{display:block;font-size:13px;color:var(--tx2);margin-bottom:12px}
+#concBox{position:absolute;inset:0;display:grid;place-items:center;z-index:7;background:rgba(10,8,14,.45)}
+#concBox .rc{background:rgba(30,26,35,.97);border:1px solid var(--roxo-f);border-radius:20px;padding:18px;width:min(340px,90%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+#concTit{display:block;font-size:17px;font-weight:600;text-align:center;margin-bottom:12px}
+#concLista{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow-y:auto}
+.concIt{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:9px 10px;cursor:pointer}
+.concIt input{width:20px;height:20px;accent-color:#9D5FE0;flex:none}
+.concIt .trt{flex:1;min-width:0}
+#concMsg{display:block;font-size:12px;color:var(--tx2);text-align:center;margin:10px 0}
+.pbBtns.lado{flex-direction:row}.pbBtns.lado button{flex:1}
+.gWrap{position:relative;margin:4px 0 10px}
+.graf{width:100%;height:auto;display:block;touch-action:pan-y}
+.gGrade{stroke:rgba(255,255,255,.07);stroke-width:1}
+.gBase{stroke:rgba(255,255,255,.25);stroke-width:1}
+.gEixo{fill:#8f8799;font-size:10px;font-family:inherit}
+.gBarra{fill:#9D5FE0}
+.gLinha{fill:none;stroke:#9D5FE0;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.gPonto{fill:#9D5FE0;stroke:var(--card);stroke-width:2}
+.gRealce{stroke:rgba(255,255,255,.28);stroke-width:1;stroke-dasharray:3 3}
+.gToque{fill:transparent;cursor:pointer}
+.gDica{position:absolute;transform:translate(-50%,-100%);background:#2b2533;border:1px solid var(--roxo-f);border-radius:8px;padding:5px 9px;font-size:12px;white-space:nowrap;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.gDica b{font-weight:500}
+.tab{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+.tab th{text-align:left;font-weight:500;color:var(--tx2);font-size:11px;padding:4px 6px;border-bottom:1px solid var(--bd)}
+.tab td{padding:5px 6px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.tab td b{display:block;font-weight:500}.tab td small{display:block;font-size:11px;color:var(--tx2)}
+.tab td.sobe{color:#FF9901}.tab td.desce{color:#99CC33}
+.tab td.hora,.tab td.num{white-space:nowrap;color:var(--tx2);font-size:12px}
+.tab td:last-child{width:34px}.tab .ic.sm{width:30px;height:30px}
+.histDia{font-size:12px;color:#C9A6FF;margin:12px 0 2px;text-transform:capitalize}
+#histDias{margin-bottom:10px}
 #pausaBox{position:absolute;inset:0;display:grid;place-items:center;z-index:6;background:rgba(10,8,14,.35)}
 #pausaBox .rc{background:rgba(30,26,35,.96);border:1px solid var(--roxo-f);border-radius:20px;padding:18px 20px;text-align:center;width:min(300px,86%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
 #pausaBox .rc span{display:block;font-size:13px;color:#C9A6FF;text-transform:uppercase;letter-spacing:.08em}
@@ -271,6 +313,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
   </div>
   <div id="rest" hidden><div class="rc"><span>Descanso</span><b id="restN">30</b><small id="restNext"></small><button id="bSkip">Pular descanso</button></div></div>
   <div id="pausaBox" hidden><div class="rc"><span>Treino pausado</span><small id="pausaInfo"></small><div class="pbBtns"><button class="pri" id="bContinuar">Continuar</button><button id="bEncerrar">Encerrar treino</button><button class="lk" id="bRecomecarEx">Recomeçar este exercício</button></div></div></div>
+  <div id="concBox" hidden><div class="rc"><span id="concTit">Você concluiu o exercício?</span><div id="concLista"></div><small id="concMsg"></small><div class="pbBtns lado"><button id="bConcNao">Não</button><button class="pri" id="bConcSim">Sim, concluí</button></div></div></div>
   <div id="hint">Toque num músculo · 1 dedo gira · 2 dedos movem e dão zoom</div>
 </div>
 <div id="panel">
@@ -350,13 +393,13 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.17.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.18.0</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
   <div class="box">
-    <div style="display:flex;align-items:center;margin-bottom:6px"><span class="ttl">Perfis</span><button class="ic" id="bPfClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <p class="nota" style="margin:0 0 10px">Cada perfil tem os próprios treinos, ajustes (repetições, ritmo, voz), músicas e preferências.</p>
+    <div style="display:flex;align-items:center;margin-bottom:6px;gap:6px"><button class="ic sm" id="bPfVoltar" aria-label="Voltar" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><span class="ttl" id="pfTitulo">Perfis</span><button class="ic" id="bPfClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="nota" id="pfNota" style="margin:0 0 10px">Cada perfil tem os próprios treinos, ajustes (repetições, ritmo, voz), músicas e preferências.</p>
     <p class="msg" id="pfMsg"></p>
     <div id="pfList"></div>
     <div class="btnLinha"><button id="bPfNovo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo perfil</button></div>
@@ -1837,7 +1880,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
 
   /* ---------- Perfis: cada pessoa tem seus treinos, ajustes, músicas e preferências ---------- */
   const PERFIS_KEY = 'anatomotion.perfis.v1';
-  const BASES_PERFIL = ['corpo3d.treino.v1', 'corpo3d.treinos.v1', 'corpo3d.musica.v1', 'corpo3d.catalogo.v1', 'anatomotion.corpo.v1'];
+  const BASES_PERFIL = ['corpo3d.treino.v1', 'corpo3d.treinos.v1', 'corpo3d.musica.v1', 'corpo3d.catalogo.v1', 'anatomotion.corpo.v1', 'anatomotion.historico.v1'];
   const CORES_PERFIL = ['#642A90', '#EC357D', '#FF9901', '#99CC33', '#0164C9', '#2BB3A3'];
   let perfisErro = '';
   const PERFIS = (function () {
@@ -3509,7 +3552,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     $('nRepTot').textContent = String(tc.reps);
     $('nUn').textContent = cur.isometria ? 's' : 'reps';
     let sub;
-    if (S.estado === 'fim') sub = 'Treino concluído';
+    if (S.estado === 'fim') sub = SEQ ? 'Fim do treino' : 'Fim do exercício';
     else if (S.troca && (S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso'))) sub = 'Descanso · próximo exercício';
     else if (S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso')) sub = 'Descanso · ' + S.ciclo + '/' + tc.ciclos + ' feitos';
     else if (S.estado === 'concluindo' || (S.estado === 'pausado' && S.antes === 'concluindo')) sub = 'Ciclo ' + S.ciclo + ' concluído' + (S.estado === 'pausado' ? ' · pausado' : '');
@@ -3544,7 +3587,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     seqBarUI(); atualizarMusica(); telaAcesa(rodando || S.estado === 'pausado');
   }
   function iniciarTreino() {
-    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; musicaNova = true;
+    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; musicaNova = true; S.reg = null; esconderConclusao();
     preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos, ' : ' repetições, ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
   }
   // antes de contar: o corpo fica na posição inicial, só respirando, enquanto a voz anuncia;
@@ -3553,7 +3596,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
   // cedo demais: por isso há um tempo mínimo proporcional ao texto, e um máximo caso o aviso nunca chegue
   const agora = () => performance.now();
   function preparar(texto) {
-    if (window.__semPreparo) { S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.prep = null; falar(texto + ' Começa!', true); painelTreino(); return; }
+    if (window.__semPreparo) { S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.prep = null; marcarInicio(); falar(texto + ' Começa!', true); painelTreino(); return; }
     fotografarPose();
     S.estado = 'preparo'; t = 0; lastCycle = 0; phase = 0;
     const tok = {}, est = texto.length * 70; // ~70 ms por letra na voz em português
@@ -3594,8 +3637,20 @@ window.CORPO3D_EXERCICIOS = function (H) {
     painelTreino();
   }
   function comecarContagem() {
-    S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0;
+    S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; marcarInicio();
     painelTreino();
+  }
+  // tempo do exercício para o histórico: começa no primeiro "Começa!", desconta as pausas
+  function marcarInicio() { if (!S.reg) S.reg = { inicio: Date.now(), pausadoMs: 0, pausaDesde: null }; }
+  function registroDoExercicio() {
+    const r = S.reg || { inicio: Date.now(), pausadoMs: 0 }, fim = Date.now();
+    return {
+      id: 'h' + fim.toString(36) + Math.random().toString(36).slice(2, 5), ex: cur.id, nome: cur.nome,
+      treino: SEQ ? { id: SEQ.t.id, nome: SEQ.t.nome } : null, dia: hojeStr(new Date(r.inicio)),
+      inicio: r.inicio, fim, ativoSeg: Math.max(0, Math.round((fim - r.inicio - (r.pausadoMs || 0)) / 1000)),
+      ciclos: tc.ciclos, reps: tc.reps, iso: !!cur.isometria, ritmo: tc.ritmo, ritmoNome: ritmoNome(tc.ritmo),
+      descanso: tc.descanso, caneleira: usaCaneleira() ? cfg.caneleira : 0
+    };
   }
   function resetTreino(silencioso) {
     if ((S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso')) && !cur.repouso) { fotografarPose(); bestAngle(false); }
@@ -3614,15 +3669,19 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (S.rep >= tc.reps) {
       t = 0; lastCycle = 0; phase = 0;
       if (S.ciclo >= tc.ciclos) {
+        const reg = registroDoExercicio(); S.reg = null;
+        if (SEQ) SEQ.feitos.push(reg);
         if (SEQ && SEQ.idx < SEQ.t.itens.length - 1) {
           const dep = tc.depois || 0;
           S.troca = true;
-          if (dep > 0) concluir(S.rep + '. Exercício concluído. Descanse ' + dep + ' segundos. Depois: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) + '.', () => irDescansar(dep));
-          else concluir(S.rep + '. Exercício concluído.', proximoExercicio);
+          if (dep > 0) concluir(S.rep + '. Fim do exercício. Descanse ' + dep + ' segundos. Depois: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) + '.', () => irDescansar(dep));
+          else concluir(S.rep + '. Fim do exercício.', proximoExercicio);
           return;
         } else {
+          // em vez de afirmar, pergunta: só entra no histórico se a pessoa confirmar
           S.estado = 'fim';
-          falar(S.rep + (SEQ ? '. Treino ' + SEQ.t.nome + ' concluído. Parabéns!' : '. Treino concluído. Muito bem!'), true);
+          if (SEQ) { falar(S.rep + '. Fim do treino ' + SEQ.t.nome + '. Marque os exercícios que você concluiu.', true); perguntarConclusao(SEQ.feitos.slice()); }
+          else { falar(S.rep + '. Fim do exercício. Você concluiu o exercício?', true); perguntarConclusao([reg]); }
         }
       } else if (tc.descanso > 0) {
         concluir(S.rep + '. Ciclo ' + S.ciclo + ' concluído. Descanse ' + tc.descanso + ' segundos.', () => irDescansar(tc.descanso));
@@ -3671,8 +3730,9 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (cur.repouso) { abrirTreinos(); return; }
     if (S.estado === 'fim' && SEQ) { executarTreino(SEQ.t.id); return; }
     if (S.estado === 'previa' || S.estado === 'fim' || S.estado === 'congelado') iniciarTreino();
-    else if (S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo' || S.estado === 'concluindo') { S.antes = S.estado; S.estado = 'pausado'; calarVoz(); painelTreino(); }
+    else if (S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo' || S.estado === 'concluindo') { S.antes = S.estado; S.estado = 'pausado'; if (S.reg) S.reg.pausaDesde = Date.now(); calarVoz(); painelTreino(); }
     else if (S.estado === 'pausado') {
+      if (S.reg && S.reg.pausaDesde) { S.reg.pausadoMs += Date.now() - S.reg.pausaDesde; S.reg.pausaDesde = null; }
       if (S.antes === 'preparo') { S.estado = 'preparo'; dizerComeca(); painelTreino(); return; }
       if (S.antes === 'concluindo') { const f = S.prep && S.prep.depois; S.prep = null; if (f) f(); else proximoCiclo(); return; }
       S.estado = S.antes; if (S.estado === 'treino') falar('Continuando.', true); painelTreino();
@@ -3686,9 +3746,11 @@ window.CORPO3D_EXERCICIOS = function (H) {
   $('bEncerrar').addEventListener('click', encerrarTreino);
   function encerrarTreino() {
     calarVoz();
+    const feitos = SEQ ? SEQ.feitos.slice() : [];
     if (SEQ) sairSequencia(false); // treino montado: volta para o descanso (sentado)
     else resetTreino(true);         // exercício avulso: volta para a prévia do exercício
-    falar('Treino encerrado.', true);
+    if (feitos.length) { falar('Treino encerrado. Marque os exercícios que você concluiu.', true); perguntarConclusao(feitos); }
+    else falar('Treino encerrado.', true);
   }
   // modo imersivo: durante o treino as informações recolhem e os controles ficam transparentes;
   // um toque na tela deixa tudo visível por alguns segundos
@@ -4030,7 +4092,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     const tr = TREINOS.find(x => x.id === id);
     if (!tr || !tr.itens.length) return false;
     if (window.Musica) { Musica.desbloquear(); Musica.parar(true); }
-    SEQ = { t: tr, idx: 0 };
+    SEQ = { t: tr, idx: 0, feitos: [] };
     aplicarItem(); iniciarTreino();
     return true;
   }
@@ -4085,7 +4147,9 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (!window.Musica) return;
     const modo = SEQ ? SEQ.t.trilha : 'padrao';
     if (cur.repouso && S.estado === 'previa') { Musica.parar(true); return; }
-    if (S.estado === 'treino' || S.estado === 'preparo' || S.estado === 'concluindo') { Musica.tocar('treino', { modo, nova: musicaNova, ritmo: tc.ritmo }); musicaNova = false; }
+    if (S.estado === 'treino') { Musica.tocar('treino', { modo, nova: musicaNova, ritmo: tc.ritmo }); musicaNova = false; }
+    else if (S.estado === 'preparo') Musica.pausar();   // anunciando: espera o "Começa!"
+    else if (S.estado === 'concluindo') { /* segue tocando baixinho enquanto avisa o fim */ }
     else if (S.estado === 'descanso') { Musica.tocar('pausa', { modo, nova: musicaNova }); musicaNova = false; }
     else if (S.estado === 'pausado') Musica.pausar();
     else Musica.parar(S.estado === 'fim' || S.estado === 'previa');
@@ -4291,7 +4355,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    * Um registro por dia em cada medida (o último do dia vale). "medidas" já
    * comporta outras (braço, coxa, peitoral...) no futuro, cada uma com seu histórico. */
   const CORPO_BASE = 'anatomotion.corpo.v1';
-  const hojeStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const hojeStr = (d = new Date()) => { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   function lerCorpo(pid) {
     const c = { v: 1, sexo: '', altura: null, idade: null, idadeEm: null, medidas: { peso: [] } };
     try {
@@ -4333,25 +4397,248 @@ window.CORPO3D_EXERCICIOS = function (H) {
     return p.join(' · ');
   }
 
+  /* ---------- Histórico de exercícios feitos (por perfil) ----------
+   * { v:1, lista:[{ id, ex, nome, treino:{id,nome}|null, dia, inicio, fim, ativoSeg,
+   *                 ciclos, reps, iso, ritmo, ritmoNome, descanso, caneleira }] } */
+  const HIST_BASE = 'anatomotion.historico.v1';
+  function lerHistorico(pid) {
+    try { const o = JSON.parse(localStorage.getItem(HIST_BASE + '@' + pid) || '{}') || {}; return Array.isArray(o.lista) ? o.lista.filter(r => r && r.dia && r.inicio) : []; }
+    catch (e) { return []; }
+  }
+  function gravarHistorico(pid, lista) {
+    try { const tx = JSON.stringify({ v: 1, lista }); localStorage.setItem(HIST_BASE + '@' + pid, tx); return localStorage.getItem(HIST_BASE + '@' + pid) === tx; } catch (e) { return false; }
+  }
+  const durTxt = seg => { seg = Math.round(seg || 0); if (seg < 60) return seg + ' s'; const h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60); return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min'; };
+  const horaTxt = ms => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  const regTxt = r => r.ciclos + '×' + r.reps + (r.iso ? ' s' : '') + ' · ' + (r.ritmoNome || '').toLowerCase() + (r.caneleira ? ' · ' + r.caneleira + ' kg' : '');
+
+  /* ---------- Pergunta no fim: "Você concluiu?" ---------- */
+  let concPend = null;
+  function perguntarConclusao(regs) {
+    concPend = regs.map(r => Object.assign({}, r, { marcado: true }));
+    const um = concPend.length === 1;
+    $('concTit').textContent = um ? 'Você concluiu o exercício?' : 'Quais exercícios você concluiu?';
+    const box = $('concLista'); box.innerHTML = '';
+    for (const r of concPend) {
+      const l = document.createElement(um ? 'div' : 'label'); l.className = 'concIt';
+      if (!um) { const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.addEventListener('change', () => { r.marcado = cb.checked; }); l.appendChild(cb); }
+      const tx = document.createElement('div'); tx.className = 'trt';
+      const b = document.createElement('b'); b.textContent = r.nome; tx.appendChild(b);
+      const sm = document.createElement('small'); sm.textContent = regTxt(r) + ' · ' + durTxt(r.ativoSeg); tx.appendChild(sm);
+      l.appendChild(tx); box.appendChild(l);
+    }
+    $('bConcSim').textContent = um ? 'Sim, concluí' : 'Salvar no histórico';
+    $('bConcNao').textContent = um ? 'Não' : 'Não registrar';
+    $('concMsg').textContent = 'Fica no histórico de ' + perfilAtual().nome + '.';
+    $('concBox').hidden = false;
+  }
+  function esconderConclusao() { $('concBox').hidden = true; concPend = null; }
+  $('bConcNao').addEventListener('click', esconderConclusao);
+  $('bConcSim').addEventListener('click', () => {
+    if (!concPend) return;
+    const novos = concPend.filter(r => r.marcado).map(r => { const o = Object.assign({}, r); delete o.marcado; return o; });
+    if (!novos.length) { esconderConclusao(); return; }
+    const lista = lerHistorico(PERFIS.atual).concat(novos);
+    if (!gravarHistorico(PERFIS.atual, lista)) { $('concMsg').textContent = 'Atenção: não consegui gravar no histórico deste aparelho. Toque de novo para tentar.'; return; }
+    $('concMsg').textContent = novos.length === 1 ? 'Registrado no histórico.' : novos.length + ' exercícios registrados.';
+    falar('Registrado. Muito bem!', true);
+    concPend = null;
+    setTimeout(() => { if (!concPend) $('concBox').hidden = true; }, 1300);
+  });
+
+  /* ---------- Gráficos simples em SVG (uma série, roxo do app) ---------- */
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  function elSvg(tag, at) { const e = document.createElementNS(SVGNS, tag); for (const k in at) e.setAttribute(k, at[k]); return e; }
+  function grafico(alvo, tipo, dados, fmtEixo) {
+    // dados: [{ rot, v, dica }]
+    alvo.innerHTML = '';
+    if (!dados.length) return;
+    const W = 340, H = 170, ml = 34, mr = 10, mt = 14, mb = 26, iw = W - ml - mr, ih = H - mt - mb;
+    const vs = dados.map(d => d.v);
+    let lo = tipo === 'barra' ? 0 : Math.min(...vs), hi = Math.max(...vs);
+    if (tipo !== 'barra') { const pad = Math.max(0.5, (hi - lo) * 0.15); lo = Math.floor(lo - pad); hi = Math.ceil(hi + pad); }
+    if (hi === lo) hi = lo + 1;
+    const passo = (() => { const br = (hi - lo) / 4, p10 = Math.pow(10, Math.floor(Math.log10(br))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p10 >= br) return m * p10; return br; })();
+    if (tipo === 'barra') hi = Math.ceil(hi / passo) * passo; else { lo = Math.floor(lo / passo) * passo; hi = Math.ceil(hi / passo) * passo; }
+    const y = v => mt + ih - (v - lo) / (hi - lo) * ih;
+    const svg = elSvg('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'graf', role: 'img' });
+    for (let v = lo; v <= hi + 1e-9; v += passo) {
+      svg.appendChild(elSvg('line', { x1: ml, x2: W - mr, y1: y(v), y2: y(v), class: 'gGrade' }));
+      const t = elSvg('text', { x: ml - 6, y: y(v) + 3.5, class: 'gEixo', 'text-anchor': 'end' }); t.textContent = fmtEixo ? fmtEixo(v) : numBR(v); svg.appendChild(t);
+    }
+    const n = dados.length, bw = iw / n, xc = i => ml + bw * (i + 0.5);
+    const cada = Math.max(1, Math.ceil(n / 7)); // no máximo ~7 rótulos de data
+    dados.forEach((d, i) => { if ((n - 1 - i) % cada === 0) { const t = elSvg('text', { x: xc(i), y: H - 8, class: 'gEixo', 'text-anchor': 'middle' }); t.textContent = d.rot; svg.appendChild(t); } });
+    const marcas = [];
+    if (tipo === 'barra') {
+      const larg = Math.max(3, Math.min(22, bw - 4));
+      dados.forEach((d, i) => {
+        if (d.v > 0) {
+          const h = Math.max(2, y(lo) - y(d.v)), x = xc(i) - larg / 2, yy = y(d.v), r = Math.min(4, larg / 2, h);
+          svg.appendChild(elSvg('path', { class: 'gBarra', d: 'M' + x + ',' + (yy + h) + 'V' + (yy + r) + 'Q' + x + ',' + yy + ' ' + (x + r) + ',' + yy + 'H' + (x + larg - r) + 'Q' + (x + larg) + ',' + yy + ' ' + (x + larg) + ',' + (yy + r) + 'V' + (yy + h) + 'Z' }));
+        }
+        marcas.push({ i, x: xc(i), y: y(Math.max(d.v, lo)), d });
+      });
+      svg.appendChild(elSvg('line', { x1: ml, x2: W - mr, y1: y(lo), y2: y(lo), class: 'gBase' }));
+    } else {
+      svg.appendChild(elSvg('polyline', { class: 'gLinha', points: dados.map((d, i) => xc(i) + ',' + y(d.v)).join(' ') }));
+      dados.forEach((d, i) => { svg.appendChild(elSvg('circle', { class: 'gPonto', cx: xc(i), cy: y(d.v), r: 4.5 })); marcas.push({ i, x: xc(i), y: y(d.v), d }); });
+    }
+    // toque/hover: área de toque mais larga que a marca + dica
+    const dica = document.createElement('div'); dica.className = 'gDica'; dica.hidden = true;
+    const realce = elSvg('line', { class: 'gRealce', y1: mt, y2: mt + ih, x1: 0, x2: 0, visibility: 'hidden' });
+    svg.insertBefore(realce, svg.firstChild);
+    const mostrar = m => {
+      realce.setAttribute('x1', m.x); realce.setAttribute('x2', m.x); realce.setAttribute('visibility', 'visible');
+      dica.innerHTML = ''; const b = document.createElement('b'); b.textContent = m.d.dica; dica.appendChild(b);
+      dica.hidden = false;
+      const wR = alvo.clientWidth || W, k = wR / W;
+      const dw = dica.offsetWidth || 120;
+      dica.style.left = Math.min(Math.max(m.x * k, dw / 2 + 2), wR - dw / 2 - 2) + 'px'; dica.style.top = Math.max(0, m.y * k - 8) + 'px';
+    };
+    marcas.forEach(m => {
+      const hit = elSvg('rect', { x: m.x - bw / 2, y: mt, width: bw, height: ih + mb - 6, class: 'gToque' });
+      hit.addEventListener('pointerenter', () => mostrar(m)); hit.addEventListener('pointerdown', () => mostrar(m));
+      svg.appendChild(hit);
+    });
+    svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { dica.hidden = true; realce.setAttribute('visibility', 'hidden'); } });
+    alvo.appendChild(svg); alvo.appendChild(dica);
+  }
+
+  /* ---------- Telas do perfil: lista → ver → editar / medidas / exercícios feitos ---------- */
   let pfEdit = null; // { id|null (novo), nome, cor, corpo }
+  let pfTela = { modo: 'lista', id: null, dias: 14 };
+  function irPf(modo, id) { pfTela.modo = modo; if (id !== undefined) pfTela.id = id; if (modo !== 'editar') pfEdit = null; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }
   function renderPerfis(msg) {
     $('pfMsg').textContent = msg || perfisErro || '';
+    const m = pfTela.modo, p = PERFIS.lista.find(x => x.id === pfTela.id);
+    if (m !== 'lista' && !p && !(m === 'editar' && pfEdit && !pfEdit.id)) { pfTela.modo = 'lista'; return renderPerfis(msg); }
+    $('bPfVoltar').hidden = m === 'lista';
+    $('pfNota').hidden = m !== 'lista';
+    $('pfTitulo').textContent = m === 'lista' ? 'Perfis' : m === 'editar' ? (pfEdit && !pfEdit.id ? 'Novo perfil' : 'Editar perfil') : m === 'medidas' ? 'Medidas · ' + p.nome : m === 'historico' ? 'Exercícios feitos · ' + p.nome : 'Perfil';
+    $('bPfNovo').hidden = m !== 'lista' || PERFIS.lista.length >= 8;
     const box = $('pfList'); box.innerHTML = '';
+    if (m === 'lista') telaLista(box);
+    else if (m === 'ver') telaVer(box, p);
+    else if (m === 'editar') { const r = document.createElement('div'); r.className = 'pfr editando'; r.appendChild(formPerfil()); box.appendChild(r); }
+    else if (m === 'medidas') telaMedidas(box, p);
+    else if (m === 'historico') telaHistorico(box, p);
+  }
+  function telaLista(box) {
     for (const p of PERFIS.lista) {
-      const r = document.createElement('div'); r.className = 'pfr' + (p.id === PERFIS.atual ? ' atual' : '');
-      if (pfEdit && pfEdit.id === p.id) { r.classList.add('editando'); r.appendChild(formPerfil()); box.appendChild(r); continue; }
+      const r = document.createElement('div'); r.className = 'pfr clic' + (p.id === PERFIS.atual ? ' atual' : '');
+      r.setAttribute('role', 'button'); r.tabIndex = 0; r.setAttribute('aria-label', 'Ver o perfil de ' + p.nome);
       const av = document.createElement('span'); av.className = 'avatar'; av.textContent = inicial(p.nome); av.style.background = p.cor; r.appendChild(av);
       const tx = document.createElement('div'); tx.className = 'trt';
       const b = document.createElement('b'); b.textContent = p.nome; tx.appendChild(b);
-      const sm = document.createElement('small'); const rs = resumoCorpo(p.id);
-      sm.textContent = (p.id === PERFIS.atual ? 'em uso agora' : 'toque em Entrar para usar') + (rs ? ' · ' + rs : ''); tx.appendChild(sm);
+      const sm = document.createElement('small'); sm.textContent = p.id === PERFIS.atual ? 'em uso agora' : 'toque para ver o perfil'; tx.appendChild(sm);
       r.appendChild(tx);
       if (p.id !== PERFIS.atual) r.appendChild(botao('pill on', 'Entrar', 'Entrar como ' + p.nome, () => trocarPerfil(p.id)));
-      r.appendChild(botao('ic sm', IC.edit, 'Editar ' + p.nome, () => { pfEdit = { id: p.id, nome: p.nome, cor: p.cor, corpo: lerCorpo(p.id) }; renderPerfis(); }));
+      const ch = document.createElement('span'); ch.className = 'pfChev'; ch.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'; r.appendChild(ch);
+      const abrir = () => irPf('ver', p.id);
+      r.addEventListener('click', abrir); r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } });
       box.appendChild(r);
     }
-    if (pfEdit && !pfEdit.id) { const r = document.createElement('div'); r.className = 'pfr editando'; r.appendChild(formPerfil()); box.appendChild(r); }
-    $('bPfNovo').hidden = !!pfEdit || PERFIS.lista.length >= 8;
+  }
+  function telaVer(box, p) {
+    const c = lerCorpo(p.id), hist = lerHistorico(p.id);
+    const top = document.createElement('div'); top.className = 'pfTopo';
+    const av = document.createElement('span'); av.className = 'avatar grande'; av.textContent = inicial(p.nome); av.style.background = p.cor; top.appendChild(av);
+    const nm = document.createElement('div'); nm.className = 'trt';
+    const b = document.createElement('b'); b.textContent = p.nome; nm.appendChild(b);
+    const sm = document.createElement('small'); sm.textContent = p.id === PERFIS.atual ? 'em uso agora' : 'outro perfil'; nm.appendChild(sm);
+    top.appendChild(nm); box.appendChild(top);
+    // dados do corpo: só o que foi preenchido
+    const itens = [];
+    if (c.sexo) itens.push(['Sexo', c.sexo === 'M' ? 'Masculino' : 'Feminino']);
+    const id = idadeAtual(c); if (id !== null) itens.push(['Idade', id + ' anos']);
+    if (c.altura) itens.push(['Altura', numBR(c.altura / 100, 2) + ' m']);
+    const ps = c.medidas.peso; if (ps.length) itens.push(['Peso', numBR(ps[ps.length - 1].v) + ' kg', ps[ps.length - 1].d === hojeStr() ? 'hoje' : 'em ' + dataBR(ps[ps.length - 1].d)]);
+    if (itens.length) {
+      const g = document.createElement('div'); g.className = 'pfDados';
+      for (const [k, v, sub] of itens) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); if (sub) { const s3 = document.createElement('small'); s3.textContent = sub; d.appendChild(s3); } g.appendChild(d); }
+      box.appendChild(g);
+    } else { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Sem dados do corpo. Use Editar para informar sexo, idade, altura e peso (tudo opcional).'; box.appendChild(e); }
+    // resumo dos treinos
+    if (hist.length) {
+      const dias = new Set(hist.map(r => r.dia)).size, tot = hist.reduce((a, r) => a + (r.ativoSeg || 0), 0);
+      const g = document.createElement('div'); g.className = 'pfDados';
+      for (const [k, v] of [['Exercícios feitos', String(hist.length)], ['Dias de treino', String(dias)], ['Tempo total', durTxt(tot)]]) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); g.appendChild(d); }
+      box.appendChild(g);
+    }
+    const acoes = document.createElement('div'); acoes.className = 'pfAcoes';
+    if (p.id !== PERFIS.atual) acoes.appendChild(botao('pri', 'Entrar neste perfil', null, () => trocarPerfil(p.id)));
+    acoes.appendChild(botao('', IC.edit + '<span>Editar</span>', 'Editar o perfil', () => { pfEdit = { id: p.id, nome: p.nome, cor: p.cor, corpo: lerCorpo(p.id) }; irPf('editar', p.id); }));
+    acoes.appendChild(botao('', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19l5-6 4 3 7-9"/><path d="M4 4v15h16"/></svg><span>Ver medidas</span>', 'Ver medidas e histórico do peso', () => irPf('medidas', p.id)));
+    acoes.appendChild(botao('', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><span>Exercícios feitos</span>', 'Ver exercícios feitos', () => irPf('historico', p.id)));
+    box.appendChild(acoes);
+    const so = PERFIS.lista.length === 1;
+    box.appendChild(botao('pfApagar', IC.del + '<span>Excluir perfil</span>', 'Excluir o perfil ' + p.nome, bt => confirmar(bt, so ? 'Tocar de novo apaga tudo e começa do zero' : 'Tocar de novo exclui o perfil e os dados dele', () => apagarPerfil(p.id))));
+  }
+  function telaMedidas(box, p) {
+    const c = lerCorpo(p.id), ps = c.medidas.peso;
+    const tt = document.createElement('div'); tt.className = 'ttl2'; tt.innerHTML = '<span>Peso</span>'; box.appendChild(tt);
+    if (!ps.length) { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Nenhum peso registrado ainda. Registre em Editar → Peso de hoje (um registro por dia; o último do dia vale).'; box.appendChild(e); return; }
+    const ult = ps[ps.length - 1], pri = ps[0];
+    const g = document.createElement('div'); g.className = 'pfDados';
+    const dif = Math.round((ult.v - pri.v) * 10) / 10;
+    for (const [k, v] of [['Atual', numBR(ult.v) + ' kg'], ['Primeiro', numBR(pri.v) + ' kg'], ['Variação', (dif > 0 ? '+' : dif < 0 ? '−' : '') + numBR(Math.abs(dif)) + ' kg']]) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); g.appendChild(d); }
+    box.appendChild(g);
+    const gw = document.createElement('div'); gw.className = 'gWrap'; gw.id = 'grafPeso'; box.appendChild(gw);
+    const ultimos = ps.slice(-30);
+    grafico(gw, 'linha', ultimos.map(r => ({ rot: r.d.slice(8, 10) + '/' + r.d.slice(5, 7), v: r.v, dica: dataBR(r.d) + ': ' + numBR(r.v) + ' kg' })), v => numBR(v, 0));
+    if (ps.length > 30) { const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'O gráfico mostra os últimos 30 registros.'; box.appendChild(n); }
+    const tb = document.createElement('table'); tb.className = 'tab'; tb.innerHTML = '<thead><tr><th>Data</th><th>Peso</th><th>Dif.</th><th></th></tr></thead>';
+    const tbody = document.createElement('tbody'); const inv = ps.slice().reverse();
+    inv.forEach((r, i) => {
+      const ant = inv[i + 1], tr = document.createElement('tr');
+      const td = (t, cl) => { const x = document.createElement('td'); x.textContent = t; if (cl) x.className = cl; tr.appendChild(x); };
+      td(r.d === hojeStr() ? 'Hoje' : dataBR(r.d)); td(numBR(r.v) + ' kg');
+      if (ant) { const x = Math.round((r.v - ant.v) * 10) / 10; td(x === 0 ? '=' : (x > 0 ? '+' : '−') + numBR(Math.abs(x)), x > 0 ? 'sobe' : x < 0 ? 'desce' : ''); } else td('');
+      const tdb = document.createElement('td'); tdb.appendChild(botao('ic sm', IC.x, 'Apagar o peso de ' + dataBR(r.d), bt => confirmar(bt, 'Apagar?', () => {
+        const c2 = lerCorpo(p.id); c2.medidas.peso = c2.medidas.peso.filter(x => x.d !== r.d);
+        renderPerfis(gravarCorpo(p.id, c2) ? 'Registro apagado.' : 'Atenção: não consegui gravar neste aparelho.');
+      }))); tr.appendChild(tdb);
+      tbody.appendChild(tr);
+    });
+    tb.appendChild(tbody); box.appendChild(tb);
+  }
+  function telaHistorico(box, p) {
+    const hist = lerHistorico(p.id).sort((a, b) => b.inicio - a.inicio);
+    if (!hist.length) { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Nenhum exercício registrado ainda. No fim de cada exercício, responda "Sim, concluí" para ele entrar aqui.'; box.appendChild(e); return; }
+    const sg = document.createElement('div'); sg.className = 'seg'; sg.id = 'histDias';
+    for (const [n, nm] of [[7, '7 dias'], [14, '14 dias'], [30, '30 dias']]) { const b = botao(pfTela.dias === n ? 'on' : '', nm, null, () => { pfTela.dias = n; renderPerfis(); }); b.dataset.v = n; sg.appendChild(b); }
+    box.appendChild(sg);
+    // por dia (últimos N dias, incluindo dias sem treino)
+    const porDia = {}; for (const r of hist) { const d = porDia[r.dia] || (porDia[r.dia] = { n: 0, seg: 0, itens: [] }); d.n++; d.seg += r.ativoSeg || 0; d.itens.push(r); }
+    const serie = []; const hj = new Date();
+    for (let i = pfTela.dias - 1; i >= 0; i--) { const d = new Date(hj.getFullYear(), hj.getMonth(), hj.getDate() - i), k = hojeStr(d), x = porDia[k]; serie.push({ rot: k.slice(8, 10) + '/' + k.slice(5, 7), v: x ? x.n : 0, dica: dataBR(k) + ': ' + (x ? x.n + (x.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(x.seg) : 'sem treino') }); }
+    const noPer = serie.reduce((a, d) => a + d.v, 0), segPer = Object.keys(porDia).filter(k => serie.some(s => s.dica.startsWith(dataBR(k)))).reduce((a, k) => a + porDia[k].seg, 0);
+    const g = document.createElement('div'); g.className = 'pfDados';
+    for (const [k, v] of [['Exercícios', String(noPer)], ['Dias de treino', String(serie.filter(d => d.v).length)], ['Tempo', durTxt(segPer)]]) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); g.appendChild(d); }
+    box.appendChild(g);
+    const gw = document.createElement('div'); gw.className = 'gWrap'; gw.id = 'grafHist'; box.appendChild(gw);
+    grafico(gw, 'barra', serie, v => String(Math.round(v)));
+    // tabela por dia
+    for (const k of Object.keys(porDia).sort().reverse()) {
+      const d = porDia[k], h = document.createElement('div'); h.className = 'histDia';
+      const dt = new Date(k + 'T12:00:00'), sem = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+      h.textContent = (k === hojeStr() ? 'Hoje' : sem + ', ' + dataBR(k)) + ' · ' + d.n + (d.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(d.seg);
+      box.appendChild(h);
+      const tb = document.createElement('table'); tb.className = 'tab'; const tbody = document.createElement('tbody');
+      for (const r of d.itens) {
+        const tr = document.createElement('tr');
+        const t1 = document.createElement('td'); t1.textContent = horaTxt(r.inicio) + '–' + horaTxt(r.fim); t1.className = 'hora'; tr.appendChild(t1);
+        const t2 = document.createElement('td'); const b = document.createElement('b'); b.textContent = r.nome; t2.appendChild(b); const sm = document.createElement('small'); sm.textContent = regTxt(r) + (r.treino ? ' · ' + r.treino.nome : ''); t2.appendChild(sm); tr.appendChild(t2);
+        const t3 = document.createElement('td'); t3.textContent = durTxt(r.ativoSeg); t3.className = 'num'; tr.appendChild(t3);
+        const t4 = document.createElement('td'); t4.appendChild(botao('ic sm', IC.x, 'Apagar ' + r.nome + ' do histórico', bt => confirmar(bt, 'Apagar?', () => {
+          const l = lerHistorico(p.id).filter(x => x.id !== r.id);
+          renderPerfis(gravarHistorico(p.id, l) ? 'Registro apagado.' : 'Atenção: não consegui gravar neste aparelho.');
+        }))); tr.appendChild(t4);
+        tbody.appendChild(tr);
+      }
+      tb.appendChild(tbody); box.appendChild(tb);
+    }
   }
   function campoNum(rot, sufixo, valor, id, dica) {
     const w = document.createElement('label'); w.className = 'pfCampo';
@@ -4375,7 +4662,6 @@ window.CORPO3D_EXERCICIOS = function (H) {
       b.style.background = cor; cs.appendChild(b);
     }
     f.appendChild(cs);
-    // dados do corpo (todos opcionais)
     const tt = document.createElement('div'); tt.className = 'ttl2'; tt.innerHTML = '<span>Dados do corpo</span><em>opcional</em>'; f.appendChild(tt);
     const sx = document.createElement('div'); sx.className = 'seg'; sx.id = 'pfSexo';
     for (const [v, nm] of [['M', 'Masculino'], ['F', 'Feminino'], ['', 'Não informar']]) {
@@ -4389,32 +4675,11 @@ window.CORPO3D_EXERCICIOS = function (H) {
     const pesos = c.medidas.peso, hoje = pesos.find(r => r.d === hojeStr());
     g.appendChild(campoNum('Peso de hoje', 'kg', hoje ? hoje.v : null, 'pfPeso', pesos.length ? 'último: ' + numBR(pesos[pesos.length - 1].v) : 'ex.: 72,5'));
     f.appendChild(g);
-    // histórico do peso (um valor por dia; o último registrado no dia vale)
-    if (pesos.length) {
-      const h = document.createElement('div'); h.className = 'pfHist'; h.id = 'pfHist';
-      const ti = document.createElement('div'); ti.className = 'pfHistT'; ti.textContent = 'Histórico do peso'; h.appendChild(ti);
-      const lista = pesos.slice().reverse();
-      lista.forEach((r, i) => {
-        const ant = lista[i + 1], ln = document.createElement('div'); ln.className = 'pfHl';
-        const d = document.createElement('span'); d.textContent = r.d === hojeStr() ? 'Hoje' : dataBR(r.d); ln.appendChild(d);
-        const v = document.createElement('b'); v.textContent = numBR(r.v) + ' kg'; ln.appendChild(v);
-        const df = document.createElement('em');
-        if (ant) { const x = Math.round((r.v - ant.v) * 10) / 10; df.textContent = x === 0 ? '=' : (x > 0 ? '+' : '−') + numBR(Math.abs(x)); df.className = x > 0 ? 'sobe' : x < 0 ? 'desce' : ''; }
-        ln.appendChild(df);
-        ln.appendChild(botao('ic sm', IC.x, 'Apagar registro de ' + dataBR(r.d), bt => confirmar(bt, 'Apagar?', () => { c.medidas.peso = c.medidas.peso.filter(x => x.d !== r.d); renderPerfis(); })));
-        h.appendChild(ln);
-      });
-      f.appendChild(h);
-    }
+    const n = document.createElement('p'); n.className = 'nota'; n.style.margin = '0'; n.textContent = 'O peso vale para o dia: registrar de novo hoje substitui o de hoje. O histórico fica em Ver medidas.'; f.appendChild(n);
     const bt = document.createElement('div'); bt.className = 'btnLinha';
-    bt.appendChild(botao('', 'Cancelar', null, () => { pfEdit = null; renderPerfis(); }));
+    bt.appendChild(botao('', 'Cancelar', null, () => { const id = pfEdit.id; pfEdit = null; irPf(id ? 'ver' : 'lista', id); }));
     bt.appendChild(botao('pri', pfEdit.id ? 'Salvar' : 'Criar e entrar', null, salvarPerfil));
     f.appendChild(bt);
-    if (pfEdit.id) {
-      const so = PERFIS.lista.length === 1;
-      const del = botao('pfApagar', IC.del + '<span>Apagar este perfil</span>', 'Apagar o perfil ' + pfEdit.nome, b => confirmar(b, so ? 'Tocar de novo apaga tudo e começa do zero' : 'Tocar de novo apaga o perfil e os dados dele', () => apagarPerfil(pfEdit.id)));
-      f.appendChild(del);
-    }
     if (!pfEdit.id) setTimeout(() => inp.focus(), 50);
     return f;
   }
@@ -4447,7 +4712,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (!gravarPerfis(reg)) { $('pfMsg').textContent = 'Atenção: não consegui gravar neste aparelho. Nada foi alterado.'; return; }
     Object.assign(PERFIS, reg); pfEdit = null;
     if (novoId) { recarregarPerfil(); return; }
-    avatarUI(); renderPerfis('Perfil salvo.');
+    avatarUI(); pfTela.modo = 'ver'; renderPerfis('Perfil salvo.');
   }
   function trocarPerfil(id) {
     const reg = JSON.parse(JSON.stringify(PERFIS)); reg.atual = id;
@@ -4471,12 +4736,13 @@ window.CORPO3D_EXERCICIOS = function (H) {
     let aviso = 'Perfil apagado.';
     if (window.Musica) { try { await Musica.apagarPerfil(id); } catch (e) { aviso = 'Perfil apagado, mas algumas músicas dele não foram removidas do aparelho.'; } }
     if (eraAtual) { recarregarPerfil(); return; }
-    renderPerfis(aviso);
+    pfTela.modo = 'lista'; renderPerfis(aviso);
   }
-  $('bPerfil').addEventListener('click', () => { pfEdit = null; renderPerfis(); $('pfSheet').hidden = false; });
+  $('bPerfil').addEventListener('click', () => { pfEdit = null; pfTela.modo = 'lista'; renderPerfis(); $('pfSheet').hidden = false; });
+  $('bPfVoltar').addEventListener('click', () => { const m = pfTela.modo; if (m === 'editar' && pfEdit && !pfEdit.id) { pfEdit = null; irPf('lista'); } else irPf(m === 'ver' ? 'lista' : 'ver'); });
   $('bPfClose').addEventListener('click', () => { pfEdit = null; $('pfSheet').hidden = true; });
   $('pfSheet').addEventListener('click', e => { if (e.target.id === 'pfSheet') { pfEdit = null; $('pfSheet').hidden = true; } });
-  $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length], corpo: lerCorpo('__novo__') }; renderPerfis(); });
+  $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length], corpo: lerCorpo('__novo__') }; irPf('editar', null); });
   avatarUI();
 
   setExercise('repouso', true);
@@ -4515,6 +4781,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     classes: () => document.body.className,
     perfis: () => JSON.parse(JSON.stringify(PERFIS)),
     corpo: pid => lerCorpo(pid || PERFIS.atual),
+    historico: pid => lerHistorico(pid || PERFIS.atual),
     catalogo2: () => ({ grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },

@@ -4,6 +4,8 @@ const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless
 const p=await b.newPage();await p.setViewport({width:390,height:844});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
 const ok=(c,m)=>{console.log((c?'OK  ':'FALHA ')+m);if(!c)process.exitCode=1;};
 const cl=async s=>{await p.evaluate(s=>document.querySelector(s).click(),s);await sleep(250);};
+const btTxt=async t=>{await p.evaluate(t=>{const b=[...document.querySelectorAll('#pfList button')].find(b=>b.textContent.trim().startsWith(t));if(!b)throw new Error('sem botão '+t);b.click();},t);await sleep(250);};
+const ver=async i=>{await p.evaluate(i=>document.querySelectorAll('#pfList .pfr.clic')[i].click(),i);await sleep(250);};
 const carregar=async()=>{await p.waitForFunction('window.__corpo',{timeout:60000});await sleep(300);};
 // dados antigos (antes dos perfis) precisam ir para o Perfil 1
 await p.goto('http://localhost:8766/index.html');await carregar();
@@ -16,7 +18,7 @@ const cores=await p.evaluate(()=>[getComputedStyle(document.querySelector('heade
 ok(cores[0]==='rgb(255, 255, 255)'&&/157, 95, 224/.test(cores[1]),'Anato branco, Motion roxo '+cores.join(' / '));
 await p.screenshot({path:'shots/perfil_header.png',clip:{x:0,y:0,width:390,height:110}});
 // renomear perfil 1
-await cl('#bPerfil');await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+await cl('#bPerfil');await ver(0);await btTxt('Editar');
 await p.$eval('#pfNome',e=>{e.value='';});await p.type('#pfNome','Fabio');await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(300);
 s=await p.evaluate(()=>({nome:__corpo.perfis().lista[0].nome,av:document.getElementById('bPerfil').textContent}));ok(s.nome==='Fabio'&&s.av==='F','renomear perfil');
 // novo perfil Ana (entra nele)
@@ -51,15 +53,17 @@ await cl('#bPerfil');
 await Promise.all([p.waitForNavigation({timeout:60000}),p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Entrar').click())]);await carregar();
 await cl('#bPerfil');
 // apagar fica dentro do editar
-await p.evaluate(()=>document.querySelectorAll('#pfList [aria-label^="Editar"]')[1].click());await sleep(200);
-ok(await p.evaluate(()=>!!document.querySelector('.pfApagar')),'editar mostra "Apagar este perfil"');
+await ver(1);
+ok(await p.evaluate(()=>!!document.querySelector('.pfApagar')&&/Excluir perfil/.test(document.querySelector('.pfApagar').textContent)),'ver perfil mostra "Excluir perfil"');
 await p.evaluate(()=>document.querySelector('.pfApagar').click());await sleep(150);
 ok((await p.evaluate(()=>__corpo.perfis().lista.length))===2,'apagar pede um segundo toque');
 await p.evaluate(()=>document.querySelector('.pfApagar').click());await sleep(1500);
 s=await p.evaluate(async id=>{const d=await new Promise(r=>{const q=indexedDB.open('corpo3d',1);q.onsuccess=()=>r(q.result);});const todas=await new Promise(r=>{const q=d.transaction('faixas').objectStore('faixas').getAll();q.onsuccess=()=>r(q.result);});return {pf:__corpo.perfis().lista.length,chaves:Object.keys(localStorage).filter(k=>k.endsWith('@'+id)),faixas:todas.length,msg:document.getElementById('pfMsg').textContent};},idAna);
 ok(s.pf===1&&s.chaves.length===0&&s.faixas===0,'apagar perfil remove os dados e músicas dele '+JSON.stringify(s));
 // dados do corpo e histórico do peso
-await cl('#bPerfil');await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+await cl('#bPerfil');await ver(0);
+const semDados=await p.evaluate(()=>!document.querySelector('.pfDados')&&/Sem dados do corpo/.test(document.getElementById('pfList').textContent));ok(semDados,'ver perfil sem dados: não exibe nada, só a dica');
+await btTxt('Editar');
 let r0=await p.evaluate(()=>({sexo:[...document.querySelectorAll('#pfSexo button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(' '),idade:document.getElementById('pfIdade').value,hist:!!document.getElementById('pfHist')}));
 ok(/Não informar\*/.test(r0.sexo)&&r0.idade===''&&!r0.hist,'sem dados: campos vazios e sem histórico');
 await p.evaluate(()=>[...document.querySelectorAll('#pfSexo button')].find(b=>b.textContent==='Masculino').click());
@@ -67,30 +71,29 @@ await p.type('#pfIdade','41');await p.type('#pfAltura','1,78');await p.type('#pf
 await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(300);
 let c=await p.evaluate(()=>__corpo.corpo());
 ok(c.sexo==='M'&&c.idade===41&&c.altura===178&&c.medidas.peso.length===1&&c.medidas.peso[0].v===84.6,'salvou sexo, idade, altura (1,78 → 178 cm) e peso '+JSON.stringify(c));
-const res=await p.evaluate(()=>document.querySelector('.pfr.atual small').textContent);ok(/Masculino · 41 anos · 1,78 m · 84,6 kg/.test(res),'resumo no perfil: '+res);
+const res=await p.evaluate(()=>document.querySelector('.pfDados').textContent);ok(/Masculino/.test(res)&&/41 anos/.test(res)&&/1,78 m/.test(res)&&/84,6 kg/.test(res),'ver perfil mostra os dados: '+res);
 // mesmo dia: vale o último
-await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+await btTxt('Editar');
 await p.$eval('#pfPeso',e=>{e.value='';});await p.type('#pfPeso','84,1');
 await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(300);
 c=await p.evaluate(()=>__corpo.corpo());ok(c.medidas.peso.length===1&&c.medidas.peso[0].v===84.1,'mesmo dia: só um registro, vale o último (84,1)');
 // dias anteriores (simulados) aparecem no histórico com a diferença
 await p.evaluate(()=>{const k='anatomotion.corpo.v1@'+__corpo.perfis().atual;const o=JSON.parse(localStorage.getItem(k));o.medidas.peso.unshift({d:'2026-11-01',v:86,t:1},{d:'2026-11-05',v:85.2,t:2});localStorage.setItem(k,JSON.stringify(o));});
-await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
-const h=await p.evaluate(()=>[...document.querySelectorAll('#pfHist .pfHl')].map(l=>[...l.children].slice(0,3).map(x=>x.textContent).join(' ')));
+await btTxt('Ver medidas');await sleep(300);
+const h=await p.evaluate(()=>[...document.querySelectorAll('#pfList table.tab tbody tr')].map(l=>[...l.children].slice(0,3).map(x=>x.textContent).join(' ')));
+ok(await p.evaluate(()=>document.querySelectorAll('#grafPeso .gPonto').length===3),'gráfico do peso com 3 pontos');
 ok(h.length===3&&/^Hoje 84,1 kg −1,1/.test(h[0])&&/05\/11\/2026 85,2 kg −0,8/.test(h[1])&&/01\/11\/2026 86 kg/.test(h[2]),'histórico do peso: '+JSON.stringify(h));
 await p.screenshot({path:'shots/perfil_corpo.png'});
 // apagar um registro
-await p.evaluate(()=>document.querySelectorAll('#pfHist [aria-label^="Apagar registro"]')[1].click());await sleep(100);await p.evaluate(()=>document.querySelector('#pfHist .perigo').click());await sleep(200);
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(300);
+await p.evaluate(()=>document.querySelectorAll('#pfList [aria-label^="Apagar o peso"]')[1].click());await sleep(100);await p.evaluate(()=>document.querySelector('#pfList .perigo').click());await sleep(300);
 c=await p.evaluate(()=>__corpo.corpo());ok(c.medidas.peso.map(r=>r.d).join()==='2026-11-01,'+c.medidas.peso[1].d&&c.medidas.peso.length===2,'apagar um registro do histórico');
 // valor inválido não grava
-await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
+await cl('#bPfVoltar');await btTxt('Editar');
 await p.$eval('#pfAltura',e=>{e.value='';});await p.type('#pfAltura','17');
 await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(200);
 const m=await p.evaluate(()=>document.getElementById('pfMsg').textContent);ok(/Altura/.test(m)&&(await p.evaluate(()=>__corpo.corpo().altura))===178,'valor inválido avisa e não grava: '+m);
 await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Cancelar').click());await sleep(200);
 // apagar o único perfil: começa do zero
-await p.evaluate(()=>document.querySelector('#pfList [aria-label^="Editar"]').click());await sleep(200);
 await p.evaluate(()=>document.querySelector('.pfApagar').click());await sleep(150);
 await Promise.all([p.waitForNavigation({timeout:60000}),p.evaluate(()=>document.querySelector('.pfApagar').click())]);await carregar();
 s=await p.evaluate(()=>({pf:__corpo.perfis(),cfg:__corpo.cfgAtual(),tr:__corpo.treinos().length,corpo:__corpo.corpo()}));
