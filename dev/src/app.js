@@ -1546,6 +1546,7 @@
           it.className = 'gi' + (ex.id === cur.id && !escolhaCb ? ' on' : '');
           const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MINI.TAM; it.appendChild(cv2);
           it.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
+          if (!escolhaCb) it.appendChild(botaoAddTreino(ex));
           const b = document.createElement('b'); b.textContent = ex.nome; it.appendChild(b);
           const sp = document.createElement('span'); sp.textContent = musculosTxt(ex); it.appendChild(sp);
           MINI.registrar(cv2, ex);
@@ -1556,6 +1557,7 @@
           if (ex.alt) { const tg = document.createElement('span'); tg.className = 'tg'; tg.textContent = 'alternado'; b.appendChild(tg); }
           const sp = document.createElement('span'); sp.textContent = musculosTxt(ex); tx.appendChild(sp);
           it.appendChild(tx);
+          if (!escolhaCb) it.appendChild(botaoAddTreino(ex));
           it.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
           if (ex.id === cur.id && !escolhaCb) it.style.background = 'rgba(100,42,144,.18)';
         }
@@ -1586,7 +1588,7 @@
     $('pvNome').textContent = ex.nome;
     $('pvGrupo').textContent = EQUIP[ex.equip] + ' · ' + REGIAO[ex.regiao] + (ex.alt ? ' · alterna os lados' : '') + (ex.isometria ? ' · isométrico' : '');
     $('pvMus').textContent = 'Trabalha: ' + musculosTxt(ex);
-    const ve = $('pvFav'); ve.innerHTML = ''; ve.appendChild(botaoEstrela(ex, () => renderCatalogo($('exQ').value)));
+    const ve = $('pvFav'); ve.innerHTML = ''; if (!escolhaCb) ve.appendChild(botaoAddTreino(ex)); ve.appendChild(botaoEstrela(ex, () => renderCatalogo($('exQ').value)));
     $('bPvFazer').textContent = escolhaCb ? 'Adicionar ao treino' : 'Começar exercício';
     $('pvSheet').hidden = false;
     MINI.abrirPrevia(ex, $('pvCena'));
@@ -2267,6 +2269,108 @@
     }
     $('edSheet').hidden = true; ED = null;
   });
+
+  /* ---------- Adicionar direto a um treino (prancheta com +) ----------
+   * Do catálogo: escolhe o treino (ou cria um novo), ajusta repetições, ciclos e pausas
+   * e volta para onde estava, para continuar navegando e adicionando. */
+  const IC_PRANCHETA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M9 10h6M9 13.5h6M9 17h3.5"/></svg>';
+  const IC_PRANCHETA_MAIS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M12 9.5v7.5M8.25 13.25h7.5"/></svg>';
+  function botaoAddTreino(ex) {
+    const b = document.createElement('span'); b.setAttribute('role', 'button'); b.tabIndex = 0; b.className = 'addTr';
+    b.innerHTML = IC_PRANCHETA_MAIS; b.setAttribute('aria-label', 'Adicionar a um treino: ' + ex.nome); b.title = 'Adicionar a um treino';
+    const agir = e => { e.stopPropagation(); e.preventDefault(); abrirAddTreino(ex); };
+    b.addEventListener('click', agir); b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') agir(e); });
+    b.addEventListener('pointerdown', e => e.stopPropagation());
+    return b;
+  }
+  let AT = null; // { ex, etapa: 'escolher'|'ajustar', treinoId|null, novoNome, item }
+  function abrirAddTreino(ex) { AT = { ex, etapa: 'escolher', treinoId: null, novoNome: '', item: itemPadrao(ex.id) }; renderAddTreino(); $('atSheet').hidden = false; }
+  function fecharAddTreino() { $('atSheet').hidden = true; AT = null; }
+  function renderAddTreino(msg) {
+    const box = $('atCorpo'); box.innerHTML = '';
+    $('atMsg').textContent = msg || '';
+    $('atNome').textContent = AT.ex.nome;
+    $('bAtVoltar').hidden = AT.etapa === 'escolher';
+    if (AT.etapa === 'escolher') {
+      $('atTitulo').textContent = 'Adicionar ao treino';
+      if (!TREINOS.length) { const p = document.createElement('p'); p.className = 'nota'; p.style.margin = '0 0 8px'; p.textContent = 'Você ainda não tem treinos. Crie o primeiro:'; box.appendChild(p); }
+      for (const tr of TREINOS) {
+        const r = document.createElement('button'); r.className = 'atOp'; r.dataset.id = tr.id;
+        const ic = document.createElement('span'); ic.className = 'atIc'; ic.innerHTML = IC_PRANCHETA; r.appendChild(ic);
+        const tx = document.createElement('div'); tx.className = 'trt';
+        const b = document.createElement('b'); b.textContent = tr.nome; tx.appendChild(b);
+        const jaTem = tr.itens.filter(i => i.ex === AT.ex.id).length;
+        const sm = document.createElement('small'); sm.textContent = tr.itens.length + (tr.itens.length === 1 ? ' exercício' : ' exercícios') + (jaTem ? ' · já tem este' + (jaTem > 1 ? ' (' + jaTem + '×)' : '') : ''); tx.appendChild(sm);
+        r.appendChild(tx);
+        r.addEventListener('click', () => { AT.treinoId = tr.id; AT.etapa = 'ajustar'; renderAddTreino(); });
+        box.appendChild(r);
+      }
+      const nv = document.createElement('div'); nv.className = 'atNovo';
+      const inp = document.createElement('input'); inp.className = 'inp'; inp.id = 'atNovoNome'; inp.maxLength = 60; inp.placeholder = 'Nome do novo treino'; inp.value = AT.novoNome;
+      inp.addEventListener('input', () => { AT.novoNome = inp.value; });
+      const criar = () => { const n = inp.value.trim(); if (!n) { $('atMsg').textContent = 'Dê um nome ao novo treino.'; inp.focus(); return; } AT.novoNome = n; AT.treinoId = null; AT.etapa = 'ajustar'; renderAddTreino(); };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') criar(); });
+      nv.appendChild(inp);
+      nv.appendChild(botao('atCriar', IC_PRANCHETA_MAIS + '<span>Novo treino</span>', 'Criar novo treino', criar));
+      box.appendChild(nv);
+      return;
+    }
+    // ajustar o exercício antes de adicionar
+    const tr = AT.treinoId ? TREINOS.find(x => x.id === AT.treinoId) : null;
+    $('atTitulo').textContent = tr ? 'Adicionar em "' + tr.nome + '"' : 'Novo treino "' + AT.novoNome + '"';
+    const it = AT.item, ex = AT.ex, f = document.createElement('div'); f.className = 'edf atAjuste';
+    const linha = (k, rot, sub, un) => {
+      const r = document.createElement('div'); r.className = 'cr';
+      const lb = document.createElement('div'); lb.className = 'lb'; lb.textContent = rot;
+      if (sub) { const s2 = document.createElement('small'); s2.textContent = sub; lb.appendChild(s2); }
+      const st2 = document.createElement('div'); st2.className = 'stp'; st2.dataset.k = k;
+      const out = document.createElement('output'); out.textContent = it[k] + (un || '');
+      const L = LIM_IT[k];
+      st2.appendChild(botao('', '−', 'Menos ' + rot.toLowerCase(), () => { it[k] = clamp(it[k] - L[2], L[0], L[1]); out.textContent = it[k] + (un || ''); }));
+      st2.appendChild(out);
+      st2.appendChild(botao('', '+', 'Mais ' + rot.toLowerCase(), () => { it[k] = clamp(it[k] + L[2], L[0], L[1]); out.textContent = it[k] + (un || ''); }));
+      r.appendChild(lb); r.appendChild(st2); f.appendChild(r);
+    };
+    if (ex.isometria) linha('reps', 'Segundos', 'tempo segurando a posição', ' s'); else linha('reps', 'Repetições', 'por ciclo');
+    linha('ciclos', 'Ciclos', 'séries deste exercício');
+    linha('descanso', 'Descanso', 'entre um ciclo e outro', ' s');
+    if (!ex.isometria) linha('pausaRep', 'Pausa', 'entre uma repetição e outra', ' s');
+    const r = document.createElement('div'); r.className = 'cr';
+    const lb = document.createElement('div'); lb.className = 'lb'; lb.textContent = 'Ritmo'; r.appendChild(lb);
+    const sg = document.createElement('div'); sg.className = 'seg'; sg.id = 'atRitmo';
+    for (const [v, nm] of RITMOS) { const o = botao(it.ritmo === v ? 'on' : '', nm, null, () => { it.ritmo = v; for (const x of sg.children) x.classList.toggle('on', x === o); }); sg.appendChild(o); }
+    r.appendChild(sg); f.appendChild(r);
+    linha('depois', 'Descanso até o próximo', 'depois deste exercício', ' s');
+    box.appendChild(f);
+    const bt = document.createElement('div'); bt.className = 'btnLinha';
+    bt.appendChild(botao('', 'Voltar', null, () => { AT.etapa = 'escolher'; renderAddTreino(); }));
+    bt.appendChild(botao('pri', IC_PRANCHETA_MAIS + '<span>Adicionar</span>', 'Adicionar ao treino', confirmarAddTreino));
+    box.appendChild(bt);
+  }
+  let atAvisoTm = 0;
+  function confirmarAddTreino() {
+    const item = limparItem(AT.item); if (!item) { renderAddTreino('Exercício inválido.'); return; }
+    let lista, alvo;
+    if (AT.treinoId) {
+      lista = TREINOS.map(tr => tr.id !== AT.treinoId ? tr : Object.assign({}, tr, { alterado: Date.now(), itens: tr.itens.concat(item) }));
+      alvo = lista.find(tr => tr.id === AT.treinoId);
+      if (!alvo) { AT.etapa = 'escolher'; renderAddTreino('Esse treino não existe mais.'); return; }
+    } else {
+      alvo = limparTreino({ id: 't' + Date.now().toString(36), nome: AT.novoNome, trilha: 'padrao', itens: [item] });
+      lista = TREINOS.concat(alvo);
+    }
+    if (!gravarTreinos(lista)) { renderAddTreino('Atenção: não consegui gravar neste aparelho. Nada foi alterado; tente de novo.'); return; }
+    TREINOS = lista;
+    if (SEQ && SEQ.t.id === alvo.id) SEQ.t = alvo;
+    const nome = AT.ex.nome; fecharAddTreino();
+    // volta para onde estava (catálogo ou prévia) com um aviso rápido
+    $('exMsg').textContent = '✓ ' + nome + ' adicionado a "' + alvo.nome + '" (' + alvo.itens.length + (alvo.itens.length === 1 ? ' exercício)' : ' exercícios)');
+    $('exMsg').classList.add('okMsg');
+    clearTimeout(atAvisoTm); atAvisoTm = setTimeout(() => { $('exMsg').textContent = ''; $('exMsg').classList.remove('okMsg'); }, 3500);
+  }
+  $('bAtFechar').addEventListener('click', fecharAddTreino);
+  $('bAtVoltar').addEventListener('click', () => { if (AT) { AT.etapa = 'escolher'; renderAddTreino(); } });
+  $('atSheet').addEventListener('click', e => { if (e.target.id === 'atSheet') fecharAddTreino(); });
 
   /* ---------- executar uma sequência ---------- */
   function aplicarItem() {
@@ -3009,6 +3113,7 @@
     perfis: () => JSON.parse(JSON.stringify(PERFIS)),
     corpo: pid => lerCorpo(pid || PERFIS.atual),
     historico: pid => lerHistorico(pid || PERFIS.atual),
+    treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
