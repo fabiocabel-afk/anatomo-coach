@@ -483,7 +483,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.22.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.22.1</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -5058,8 +5058,8 @@ window.CORPO3D_EXERCICIOS = function (H) {
   function gravarCamCfg() { try { const tx = JSON.stringify(CAMCFG); localStorage.setItem(CAMERA_KEY, tx); return localStorage.getItem(CAMERA_KEY) === tx; } catch (e) { return false; } }
   let giroFase = 0, giroGrau = 0;
   function girarCamera(dt) {
-    // gira com um exercício na tela; para quando a pessoa toca/arrasta, foca um músculo ou pausa
-    const ativo = CAMCFG.modo === 'girar' && !cur.repouso && !ptrs.size && !focusKey && S.estado !== 'pausado' && S.estado !== 'congelado' && !tweening;
+    // só durante o exercício (anúncio, execução e aviso de fim); no descanso e fora do treino fica parada
+    const ativo = CAMCFG.modo === 'girar' && !cur.repouso && !ptrs.size && !focusKey && !tweening && ['treino', 'preparo', 'concluindo'].includes(S.estado);
     if (!ativo) {
       // volta suavemente para o centro (e zera, para recomeçar dali)
       giroGrau *= Math.pow(0.02, dt); if (Math.abs(giroGrau) < 0.05) { giroGrau = 0; giroFase = 0; }
@@ -5203,7 +5203,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       return { pior: +pior.toFixed(3), dentro: res };
     },
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
-    camera2: () => ({ cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
+    camera2: () => ({ dif: ['th', 'ph', 'dist', 'tx', 'ty', 'tz'].map(k => +(camT[k] - cam[k]).toFixed(4)).join(','), tw: tweening, est: S.estado, rep: cur.repouso, foco: focusKey, ptrs: ptrs.size, cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
