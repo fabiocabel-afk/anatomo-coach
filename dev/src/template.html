@@ -234,7 +234,15 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .dd.desligado .ddBtn{opacity:.5}
 #pvFav .fav{width:36px;height:36px}
 #pvFav{display:flex;gap:2px}
-#atSheet{z-index:17}
+#atSheet{z-index:17}#camSheet{z-index:13}
+.btnLinha.tres button{flex-direction:column;height:64px;gap:4px;font-size:12.5px;padding:0 4px}
+.btnLinha.tres svg{width:20px;height:20px}
+.camLin{display:flex;align-items:center;margin:4px 0 2px}
+#camOpcoes input[type=range]{width:100%;accent-color:#9D5FE0;margin:6px 0 0;height:28px}
+.camMarcas{position:relative;height:14px;font-size:11px;color:var(--tx2);margin:0 10px 14px}
+.camMarcas span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.camLin .lb small{display:block;font-size:12px;color:var(--tx2);margin-top:2px}
+#camOpcoes.desligado{opacity:.4;pointer-events:none}
 .addTr{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:#C9A6FF;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .addTr svg{width:22px;height:22px}
 .addTr:active{transform:scale(.88)}
@@ -422,6 +430,23 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="pvBtns"><button class="pri" id="bFicar">Ficar</button><button id="bSair">Sair</button></div>
   </div>
 </div>
+<div id="camSheet" class="sheetw" hidden>
+  <div class="box">
+    <div style="display:flex;align-items:center;margin-bottom:4px"><span class="ttl">Câmera</span><button class="ic" id="bCamClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="nota" style="margin:0 0 12px">Como você vê o corpo durante o exercício. O ângulo que está na tela é o centro do giro.</p>
+    <div class="seg" id="camModo" style="margin-bottom:14px"><button data-v="fixa">Fixa</button><button data-v="girar">Girando</button></div>
+    <div id="camOpcoes">
+      <div class="camLin"><div class="lb">Giro<small id="camGiroTxt"></small></div></div>
+      <input type="range" id="camGiro" min="30" max="360" step="30" aria-label="Quanto gira, em graus">
+      <div class="camMarcas"><span style="left:0.0%">30°</span><span style="left:18.18%">90°</span><span style="left:45.45%">180°</span><span style="left:72.73%">270°</span><span style="left:100.0%">360°</span></div>
+      <div class="camLin"><div class="lb">Velocidade<small id="camVelTxt"></small></div></div>
+      <input type="range" id="camVel" min="1" max="10" step="1" aria-label="Velocidade do giro, de 1 a 10">
+      <div class="camMarcas"><span style="left:0.0%">1</span><span style="left:44.44%">5</span><span style="left:100.0%">10</span></div>
+    </div>
+    <p class="msg" id="camMsg"></p>
+    <p class="nota">Tocar ou arrastar a tela pausa o giro; ao soltar, o ponto onde você deixou vira o novo centro.</p>
+  </div>
+</div>
 <div id="atSheet" class="sheetw" hidden>
   <div class="box">
     <div style="display:flex;align-items:center;margin-bottom:4px;gap:6px"><button class="ic sm" id="bAtVoltar" aria-label="Voltar" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><span class="ttl" id="atTitulo">Adicionar ao treino</span><button class="ic" id="bAtFechar" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -474,7 +499,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
   <div class="box">
     <div style="display:flex;align-items:center;margin-bottom:10px"><span class="ttl" id="trTitulo">Meus treinos</span><button class="ic" id="bTrClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="btnLinha"><button class="pri" id="bTrAvulso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Exercício avulso</button></div>
-    <div class="btnLinha"><button id="bTrNovo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo treino</button><button id="bTrMusica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Trilha sonora</button></div>
+    <div class="btnLinha tres"><button id="bTrNovo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo treino</button><button id="bTrMusica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Trilha sonora</button><button id="bTrCamera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2L8.5 5h7l1.8 2h2.2A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.5"/></svg>Câmera</button></div>
     <p class="msg" id="trMsg"></p>
     <div class="ttl2 comIc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M9 10h6M9 13.5h6M9 17h3.5"/></svg><span>Meus treinos</span></div>
     <div id="trList"></div>

@@ -12,7 +12,7 @@
 
   /* ---------- Perfis: cada pessoa tem seus treinos, ajustes, músicas e preferências ---------- */
   const PERFIS_KEY = 'anatomotion.perfis.v1';
-  const BASES_PERFIL = ['corpo3d.treino.v1', 'corpo3d.treinos.v1', 'corpo3d.musica.v1', 'corpo3d.catalogo.v1', 'anatomotion.corpo.v1', 'anatomotion.historico.v1'];
+  const BASES_PERFIL = ['corpo3d.treino.v1', 'corpo3d.treinos.v1', 'corpo3d.musica.v1', 'corpo3d.catalogo.v1', 'anatomotion.corpo.v1', 'anatomotion.historico.v1', 'anatomotion.camera.v1'];
   const CORES_PERFIL = ['#642A90', '#EC357D', '#FF9901', '#99CC33', '#0164C9', '#2BB3A3'];
   let perfisErro = '';
   const PERFIS = (function () {
@@ -1179,6 +1179,7 @@
 
   /* ---------- Câmera orbital ---------- */
   const cam = { th: 0, ph: 0, dist: 3, tx: 0, ty: 1, tz: 0 }, camT = Object.assign({}, cam);
+  let giroOffset = 0; // giro automático da câmera (radianos), somado ao ângulo atual, que fica sendo o centro
   let tweening = false;
   function aimCamera(c, instant) {
     camT.th = rad(c.th); camT.ph = rad(c.ph); camT.dist = c.dist; camT.tx = c.tx || 0; camT.ty = c.ty; camT.tz = c.tz || 0;
@@ -1192,8 +1193,8 @@
       for (const k of ['th', 'ph', 'dist', 'tx', 'ty', 'tz']) { cam[k] += (camT[k] - cam[k]) * 0.09; if (Math.abs(camT[k] - cam[k]) > 0.002) done = false; }
       if (done) { Object.assign(cam, camT); tweening = false; }
     }
-    const cp = Math.cos(cam.ph);
-    camera.position.set(cam.tx + cam.dist * Math.sin(cam.th) * cp, cam.ty + cam.dist * Math.sin(cam.ph), cam.tz + cam.dist * Math.cos(cam.th) * cp);
+    const cp = Math.cos(cam.ph), th = cam.th + giroOffset;
+    camera.position.set(cam.tx + cam.dist * Math.sin(th) * cp, cam.ty + cam.dist * Math.sin(cam.ph), cam.tz + cam.dist * Math.cos(th) * cp);
     camera.lookAt(cam.tx, cam.ty, cam.tz);
   }
 
@@ -3078,6 +3079,62 @@
   avatarUI();
 
   /* =====================================================================
+   * 13. CÂMERA: fixa ou girando em volta do corpo durante o treino
+   *     O ângulo atual é o centro. Até 330°: vai até a ponta de um lado,
+   *     volta e vai até a outra (metade para cada lado). 360°: volta completa.
+   * ===================================================================== */
+  const CAMERA_KEY = chave('anatomotion.camera.v1');
+  const VEL_GIRO = n => 2.5 * n; // graus por segundo: 1 = 2,5°/s … 10 = 25°/s (uma volta em ~14 s)
+  const CAMCFG = (function () {
+    const c = { modo: 'fixa', giro: 180, vel: 3 };
+    try { const o = JSON.parse(localStorage.getItem(CAMERA_KEY) || '{}') || {}; if (o.modo === 'girar' || o.modo === 'fixa') c.modo = o.modo; if ([30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360].includes(o.giro)) c.giro = o.giro; if (Number.isInteger(o.vel) && o.vel >= 1 && o.vel <= 10) c.vel = o.vel; } catch (e) { /* padrão */ }
+    return c;
+  })();
+  function gravarCamCfg() { try { const tx = JSON.stringify(CAMCFG); localStorage.setItem(CAMERA_KEY, tx); return localStorage.getItem(CAMERA_KEY) === tx; } catch (e) { return false; } }
+  let giroFase = 0, giroGrau = 0;
+  function girarCamera(dt) {
+    // gira com um exercício na tela; para quando a pessoa toca/arrasta, foca um músculo ou pausa
+    const ativo = CAMCFG.modo === 'girar' && !cur.repouso && !ptrs.size && !focusKey && S.estado !== 'pausado' && S.estado !== 'congelado' && !tweening;
+    if (!ativo) {
+      // volta suavemente para o centro (e zera, para recomeçar dali)
+      giroGrau *= Math.pow(0.02, dt); if (Math.abs(giroGrau) < 0.05) { giroGrau = 0; giroFase = 0; }
+      giroOffset = rad(giroGrau); return;
+    }
+    const v = VEL_GIRO(CAMCFG.vel);
+    if (CAMCFG.giro >= 360) { giroGrau = (giroGrau + v * dt) % 360; }
+    else {
+      const meia = CAMCFG.giro / 2;               // metade para cada lado do centro
+      giroFase += dt * v / meia;                  // vai e volta suave (mais devagar perto das pontas)
+      const alvo = meia * Math.sin(giroFase);
+      giroGrau += (alvo - giroGrau) * Math.min(1, dt * 6); // sem tranco ao ligar ou mudar o giro
+    }
+    giroOffset = rad(giroGrau);
+  }
+  function camUI() {
+    for (const o of $('camModo').children) o.classList.toggle('on', o.dataset.v === CAMCFG.modo);
+    const des = CAMCFG.modo !== 'girar';
+    $('camGiro').value = String(CAMCFG.giro); $('camVel').value = String(CAMCFG.vel);
+    $('camGiro').disabled = des; $('camVel').disabled = des;
+    $('camOpcoes').classList.toggle('desligado', des);
+    $('camGiroTxt').textContent = CAMCFG.giro >= 360 ? '360° · volta completa' : CAMCFG.giro + '° · ' + (CAMCFG.giro / 2) + '° para cada lado';
+    $('camVelTxt').textContent = CAMCFG.vel + (CAMCFG.vel <= 3 ? ' · devagar' : CAMCFG.vel <= 7 ? ' · moderada' : ' · mais rápida');
+  }
+  function salvarCam(msg) { $('camMsg').textContent = gravarCamCfg() ? (msg || '') : 'Atenção: não consegui gravar neste aparelho; vale só até fechar o app.'; camUI(); }
+  for (const o of $('camModo').children) o.addEventListener('click', () => { CAMCFG.modo = o.dataset.v; giroFase = 0; salvarCam(); });
+  $('camGiro').addEventListener('input', e => { CAMCFG.giro = Math.round(Number(e.target.value) / 30) * 30 || 30; giroFase = Math.asin(Math.max(-1, Math.min(1, CAMCFG.giro < 360 ? giroGrau / (CAMCFG.giro / 2) : 0))); camUI(); });
+  $('camGiro').addEventListener('change', () => salvarCam());
+  $('camVel').addEventListener('input', e => { CAMCFG.vel = Math.max(1, Math.min(10, Math.round(Number(e.target.value)))); camUI(); });
+  $('camVel').addEventListener('change', () => salvarCam());
+  // ao tocar na tela, o ângulo que está sendo visto passa a ser o ângulo da câmera (o giro recomeça dali ao soltar)
+  renderer.domElement.addEventListener('pointerdown', () => {
+    if (!giroGrau) return;
+    const d = rad(giroGrau); cam.th += d; camT.th += d; giroGrau = 0; giroOffset = 0; giroFase = 0;
+  }, true);
+  $('bTrCamera').addEventListener('click', () => { $('camMsg').textContent = ''; camUI(); $('camSheet').hidden = false; });
+  $('bCamClose').addEventListener('click', () => { $('camSheet').hidden = true; });
+  $('camSheet').addEventListener('click', e => { if (e.target.id === 'camSheet') $('camSheet').hidden = true; });
+
+  /* =====================================================================
    * 12. BOTÃO VOLTAR DO CELULAR (Android) e saída do app
    *     O app guarda sempre um passo "a mais" no histórico do navegador. Cada
    *     toque no voltar fecha a tela que está por cima; na tela principal
@@ -3090,6 +3147,7 @@
     if (visivel('infoSheet')) { $('infoSheet').hidden = true; return true; }
     if (visivel('pvSheet')) { fecharPrevia(); return true; }
     if (visivel('exSheet')) { if (visivel('exGrupoMenu')) fecharGrupoMenu(); else fecharCatalogo(); return true; }
+    if (visivel('camSheet')) { $('camSheet').hidden = true; return true; }
     if (visivel('muSheet')) { $('bMuClose').click(); return true; }
     if (visivel('edSheet')) { $('bEdClose').click(); return true; }
     if (visivel('pfSheet')) { if (pfTela.modo !== 'lista') $('bPfVoltar').click(); else $('bPfClose').click(); return true; }
@@ -3128,6 +3186,7 @@
     if (last === null) last = ts;
     const dt = Math.min((ts - last) / 1000, 0.1); last = ts;
     passo(dt);
+    girarCamera(dt);
     // com a galeria ou a prévia cobrindo a tela, o corpo principal não precisa ser redesenhado
     const coberto = MINI.quadro(dt);
     if (!coberto) {
@@ -3179,6 +3238,7 @@
       return { pior: +pior.toFixed(3), dentro: res };
     },
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
+    camera2: () => ({ cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
