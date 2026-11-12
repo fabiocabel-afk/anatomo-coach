@@ -217,8 +217,22 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 #q:focus{border-color:var(--roxo)}
 #list{overflow-y:auto;flex:1}
 .lh{font-size:12px;color:var(--roxo);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
-.li{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;background:none;border:0;border-bottom:1px solid var(--bd);color:var(--tx);padding:10px 2px;text-align:left;cursor:pointer}
+.li{display:flex;flex-direction:row;align-items:center;gap:8px;width:100%;background:none;border:0;border-bottom:1px solid var(--bd);color:var(--tx);padding:10px 2px;text-align:left;cursor:pointer}
+.liTx{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .li b{font-weight:500;font-size:15px}
+/* favoritos: estrela vazia; marcada fica amarelo mostarda */
+.fav{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:#8f8799;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.fav svg{width:22px;height:22px}
+.fav.on{color:#E1AD01}
+.fav:active{transform:scale(.88)}
+.gi{position:relative}
+.gi .fav{position:absolute;top:8px;right:8px;width:34px;height:34px;background:rgba(19,16,22,.6)}
+.gi .fav svg{width:19px;height:19px}
+.favTopo svg{width:21px;height:21px;color:#8f8799}
+.favTopo.on{border-color:#E1AD01;background:rgba(225,173,1,.14)}
+.favTopo.on svg{color:#E1AD01}
+.dd.desligado .ddBtn{opacity:.5}
+#pvFav .fav{width:36px;height:36px}
 .li span{font-size:12px;color:var(--tx2)}
 .empty{color:var(--tx2);font-size:14px;text-align:center;margin-top:30px}
 
@@ -368,7 +382,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 <div id="exSheet" class="sheetw" hidden>
   <div class="box" style="display:flex;flex-direction:column;height:86vh">
     <p id="exTit" hidden></p>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><input id="exQ" type="search" placeholder="Buscar exercício ou músculo" autocomplete="off" style="flex:1;height:42px;border-radius:10px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);padding:0 12px;font-size:15px;font-family:inherit;outline:none"><button class="ic" id="bExClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><input id="exQ" type="search" placeholder="Buscar exercício ou músculo" autocomplete="off" style="flex:1;height:42px;border-radius:10px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);padding:0 12px;font-size:15px;font-family:inherit;outline:none"><button class="ic favTopo" id="bSoFav" aria-label="Mostrar só favoritos" aria-pressed="false"></button><button class="ic" id="bExClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="exBar">
       <div class="dd" id="exGrupo">
         <button class="ddBtn" id="exGrupoBtn" aria-haspopup="listbox" aria-expanded="false"><span id="exGrupoTxt">Todos os grupos</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
@@ -376,12 +390,13 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
       </div>
       <div class="seg vis" id="exModo" role="group" aria-label="Modo de visualização"><button data-v="lista" aria-label="Lista" title="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><button data-v="mini" aria-label="Miniaturas" title="Miniaturas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button></div>
     </div>
+    <p class="msg" id="exMsg" style="margin:0;min-height:0"></p>
     <div id="exList" style="overflow-y:auto;flex:1"></div>
   </div>
 </div>
 <div id="pvSheet" class="pvw" hidden>
   <div class="pvBox" role="dialog" aria-modal="true" aria-labelledby="pvNome">
-    <div class="pvTop"><div class="trt"><b id="pvNome"></b><small id="pvGrupo"></small></div><button class="ic sm" id="bPvInfo" aria-label="Como fazer" title="Como fazer">i</button></div>
+    <div class="pvTop"><div class="trt"><b id="pvNome"></b><small id="pvGrupo"></small></div><span id="pvFav"></span><button class="ic sm" id="bPvInfo" aria-label="Como fazer" title="Como fazer">i</button></div>
     <div id="pvCena"></div>
     <p id="pvMus"></p>
     <div class="pvBtns"><button id="bPvVoltar">Voltar</button><button class="pri" id="bPvFazer">Começar exercício</button></div>
@@ -407,7 +422,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.18.4</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.19.0</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -3335,11 +3350,38 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const totalEq = eq => GRUPOS.filter(g => g.eq === eq).reduce((a, g) => a + g.n, 0);
   const grupoValido = k => k === 'todos' || (typeof k === 'string' && (k.startsWith('eq:') ? EQUIPS.includes(k.slice(3)) : GRUPOS.some(g => g.k === k)));
   const CAT = (function () {
-    const c = { grupo: 'todos', modo: 'lista' };
-    try { const o = JSON.parse(localStorage.getItem(CAT_KEY) || '{}') || {}; if (grupoValido(o.grupo)) c.grupo = o.grupo; if (o.modo === 'mini' || o.modo === 'lista') c.modo = o.modo; } catch (e) { /* padrão */ }
+    const c = { grupo: 'todos', modo: 'lista', favs: [], soFav: false };
+    try { const o = JSON.parse(localStorage.getItem(CAT_KEY) || '{}') || {}; if (grupoValido(o.grupo)) c.grupo = o.grupo; if (o.modo === 'mini' || o.modo === 'lista') c.modo = o.modo;
+      if (Array.isArray(o.favs)) c.favs = o.favs.filter(id => EXERCICIOS.some(e => e.id === id)); c.soFav = o.soFav === true; } catch (e) { /* padrão */ }
     return c;
   })();
-  function gravarCat() { try { localStorage.setItem(CAT_KEY, JSON.stringify(CAT)); } catch (e) { /* só preferência de tela */ } }
+  function gravarCat() { try { const tx = JSON.stringify(CAT); localStorage.setItem(CAT_KEY, tx); return localStorage.getItem(CAT_KEY) === tx; } catch (e) { return false; } }
+  /* ---------- Favoritos (de cada perfil) ---------- */
+  const ESTRELA = on => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17.2l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="' + (on ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+  const ehFav = id => CAT.favs.includes(id);
+  function alternarFav(id) {
+    const antes = CAT.favs.slice();
+    CAT.favs = ehFav(id) ? CAT.favs.filter(x => x !== id) : CAT.favs.concat(id);
+    if (!gravarCat()) { CAT.favs = antes; $('exMsg').textContent = 'Atenção: não consegui gravar o favorito neste aparelho.'; return false; }
+    $('exMsg').textContent = '';
+    return true;
+  }
+  function botaoEstrela(ex, aoMudar) {
+    const b = document.createElement('span'); b.setAttribute('role', 'button'); b.tabIndex = 0; b.className = 'fav' + (ehFav(ex.id) ? ' on' : '');
+    const pinta = () => { const on = ehFav(ex.id); b.classList.toggle('on', on); b.innerHTML = ESTRELA(on); b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', (on ? 'Tirar dos favoritos: ' : 'Favoritar: ') + ex.nome); };
+    pinta();
+    const agir = e => { e.stopPropagation(); e.preventDefault(); if (alternarFav(ex.id)) { pinta(); if (aoMudar) aoMudar(); } };
+    b.addEventListener('click', agir);
+    b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') agir(e); });
+    b.addEventListener('pointerdown', e => e.stopPropagation());
+    return b;
+  }
+  function filtroFavUI() {
+    const b = $('bSoFav'); b.classList.toggle('on', CAT.soFav); b.innerHTML = ESTRELA(CAT.soFav);
+    b.setAttribute('aria-pressed', String(CAT.soFav)); b.title = CAT.soFav ? 'Mostrando só favoritos (toque para ver todos)' : 'Mostrar só favoritos';
+    $('exGrupo').classList.toggle('desligado', CAT.soFav);
+  }
+  $('bSoFav').addEventListener('click', () => { CAT.soFav = !CAT.soFav; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; });
   const grupoNome = k => k === 'todos' ? 'Todos os grupos (' + EXERCICIOS.length + ')' : k.startsWith('eq:') ? EQUIP[k.slice(3)] + ' · todos (' + totalEq(k.slice(3)) + ')' : (g => g.nome + ' (' + g.n + ')')(GRUPOS.find(g => g.k === k));
   // lista em árvore: Todos → equipamento → região, com as linhas em "L" ligando os níveis
   function renderGrupoMenu() {
@@ -3350,7 +3392,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       for (const g of guias) { const sp = document.createElement('span'); sp.className = 'gv ' + g; sp.setAttribute('aria-hidden', 'true'); b.appendChild(sp); }
       const tx = document.createElement('span'); tx.className = 'ddTx'; tx.textContent = nome; b.appendChild(tx);
       const em = document.createElement('em'); em.textContent = String(n); b.appendChild(em);
-      b.addEventListener('click', () => { CAT.grupo = k; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; });
+      b.addEventListener('click', () => { CAT.grupo = k; CAT.soFav = false; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; });
       m.appendChild(b);
     };
     op('todos', 'Todos os grupos', EXERCICIOS.length, []);
@@ -3375,38 +3417,43 @@ window.CORPO3D_EXERCICIOS = function (H) {
 
   function filtrarCatalogo(q) {
     const nq = norm(q || '');
+    if (CAT.soFav) return EXERCICIOS.filter(e => ehFav(e.id) && (!nq || norm(e.nome + ' ' + e.prim.concat(e.sec).map(k => INFO[k][0] + ' ' + INFO[k][1]).join(' ')).includes(nq)));
     return EXERCICIOS.filter(e => (CAT.grupo === 'todos' || (CAT.grupo.startsWith('eq:') ? e.equip === CAT.grupo.slice(3) : e.equip + '|' + e.regiao === CAT.grupo)) &&
       (!nq || norm(e.nome + ' ' + e.prim.concat(e.sec).map(k => INFO[k][0] + ' ' + INFO[k][1]).join(' ')).includes(nq)));
   }
   function renderCatalogo(q) {
-    $('exGrupoTxt').textContent = grupoNome(CAT.grupo);
+    $('exGrupoTxt').textContent = CAT.soFav ? 'Favoritos (' + CAT.favs.length + ')' : grupoNome(CAT.grupo);
+    filtroFavUI();
     for (const o of $('exModo').children) { o.classList.toggle('on', o.dataset.v === CAT.modo); o.setAttribute('aria-pressed', String(o.dataset.v === CAT.modo)); }
     const box = $('exList'); box.innerHTML = ''; MINI.limpar();
     let todos = filtrarCatalogo(q);
     // buscou e não há nada no grupo escolhido: mostra o que existe nos outros grupos
-    if (q && !todos.length && CAT.grupo !== 'todos') {
+    if (q && !todos.length && CAT.grupo !== 'todos' && !CAT.soFav) {
       const g0 = CAT.grupo; CAT.grupo = 'todos'; todos = filtrarCatalogo(q); CAT.grupo = g0;
       if (todos.length) { const av = document.createElement('p'); av.className = 'empty'; av.style.margin = '10px 0 0'; av.textContent = 'Nada neste grupo. Encontrados em outros grupos:'; box.appendChild(av); }
     }
     for (const g of GRUPOS) {
       const lista = todos.filter(e => e.equip === g.eq && e.regiao === g.rg);
       if (!lista.length) continue;
-      if (CAT.grupo === 'todos' || CAT.grupo.startsWith('eq:') || q) { const h = document.createElement('div'); h.className = 'lh'; h.textContent = g.nome + ' (' + lista.length + ')'; box.appendChild(h); }
+      if (CAT.grupo === 'todos' || CAT.grupo.startsWith('eq:') || q || CAT.soFav) { const h = document.createElement('div'); h.className = 'lh'; h.textContent = g.nome + ' (' + lista.length + ')'; box.appendChild(h); }
       const alvo = CAT.modo === 'mini' ? box.appendChild(Object.assign(document.createElement('div'), { className: 'gal' })) : box;
       for (const ex of lista) {
         const it = document.createElement('button');
         if (CAT.modo === 'mini') {
           it.className = 'gi' + (ex.id === cur.id && !escolhaCb ? ' on' : '');
           const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MINI.TAM; it.appendChild(cv2);
+          it.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
           const b = document.createElement('b'); b.textContent = ex.nome; it.appendChild(b);
           const sp = document.createElement('span'); sp.textContent = musculosTxt(ex); it.appendChild(sp);
           MINI.registrar(cv2, ex);
         } else {
           it.className = 'li';
-          it.innerHTML = '<b></b><span></span>';
-          it.firstChild.textContent = ex.nome;
-          if (ex.alt) { const tg = document.createElement('span'); tg.className = 'tg'; tg.textContent = 'alternado'; it.firstChild.appendChild(tg); }
-          it.lastChild.textContent = musculosTxt(ex);
+          const tx = document.createElement('div'); tx.className = 'liTx';
+          const b = document.createElement('b'); b.textContent = ex.nome; tx.appendChild(b);
+          if (ex.alt) { const tg = document.createElement('span'); tg.className = 'tg'; tg.textContent = 'alternado'; b.appendChild(tg); }
+          const sp = document.createElement('span'); sp.textContent = musculosTxt(ex); tx.appendChild(sp);
+          it.appendChild(tx);
+          it.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
           if (ex.id === cur.id && !escolhaCb) it.style.background = 'rgba(100,42,144,.18)';
         }
         it.dataset.id = ex.id;
@@ -3414,7 +3461,8 @@ window.CORPO3D_EXERCICIOS = function (H) {
         alvo.appendChild(it);
       }
     }
-    if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum exercício encontrado' + (CAT.grupo !== 'todos' ? ' neste grupo' : '') + '.</p>';
+    if (!box.children.length) box.innerHTML = CAT.soFav ? (q ? '<p class="empty">Nenhum favorito com essa busca.</p>' : '<p class="empty">Nenhum favorito ainda. Toque na estrela de um exercício para favoritar.</p>')
+      : '<p class="empty">Nenhum exercício encontrado' + (CAT.grupo !== 'todos' ? ' neste grupo' : '') + '.</p>';
   }
   let escolhaCb = null; // quando o catálogo é aberto para escolher um exercício do treino
   function abrirCatalogo(cb, grupoK) {
@@ -3435,6 +3483,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     $('pvNome').textContent = ex.nome;
     $('pvGrupo').textContent = EQUIP[ex.equip] + ' · ' + REGIAO[ex.regiao] + (ex.alt ? ' · alterna os lados' : '') + (ex.isometria ? ' · isométrico' : '');
     $('pvMus').textContent = 'Trabalha: ' + musculosTxt(ex);
+    const ve = $('pvFav'); ve.innerHTML = ''; ve.appendChild(botaoEstrela(ex, () => renderCatalogo($('exQ').value)));
     $('bPvFazer').textContent = escolhaCb ? 'Adicionar ao treino' : 'Começar exercício';
     $('pvSheet').hidden = false;
     MINI.abrirPrevia(ex, $('pvCena'));
@@ -4857,7 +4906,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     perfis: () => JSON.parse(JSON.stringify(PERFIS)),
     corpo: pid => lerCorpo(pid || PERFIS.atual),
     historico: pid => lerHistorico(pid || PERFIS.atual),
-    catalogo2: () => ({ grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
+    catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
     setView: (th, ph, dist, ty) => { tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: 0, ty, tz: 0 }); },
