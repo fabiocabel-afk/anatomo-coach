@@ -1544,9 +1544,10 @@
         const it = document.createElement('button');
         if (CAT.modo === 'mini') {
           it.className = 'gi' + (ex.id === cur.id && !escolhaCb ? ' on' : '');
-          const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MINI.TAM; it.appendChild(cv2);
-          it.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
-          if (!escolhaCb) it.appendChild(botaoAddTreino(ex));
+          const img = document.createElement('div'); img.className = 'giImg'; it.appendChild(img);
+          const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MINI.TAM; img.appendChild(cv2);
+          img.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
+          if (!escolhaCb) img.appendChild(botaoAddTreino(ex));
           const b = document.createElement('b'); b.textContent = ex.nome; it.appendChild(b);
           const sp = document.createElement('span'); sp.textContent = musculosTxt(ex); it.appendChild(sp);
           MINI.registrar(cv2, ex);
@@ -3075,6 +3076,49 @@
   $('pfSheet').addEventListener('click', e => { if (e.target.id === 'pfSheet') { pfEdit = null; $('pfSheet').hidden = true; } });
   $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length], corpo: lerCorpo('__novo__') }; irPf('editar', null); });
   avatarUI();
+
+  /* =====================================================================
+   * 12. BOTÃO VOLTAR DO CELULAR (Android) e saída do app
+   *     O app guarda sempre um passo "a mais" no histórico do navegador. Cada
+   *     toque no voltar fecha a tela que está por cima; na tela principal
+   *     pergunta se quer sair.
+   * ===================================================================== */
+  const visivel = id => { const e = $(id); return !!e && !e.hidden; };
+  function voltarUmaTela() {
+    if (visivel('sairBox')) { $('sairBox').hidden = true; return true; }
+    if (visivel('atSheet')) { if (AT && AT.etapa === 'ajustar') { AT.etapa = 'escolher'; renderAddTreino(); } else fecharAddTreino(); return true; }
+    if (visivel('infoSheet')) { $('infoSheet').hidden = true; return true; }
+    if (visivel('pvSheet')) { fecharPrevia(); return true; }
+    if (visivel('exSheet')) { if (visivel('exGrupoMenu')) fecharGrupoMenu(); else fecharCatalogo(); return true; }
+    if (visivel('muSheet')) { $('bMuClose').click(); return true; }
+    if (visivel('edSheet')) { $('bEdClose').click(); return true; }
+    if (visivel('pfSheet')) { if (pfTela.modo !== 'lista') $('bPfVoltar').click(); else $('bPfClose').click(); return true; }
+    if (visivel('trSheet')) { $('bTrClose').click(); return true; }
+    if (visivel('cfgSheet')) { $('bCfgClose').click(); return true; }
+    if (visivel('sheet')) { $('sheet').hidden = true; return true; }
+    if (visivel('bClose')) { $('bClose').click(); return true; }              // músculo em foco: volta ao corpo inteiro
+    if (document.body.classList.contains('infoAberta')) { $('bRecolher').click(); return true; }
+    if (['treino', 'preparo', 'descanso', 'concluindo'].includes(S.estado)) { $('bParar').click(); return true; } // treinando: pausa
+    return false;
+  }
+  let saindo = false;
+  function guardarPasso() { try { history.pushState({ anato: 'guarda' }, ''); } catch (e) { /* ok */ } }
+  try { history.replaceState({ anato: 'raiz' }, ''); guardarPasso(); } catch (e) { /* navegador sem histórico */ }
+  window.addEventListener('popstate', () => {
+    if (saindo) return;
+    if (voltarUmaTela()) { guardarPasso(); return; }
+    // tela principal: pergunta se quer sair. Sem guardar o passo: outro "voltar" fecha o app
+    $('sairBox').hidden = false;
+  });
+  $('bFicar').addEventListener('click', () => { $('sairBox').hidden = true; guardarPasso(); });
+  $('bSair').addEventListener('click', () => {
+    saindo = true; calarVoz(); if (window.Musica) Musica.parar(true);
+    $('sairBox').hidden = true;
+    try { window.close(); } catch (e) { /* ok */ }
+    // se o sistema não deixou fechar, volta além do início (no app instalado, isso fecha)
+    setTimeout(() => { try { history.back(); } catch (e) { /* ok */ } }, 120);
+    setTimeout(() => { if (!document.hidden) { saindo = false; $('sairMsg').textContent = 'Toque em voltar do celular mais uma vez para fechar.'; $('sairBox').hidden = false; } }, 900);
+  });
 
   setExercise('repouso', true);
   painelTreino();

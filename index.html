@@ -238,7 +238,8 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .addTr{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:#C9A6FF;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .addTr svg{width:22px;height:22px}
 .addTr:active{transform:scale(.88)}
-.gi .addTr{position:absolute;top:8px;left:8px;width:34px;height:34px;background:rgba(19,16,22,.6)}
+.giImg{position:relative}
+.gi .addTr{position:absolute;bottom:8px;left:8px;width:34px;height:34px;background:rgba(19,16,22,.6)}
 .gi .addTr svg{width:19px;height:19px}
 #pvFav .addTr{width:36px;height:36px}
 .atOp{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--bd);background:var(--card2);color:var(--tx);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:inherit}
@@ -414,6 +415,13 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div id="exList" style="overflow-y:auto;flex:1"></div>
   </div>
 </div>
+<div id="sairBox" class="pvw" hidden style="z-index:30">
+  <div class="pvBox" role="alertdialog" aria-modal="true" aria-labelledby="sairTit" style="text-align:center">
+    <p id="sairTit" style="font-size:18px;font-weight:600;margin:4px 0 6px">Sair do <span style="color:#fff">Anato</span><span style="color:#9D5FE0">Motion</span>?</p>
+    <p class="nota" id="sairMsg" style="margin:0 0 14px">Seus treinos e histórico ficam salvos.</p>
+    <div class="pvBtns"><button class="pri" id="bFicar">Ficar</button><button id="bSair">Sair</button></div>
+  </div>
+</div>
 <div id="atSheet" class="sheetw" hidden>
   <div class="box">
     <div style="display:flex;align-items:center;margin-bottom:4px;gap:6px"><button class="ic sm" id="bAtVoltar" aria-label="Voltar" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><span class="ttl" id="atTitulo">Adicionar ao treino</span><button class="ic" id="bAtFechar" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -450,7 +458,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.20.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.20.1</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -3469,9 +3477,10 @@ window.CORPO3D_EXERCICIOS = function (H) {
         const it = document.createElement('button');
         if (CAT.modo === 'mini') {
           it.className = 'gi' + (ex.id === cur.id && !escolhaCb ? ' on' : '');
-          const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MINI.TAM; it.appendChild(cv2);
-          it.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
-          if (!escolhaCb) it.appendChild(botaoAddTreino(ex));
+          const img = document.createElement('div'); img.className = 'giImg'; it.appendChild(img);
+          const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MINI.TAM; img.appendChild(cv2);
+          img.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
+          if (!escolhaCb) img.appendChild(botaoAddTreino(ex));
           const b = document.createElement('b'); b.textContent = ex.nome; it.appendChild(b);
           const sp = document.createElement('span'); sp.textContent = musculosTxt(ex); it.appendChild(sp);
           MINI.registrar(cv2, ex);
@@ -5000,6 +5009,49 @@ window.CORPO3D_EXERCICIOS = function (H) {
   $('pfSheet').addEventListener('click', e => { if (e.target.id === 'pfSheet') { pfEdit = null; $('pfSheet').hidden = true; } });
   $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length], corpo: lerCorpo('__novo__') }; irPf('editar', null); });
   avatarUI();
+
+  /* =====================================================================
+   * 12. BOTÃO VOLTAR DO CELULAR (Android) e saída do app
+   *     O app guarda sempre um passo "a mais" no histórico do navegador. Cada
+   *     toque no voltar fecha a tela que está por cima; na tela principal
+   *     pergunta se quer sair.
+   * ===================================================================== */
+  const visivel = id => { const e = $(id); return !!e && !e.hidden; };
+  function voltarUmaTela() {
+    if (visivel('sairBox')) { $('sairBox').hidden = true; return true; }
+    if (visivel('atSheet')) { if (AT && AT.etapa === 'ajustar') { AT.etapa = 'escolher'; renderAddTreino(); } else fecharAddTreino(); return true; }
+    if (visivel('infoSheet')) { $('infoSheet').hidden = true; return true; }
+    if (visivel('pvSheet')) { fecharPrevia(); return true; }
+    if (visivel('exSheet')) { if (visivel('exGrupoMenu')) fecharGrupoMenu(); else fecharCatalogo(); return true; }
+    if (visivel('muSheet')) { $('bMuClose').click(); return true; }
+    if (visivel('edSheet')) { $('bEdClose').click(); return true; }
+    if (visivel('pfSheet')) { if (pfTela.modo !== 'lista') $('bPfVoltar').click(); else $('bPfClose').click(); return true; }
+    if (visivel('trSheet')) { $('bTrClose').click(); return true; }
+    if (visivel('cfgSheet')) { $('bCfgClose').click(); return true; }
+    if (visivel('sheet')) { $('sheet').hidden = true; return true; }
+    if (visivel('bClose')) { $('bClose').click(); return true; }              // músculo em foco: volta ao corpo inteiro
+    if (document.body.classList.contains('infoAberta')) { $('bRecolher').click(); return true; }
+    if (['treino', 'preparo', 'descanso', 'concluindo'].includes(S.estado)) { $('bParar').click(); return true; } // treinando: pausa
+    return false;
+  }
+  let saindo = false;
+  function guardarPasso() { try { history.pushState({ anato: 'guarda' }, ''); } catch (e) { /* ok */ } }
+  try { history.replaceState({ anato: 'raiz' }, ''); guardarPasso(); } catch (e) { /* navegador sem histórico */ }
+  window.addEventListener('popstate', () => {
+    if (saindo) return;
+    if (voltarUmaTela()) { guardarPasso(); return; }
+    // tela principal: pergunta se quer sair. Sem guardar o passo: outro "voltar" fecha o app
+    $('sairBox').hidden = false;
+  });
+  $('bFicar').addEventListener('click', () => { $('sairBox').hidden = true; guardarPasso(); });
+  $('bSair').addEventListener('click', () => {
+    saindo = true; calarVoz(); if (window.Musica) Musica.parar(true);
+    $('sairBox').hidden = true;
+    try { window.close(); } catch (e) { /* ok */ }
+    // se o sistema não deixou fechar, volta além do início (no app instalado, isso fecha)
+    setTimeout(() => { try { history.back(); } catch (e) { /* ok */ } }, 120);
+    setTimeout(() => { if (!document.hidden) { saindo = false; $('sairMsg').textContent = 'Toque em voltar do celular mais uma vez para fechar.'; $('sairBox').hidden = false; } }, 900);
+  });
 
   setExercise('repouso', true);
   painelTreino();

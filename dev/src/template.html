@@ -238,7 +238,8 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .addTr{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:#C9A6FF;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .addTr svg{width:22px;height:22px}
 .addTr:active{transform:scale(.88)}
-.gi .addTr{position:absolute;top:8px;left:8px;width:34px;height:34px;background:rgba(19,16,22,.6)}
+.giImg{position:relative}
+.gi .addTr{position:absolute;bottom:8px;left:8px;width:34px;height:34px;background:rgba(19,16,22,.6)}
 .gi .addTr svg{width:19px;height:19px}
 #pvFav .addTr{width:36px;height:36px}
 .atOp{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--bd);background:var(--card2);color:var(--tx);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:inherit}
@@ -412,6 +413,13 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     </div>
     <p class="msg" id="exMsg" style="margin:0;min-height:0"></p>
     <div id="exList" style="overflow-y:auto;flex:1"></div>
+  </div>
+</div>
+<div id="sairBox" class="pvw" hidden style="z-index:30">
+  <div class="pvBox" role="alertdialog" aria-modal="true" aria-labelledby="sairTit" style="text-align:center">
+    <p id="sairTit" style="font-size:18px;font-weight:600;margin:4px 0 6px">Sair do <span style="color:#fff">Anato</span><span style="color:#9D5FE0">Motion</span>?</p>
+    <p class="nota" id="sairMsg" style="margin:0 0 14px">Seus treinos e histórico ficam salvos.</p>
+    <div class="pvBtns"><button class="pri" id="bFicar">Ficar</button><button id="bSair">Sair</button></div>
   </div>
 </div>
 <div id="atSheet" class="sheetw" hidden>
