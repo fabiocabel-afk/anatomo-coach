@@ -3145,6 +3145,7 @@
     exAtual: () => cur,
     garrafasPos: () => garrafas.filter(g => g.visible).map(g => g.position.toArray()),
     pesPos: () => GR.pes.map(o => o.getWorldPosition(new V3()).toArray()),
+    camera: c => aimCamera(c, true),
     posar: (p, l) => { S.estado = 'congelado'; phase = p; lado = l || 0; blend = null; applyPose(p); },
     neutro: () => { cur = Object.assign({}, cur, { prim: [], sec: [] }); },
     setPhase: (p, l) => { S.estado = 'congelado'; phase = p; lado = l || 0; },
@@ -3157,6 +3158,26 @@
     perfis: () => JSON.parse(JSON.stringify(PERFIS)),
     corpo: pid => lerCorpo(pid || PERFIS.atual),
     historico: pid => lerHistorico(pid || PERFIS.atual),
+    // diagnóstico: partes do corpo que a barra atravessa na pose atual
+    barraNoCorpo: () => {
+      const b2 = barra.visible ? barra : barraW.visible ? barraW : null; if (!b2) return null;
+      rig.updateMatrixWorld(true); baseMesh.skeleton.update();
+      const c = b2.position.clone(), eixo = new V3(1, 0, 0).applyQuaternion(b2.quaternion);
+      const m1 = CONTACT.hands[0].getWorldPosition(new V3()), m2 = CONTACT.hands[2].getWorldPosition(new V3());
+      const pos = baseMesh.geometry.attributes.position, si = baseMesh.geometry.attributes.skinIndex, sw = baseMesh.geometry.attributes.skinWeight, v = new V3();
+      const res = {}; let pior = 9;
+      for (let i = 0; i < pos.count; i += 2) {
+        v.fromBufferAttribute(pos, i); baseMesh.boneTransform(i, v); v.applyMatrix4(baseMesh.matrixWorld);
+        const d0 = v.clone().sub(c), al = d0.dot(eixo); if (Math.abs(al) > 0.55) continue;
+        const dist = d0.addScaledVector(eixo, -al).length();
+        if (v.distanceTo(m1) < 0.09 || v.distanceTo(m2) < 0.09) continue; // mãos segurando
+        let k = 0; for (let j = 1; j < 4; j++) if (sw.array[i * 4 + j] > sw.array[i * 4 + k]) k = j;
+        const osso = baseMesh.skeleton.bones[si.array[i * 4 + k]].name;
+        if (dist < (window.__limBarra || 0.012)) res[osso] = (res[osso] || 0) + 1;
+        if (dist < pior) pior = dist;
+      }
+      return { pior: +pior.toFixed(3), dentro: res };
+    },
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
@@ -3169,6 +3190,7 @@
     fimAnimacao: () => { Object.assign(cam, camT); tweening = false; },
     pickAt: (x, y) => { const h = pickAt(x, y); return h ? h.k + ':' + h.side : null; },
     project: (x, y, z) => { const v = new V3(x, y, z).project(camera); const r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
+    postura: () => { rig.updateMatrixWorld(true); const g = n => bones[n].getWorldPosition(new V3()); const r = {}; for (const n of ['head', 'hips', 'leftLowerLeg', 'leftFoot', 'leftToes', 'upperChest']) r[n] = g(n).toArray().map(x => +x.toFixed(3)); return r; },
     pontos: () => { const r = {}; for (const [k, l] of [['pes', PIVO], ['maos', CONTACT.hands]]) { const v = new V3(); for (const o of l) { o.getWorldPosition(_w); v.add(_w); } v.multiplyScalar(1 / l.length); r[k] = v.toArray().map(x => +x.toFixed(4)); } r.peito = +bones.upperChest.getWorldPosition(new V3()).y.toFixed(3); return r; },
     ossos: l => Object.fromEntries(l.map(n => [n, bones[n].getWorldPosition(new V3()).toArray().map(v => +v.toFixed(3))])),
     medir: () => ({ ikErro, pesY: ['left', 'right'].map(pn => PES[pn].map(o => +o.getWorldPosition(new V3()).y.toFixed(3))), minFeet: minY(CONTACT.feet), minHands: minY(CONTACT.hands), minAll: minY(ALL_CONTACTS), ossos: boneList.length, musculos: Object.keys(INFO).length, instancias: NM, vertices: muscleMesh.geometry.attributes.position.count + baseMesh.geometry.attributes.position.count })

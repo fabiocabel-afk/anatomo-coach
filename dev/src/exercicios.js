@@ -15,16 +15,23 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const O = (...xs) => Object.assign({}, ...xs);
   const NEUTRO = O(both('LowerArmTwist', [0, -45, 0]), both('Hand', [0, -45, 0]));
   const PRONADO = O(both('LowerArmTwist', [0, -90, 0]), both('Hand', [0, -90, 0]));
-  const SQ_B = O(both('UpperLeg', [-100, 0, 8]), both('LowerLeg', [120, 0, 0]), both('Foot', [-22, 0, 0]),
-    { spine: [18, 0, 0], chest: [12, 0, 0], upperChest: [4, 0, 0], neck: [-22, 0, 0] });
-  const SQ_RETO = O(both('UpperLeg', [-100, 0, 8]), both('LowerLeg', [120, 0, 0]), both('Foot', [-22, 0, 0]),
-    { spine: [10, 0, 0], chest: [4, 0, 0], neck: [-12, 0, 0] });
+  // agachamento: o tronco inclina a partir do quadril (coluna neutra), o quadril vai para trás
+  // e a cabeça fica mais ou menos na linha dos joelhos — assim o peso fica sobre o meio do pé
+  const SQ_B = O({ hips: [40, 0, 0], spine: [5, 0, 0], chest: [2, 0, 0], neck: [-32, 0, 0] },
+    both('UpperLeg', [-140, 0, 8]), both('LowerLeg', [124, 0, 0]), both('Foot', [-26, 0, 0]));
+  // versão mais em pé (goblet, frontal, anilha no peito): um pouco menos de inclinação, joelhos mais à frente
+  // acima da cabeça: tronco o mais em pé possível e joelhos bem à frente, peso alinhado sob os braços
+  const SQ_OH = O({ hips: [22, 0, 0], spine: [2, 0, 0], neck: [-18, 0, 0] },
+    both('UpperLeg', [-120, 0, 8]), both('LowerLeg', [134, 0, 0]), both('Foot', [-36, 0, 0]));
+  const SQ_RETO = O({ hips: [31, 0, 0], spine: [4, 0, 0], chest: [2, 0, 0], neck: [-27, 0, 0] },
+    both('UpperLeg', [-129, 0, 8]), both('LowerLeg', [129, 0, 0]), both('Foot', [-31, 0, 0]));
   const STIFF_B = O({ hips: [75, 0, 0], spine: [3, 0, 0], neck: [-25, 0, 0] }, both('UpperLeg', [-85, 0, 0]), both('LowerLeg', [15, 0, 0]), both('Foot', [-5, 0, 0]));
   const TERRA_B = O({ hips: [55, 0, 0], spine: [5, 0, 0], neck: [-20, 0, 0] }, both('UpperLeg', [-97, 0, 0]), both('LowerLeg', [57, 0, 0]), both('Foot', [-15, 0, 0]));
   const CURVADO = O({ hips: [45, 0, 0], spine: [5, 0, 0], neck: [-25, 0, 0] }, both('UpperLeg', [-55, 0, 0]), both('LowerLeg', [25, 0, 0]), both('Foot', [-15, 0, 0]));
   const BOMDIA_B = O({ hips: [70, 0, 0], spine: [2, 0, 0], neck: [-25, 0, 0] }, both('UpperLeg', [-78, 0, 0]), both('LowerLeg', [12, 0, 0]), both('Foot', [-4, 0, 0]));
   const PANT_B = O(both('Foot', [36, 0, 0]), both('Toes', [-36, 0, 0]));
   const PENDURADO = { d: [0.06, -1, 0.02], r: 0.97 };       // braço caído na vertical (mundo)
+  const PEND_BARRA = { d: [0.06, -1, 0.22], r: 0.97 };      // segurando barra: um pouco à frente, para a barra passar rente às coxas sem atravessar
   const PE = { p: [0.105, 0.135] };
   // ---- chão
   const SUP = [-90, 0, 0], BRU = [90, 0, 0], LADO = [0, 0, 90];
@@ -61,7 +68,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       desc: 'Desça como se fosse sentar numa cadeira, peito aberto e joelhos na linha dos pés.',
       prim: [...G.quadriceps, 'gluteo_maximo'], sec: ['adutores', 'gracil', ...G.isquios, 'eretor_espinha', 'gluteo_medio'],
       cam: CAM_INF, periodo: 3.2,
-      A: O(relaxed), B: O(relaxed, SQ_B, both('UpperArm', [-100, 0, 0]), both('LowerArm', [-8, 0, 0])),
+      A: O(relaxed), B: O(relaxed, SQ_B, both('UpperArm', [-132, 0, 0]), both('LowerArm', [-8, 0, 0])),
       info: { passos: ['Pés na largura dos ombros, pontas levemente para fora.', 'Leve o quadril para trás e dobre os joelhos ao mesmo tempo.', 'Desça até as coxas ficarem paralelas ao chão, braços à frente para equilibrar.', 'Empurre o chão com o pé inteiro para subir.'],
         dicas: ['Joelhos acompanham a direção das pontas dos pés.', 'Mantenha o peito aberto e o olhar à frente.'], erros: ['Tirar os calcanhares do chão.', 'Deixar os joelhos caírem para dentro.'], resp: 'Inspire ao descer, solte o ar ao subir.' } },
     { id: 'flexao', nome: 'Flexão de braço', equip: 'corpo', regiao: 'superior',
@@ -342,8 +349,8 @@ window.CORPO3D_EXERCICIOS = function (H) {
       desc: 'Braços esticados segurando a anilha no alto; agache sem deixá-la cair à frente.',
       prim: [...G.quadriceps, 'gluteo_maximo', 'deltoide_anterior'], sec: ['trapezio_desc', 'reto_abdome', 'eretor_espinha', ...G.triceps],
       cam: { th: 55, ph: 8, dist: 4.0, ty: 1.05 }, prop: 'anilha', periodo: 3.4,
-      A: O(fist, NEUTRO), B: O(fist, NEUTRO, SQ_RETO),
-      bracos: { frame: 'peito', A: { p: [0.135, 0.62, 0.04] }, B: { p: [0.135, 0.62, 0.0] }, polo: [0.5, -1, 0.2] },
+      A: O(fist, NEUTRO), B: O(fist, NEUTRO, SQ_OH),
+      bracos: { frame: 'peito', A: { p: [0.135, 0.62, 0.04] }, B: { p: [0.135, 0.57, -0.25] }, polo: [0.5, -1, 0.2] },
       info: { passos: ['Segure a anilha pelas laterais, braços esticados acima da cabeça.', 'Agache mantendo a anilha alinhada sobre o meio dos pés.', 'Suba sem dobrar os cotovelos.'],
         dicas: ['Exige mobilidade de ombro e tornozelo; comece leve.'], erros: ['Deixar a anilha ir para frente.'], resp: 'Inspire ao descer, solte o ar ao subir.' } },
     { id: 'afundo_anilha', nome: 'Afundo com anilha', equip: 'anilha', regiao: 'inferior', alt: true,
@@ -406,7 +413,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       prim: ['trapezio_desc'], sec: ['trapezio_transv', 'flexores_antebraco'],
       cam: { th: 35, ph: 6, dist: 2.7, ty: 1.15 }, prop: 'barra', periodo: 2.4,
       A: O(fist, PRONADO), B: O(fist, PRONADO, both('Shoulder', [0, 0, 13]), { neck: [4, 0, 0] }),
-      bracos: { frame: 'ombros', A: { p: [0.22, -0.55, 0.08] }, B: { p: [0.22, -0.55, 0.08] }, polo: [0.4, 0, -1] },
+      bracos: { frame: 'ombros', A: { p: [0.22, -0.55, 0.14] }, B: { p: [0.22, -0.55, 0.14] }, polo: [0.4, 0, -1] },
       info: { passos: ['Segure a barra à frente das coxas, braços esticados.', 'Suba os ombros o mais alto possível.', 'Segure um instante e desça devagar.'],
         dicas: ['Pense em levar os ombros às orelhas, sem dobrar os cotovelos.'], erros: ['Girar os ombros.'], resp: 'Solte o ar ao subir.' } },
     { id: 'encolhimento_barra_atras', nome: 'Encolhimento com barra atrás', equip: 'barra', regiao: 'superior',
@@ -422,7 +429,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       prim: ['deltoide_lateral', 'trapezio_desc'], sec: ['deltoide_anterior', 'biceps_braquial', 'braquiorradial'],
       cam: { th: 20, ph: 6, dist: 2.8, ty: 1.15 }, prop: 'barra', periodo: 2.8,
       A: O(fist, PRONADO), B: O(fist, PRONADO),
-      bracos: { frame: 'peito', A: { p: [0.1, -0.50, 0.09] }, B: { p: [0.09, 0.03, 0.11] }, polo: [1, 0, -0.2] },
+      bracos: { frame: 'peito', A: { p: [0.1, -0.50, 0.11] }, B: { p: [0.1, -0.03, 0.13] }, polo: [1, 0.5, -0.2] },
       info: { passos: ['Segure a barra com as mãos próximas, à frente das coxas.', 'Puxe para cima, rente ao corpo, cotovelos sempre acima das mãos.', 'Pare na altura do peito e desça devagar.'],
         dicas: ['Uma pegada um pouco mais aberta protege o ombro.'], erros: ['Subir acima do queixo.'], resp: 'Solte o ar ao puxar.' } },
     { id: 'desenvolvimento_barra', nome: 'Desenvolvimento militar', equip: 'barra', regiao: 'superior',
@@ -453,14 +460,14 @@ window.CORPO3D_EXERCICIOS = function (H) {
       desc: 'Pegada por baixo; suba a barra dobrando só os cotovelos.',
       prim: ['biceps_braquial', 'braquial'], sec: ['braquiorradial', 'flexores_antebraco', 'deltoide_anterior'],
       cam: { th: 45, ph: 8, dist: 2.6, ty: 1.12 }, prop: 'barra', periodo: 2.8,
-      A: O(fist, both('UpperArm', [-4, 0, 3]), both('LowerArm', [-6, 0, 0])), B: O(fist, both('UpperArm', [-12, 0, 3]), both('LowerArm', [-132, 0, 0])),
+      A: O(fist, both('UpperArm', [-11, 0, 3]), both('LowerArm', [-6, 0, 0])), B: O(fist, both('UpperArm', [-12, 0, 3]), both('LowerArm', [-132, 0, 0])),
       info: { passos: ['Segure a barra com as palmas para frente, na largura dos ombros.', 'Cotovelos junto ao corpo.', 'Suba a barra até perto do peito.', 'Desça devagar até esticar.'],
         dicas: ['Cotovelos parados ao lado do corpo.'], erros: ['Jogar o tronco para trás.'], resp: 'Solte o ar ao subir.' } },
     { id: 'rosca_barra_w', nome: 'Rosca com barra W', equip: 'barra', regiao: 'superior',
       desc: 'A barra W deixa os punhos numa posição mais confortável.',
       prim: ['biceps_braquial', 'braquial'], sec: ['braquiorradial', 'flexores_antebraco'],
       cam: { th: 45, ph: 8, dist: 2.6, ty: 1.12 }, prop: 'barraW', periodo: 2.8,
-      A: O(fist, both('LowerArmTwist', [0, -18, 0]), both('Hand', [0, -18, 0]), both('UpperArm', [-4, 0, 0]), both('LowerArm', [-6, 0, 0])),
+      A: O(fist, both('LowerArmTwist', [0, -18, 0]), both('Hand', [0, -18, 0]), both('UpperArm', [-11, 0, 0]), both('LowerArm', [-6, 0, 0])),
       B: O(fist, both('LowerArmTwist', [0, -18, 0]), both('Hand', [0, -18, 0]), both('UpperArm', [-12, 0, 0]), both('LowerArm', [-132, 0, 0])),
       info: { passos: ['Segure a barra W nas curvas internas, palmas levemente inclinadas.', 'Suba a barra dobrando os cotovelos.', 'Desça devagar.'],
         dicas: ['Boa opção para quem sente o punho na barra reta.'], erros: ['Afastar os cotovelos do corpo.'], resp: 'Solte o ar ao subir.' } },
@@ -468,7 +475,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       desc: 'Pegada por cima (palmas para trás); suba a barra dobrando os cotovelos.',
       prim: ['braquiorradial', 'braquial'], sec: ['biceps_braquial', 'extensores_antebraco'],
       cam: { th: 45, ph: 8, dist: 2.6, ty: 1.12 }, prop: 'barra', periodo: 2.8,
-      A: O(fist, PRONADO, both('UpperArm', [-4, 0, 3]), both('LowerArm', [-6, 0, 0])), B: O(fist, PRONADO, both('UpperArm', [-12, 0, 3]), both('LowerArm', [-125, 0, 0])),
+      A: O(fist, PRONADO, both('UpperArm', [-11, 0, 3]), both('LowerArm', [-6, 0, 0])), B: O(fist, PRONADO, both('UpperArm', [-12, 0, 3]), both('LowerArm', [-125, 0, 0])),
       info: { passos: ['Segure a barra com as palmas para trás.', 'Suba a barra dobrando os cotovelos, punhos firmes.', 'Desça devagar.'],
         dicas: ['Ótima para o antebraço.'], erros: ['Deixar o punho dobrar para baixo.'], resp: 'Solte o ar ao subir.' } },
     { id: 'triceps_frances_barra', nome: 'Tríceps francês com barra W', equip: 'barra', regiao: 'superior',
@@ -501,15 +508,15 @@ window.CORPO3D_EXERCICIOS = function (H) {
       prim: [...G.quadriceps, 'gluteo_maximo'], sec: ['reto_abdome', 'eretor_espinha', 'adutores', 'trapezio_desc'],
       cam: { th: 70, ph: 10, dist: 3.9, ty: 0.95 }, prop: 'barra', periodo: 3.4,
       A: O(fist), B: O(fist, SQ_RETO),
-      bracos: { frame: 'peito', A: { p: [0.17, 0.11, 0.14] }, B: { p: [0.17, 0.11, 0.14] }, polo: [0.25, 0.3, 1] },
+      bracos: { frame: 'peito', A: { p: [0.19, 0.13, 0.13] }, B: { p: [0.19, 0.13, 0.13] }, polo: [0.05, 0.2, 1] },
       info: { passos: ['Barra apoiada na frente dos ombros, cotovelos apontando para frente e para cima.', 'Agache mantendo o tronco o mais reto possível.', 'Suba sem deixar os cotovelos caírem.'],
         dicas: ['Trabalha mais o quadríceps que o agachamento com a barra nas costas.'], erros: ['Deixar os cotovelos baixarem e a barra rolar.'], resp: 'Inspire ao descer, solte o ar ao subir.' } },
     { id: 'agachamento_overhead_barra', nome: 'Agachamento com barra acima da cabeça', equip: 'barra', regiao: 'inferior',
       desc: 'Pegada bem aberta, barra no alto; agache mantendo os braços esticados.',
       prim: [...G.quadriceps, 'gluteo_maximo', 'deltoide_anterior'], sec: ['trapezio_desc', 'reto_abdome', 'eretor_espinha', ...G.triceps],
       cam: { th: 55, ph: 8, dist: 4.2, ty: 1.05 }, prop: 'barra', periodo: 3.4,
-      A: O(fist), B: O(fist, SQ_RETO),
-      bracos: { frame: 'peito', A: { p: [0.38, 0.55, -0.02] }, B: { p: [0.38, 0.55, -0.05] }, polo: [0.5, -1, 0] },
+      A: O(fist), B: O(fist, SQ_OH),
+      bracos: { frame: 'peito', A: { p: [0.38, 0.55, -0.02] }, B: { p: [0.38, 0.50, -0.27] }, polo: [0.5, -1, 0] },
       info: { passos: ['Segure a barra com pegada bem aberta, braços esticados acima da cabeça.', 'Agache com a barra alinhada sobre o meio dos pés.', 'Suba sem dobrar os cotovelos.'],
         dicas: ['Comece só com a barra; exige mobilidade.'], erros: ['Deixar a barra ir para frente.'], resp: 'Inspire ao descer, solte o ar ao subir.' } },
     { id: 'afundo_barra', nome: 'Afundo com barra', equip: 'barra', regiao: 'inferior', alt: true,
@@ -534,7 +541,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       desc: 'Barra junto às canelas; levante estendendo quadril e joelhos com as costas retas.',
       prim: ['gluteo_maximo', ...G.isquios, ...G.quadriceps, 'eretor_espinha'], sec: ['trapezio_desc', 'latissimo_dorso', 'flexores_antebraco', 'adutores'],
       cam: CAM_LADO, prop: 'barra', periodo: 3.6,
-      A: O(fist, PRONADO), B: O(fist, PRONADO, TERRA_FUNDO), bracos: { frame: 'ombros', A: PENDURADO, B: PENDURADO, polo: [0.3, 0, -1] },
+      A: O(fist, PRONADO), B: O(fist, PRONADO, TERRA_FUNDO), bracos: { frame: 'ombros', A: PEND_BARRA, B: PEND_BARRA, polo: [0.3, 0, -1] },
       info: { passos: ['Pés na largura do quadril, barra sobre o meio dos pés.', 'Dobre quadril e joelhos e segure a barra por fora das pernas.', 'Costas retas, peito aberto: levante empurrando o chão.', 'Termine em pé, quadril estendido, e desça pelo mesmo caminho.'],
         dicas: ['A barra sobe rente às pernas o tempo todo.'], erros: ['Arredondar as costas.', 'Começar puxando com os braços.'], resp: 'Inspire e trave o abdômen antes de subir; solte o ar no alto.' } },
     { id: 'terra_sumo', nome: 'Levantamento terra sumô', equip: 'barra', regiao: 'inferior',
@@ -543,14 +550,14 @@ window.CORPO3D_EXERCICIOS = function (H) {
       cam: { th: 30, ph: 10, dist: 3.5, ty: 0.75 }, prop: 'barra', periodo: 3.6,
       A: O(fist, PRONADO), B: O(fist, PRONADO, { hips: [38, 0, 0], spine: [6, 0, 0], neck: [-25, 0, 0] }),
       pernas: { pelvis: { A: [0, 0.90, 0], B: [0, 0.56, -0.12] }, A: { p: [0.34, 0.16], yaw: 30 }, B: { p: [0.34, 0.16], yaw: 30 } },
-      bracos: { frame: 'ombros', A: { p: [0.15, -0.56, 0.04] }, B: { p: [0.15, -0.56, 0.04] }, polo: [0.3, 0, -1] },
+      bracos: { frame: 'ombros', A: { p: [0.15, -0.56, 0.17] }, B: { p: [0.15, -0.56, 0.17] }, polo: [0.3, 0, -1] },
       info: { passos: ['Pés bem abertos, pontas para fora, barra rente às canelas.', 'Segure a barra com as mãos por dentro das pernas.', 'Levante empurrando os joelhos para fora e estendendo o quadril.', 'Desça pelo mesmo caminho.'],
         dicas: ['Exige menos da lombar que o terra tradicional.'], erros: ['Deixar os joelhos fecharem.'], resp: 'Inspire antes de subir, solte o ar no alto.' } },
     { id: 'stiff_barra', nome: 'Stiff com barra', equip: 'barra', regiao: 'inferior',
       desc: 'Joelhos quase esticados; leve o quadril para trás descendo a barra rente às pernas.',
       prim: [...G.isquios, 'gluteo_maximo'], sec: ['eretor_espinha', 'adutores', 'trapezio_desc', 'flexores_antebraco'],
       cam: CAM_LADO, prop: 'barra', periodo: 3.4,
-      A: O(fist, PRONADO), B: O(fist, PRONADO, STIFF_B), bracos: { frame: 'ombros', A: PENDURADO, B: PENDURADO, polo: [0.3, 0, -1] },
+      A: O(fist, PRONADO), B: O(fist, PRONADO, STIFF_B), bracos: { frame: 'ombros', A: PEND_BARRA, B: PEND_BARRA, polo: [0.3, 0, -1] },
       info: { passos: ['Em pé, barra à frente das coxas, joelhos levemente dobrados.', 'Empurre o quadril para trás inclinando o tronco com as costas retas.', 'Desça a barra rente às pernas até sentir alongar atrás da coxa.', 'Volte empurrando o quadril à frente.'],
         dicas: ['O movimento é do quadril.'], erros: ['Arredondar as costas.'], resp: 'Inspire ao descer, solte o ar ao subir.' } },
     { id: 'bom_dia_barra', nome: 'Bom-dia com barra', equip: 'barra', regiao: 'inferior',
