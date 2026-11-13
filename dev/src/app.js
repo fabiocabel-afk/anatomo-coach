@@ -915,10 +915,10 @@
     bones.hips.getWorldPosition(_w); shadow.position.x = _w.x; shadow.position.z = _w.z;
   }
   /* ---------- Movimento natural ----------
-   * Ninguém fica 100% parado: por cima da pose do exercício entram três camadas pequenas
-   * (no máximo 2–3 graus): respiração (soltando o ar no esforço), uma reação do tronco/joelhos
-   * ao esforço de cada repetição e um balanço lento que nunca se repete igual.
-   * Deitado ou apoiado no chão, só a respiração — mãos e pés apoiados não podem escorregar.
+   * Ninguém fica 100% parado: por cima da pose do exercício entram três camadas mínimas
+   * (menos de 1 grau): respiração calma e lenta, uma pequena reação do tronco/joelhos ao esforço
+   * e um balanço lento que nunca se repete igual.
+   * Deitado ou com mãos/pés apoiados no chão: nada — apoio não pode escorregar.
    * Os pés continuam no chão: a altura do corpo é recalculada depois (como sempre). */
   function movNatural() { try { return CAMCFG.mov !== 'estatico'; } catch (e) { return true; } }
   const ssN = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
@@ -943,21 +943,21 @@
   const _rotN = (nome, x, y, z) => { const o = bones[nome]; if (!o) return; o.rotation.x += rad(x); o.rotation.y += rad(y); o.rotation.z += rad(z); };
   let tNatFixo = null; // testes: fixa o relógio do movimento natural
   function naturalizar(p) {
+    // mãos ou pés apoiados no chão: nada se mexe além do exercício (apoio não pode escorregar)
+    if (cur.chao || cur.pitch === 'auto') return;
     const tt = tNatFixo != null ? tNatFixo : performance.now() / 1000, PI2 = Math.PI * 2;
-    const resp = Math.sin(tt * PI2 / 3.6);
-    const br = 0.55 * resp + 0.45 * (1 - 2 * ssN(p)); // + = puxando o ar (peito abre); no esforço, solta o ar
-    const fr = cur.chao ? 0.4 : 1; // apoiado no chão: respiração mais contida, para mãos e pés não saírem do lugar
-    _rotN('chest', -0.9 * br * fr, 0, 0); _rotN('upperChest', -0.6 * br * fr, 0, 0); _rotN('neck', 0.5 * br * fr, 0, 0);
-    if (cur.chao) return;
-    // balanço lento (períodos diferentes: nunca se repete igual)
-    const s1 = Math.sin(tt * PI2 / 5.3), s2 = Math.sin(tt * PI2 / 7.7 + 1.3), s3 = Math.sin(tt * PI2 / 6.1 + 2.1);
-    _rotN('spine', 0.35 * s2, 0.4 * s1, 0.5 * s1); _rotN('neck', 0.5 * s3, 0.6 * s2, 0);
-    // reação ao esforço: impulso no meio do movimento + ajuste segurando no fim
-    const pf = perfilEsforco(cur), imp = Math.sin(Math.PI * Math.min(1, Math.max(0, p))), topo = ssN(p);
-    _rotN('spine', pf.tronco * imp + pf.topo * topo, 0, 0);
-    _rotN('neck', pf.cabeca * imp, 0, 0);
+    // respiração calma e independente do ritmo do exercício: ~6,5 s por ciclo (cerca de 9 por minuto)
+    const resp = Math.sin(tt * PI2 / 6.5);
+    _rotN('chest', -0.35 * resp, 0, 0); _rotN('upperChest', -0.2 * resp, 0, 0); _rotN('neck', 0.2 * resp, 0, 0);
+    // balanço lento, quase imperceptível (períodos diferentes: nunca se repete igual)
+    const s1 = Math.sin(tt * PI2 / 9.1), s2 = Math.sin(tt * PI2 / 12.7 + 1.3), s3 = Math.sin(tt * PI2 / 10.3 + 2.1);
+    _rotN('spine', 0.15 * s2, 0.2 * s1, 0.2 * s1); _rotN('neck', 0.2 * s3, 0.25 * s2, 0);
+    // reação ao esforço: bem pequena (40% do perfil), só para o corpo não parecer de madeira
+    const pf = perfilEsforco(cur), imp = Math.sin(Math.PI * Math.min(1, Math.max(0, p))), topo = ssN(p), F = 0.4;
+    _rotN('spine', F * (pf.tronco * imp + pf.topo * topo), 0, 0);
+    _rotN('neck', F * pf.cabeca * imp, 0, 0);
     if (pf.joelho && !cur.pernas) {
-      const k = 2.2 * pf.joelho * imp; // joelhos amortecem; coxa e pé compensam para o pé seguir plano
+      const k = F * 2.2 * pf.joelho * imp; // joelhos amortecem; coxa e pé compensam para o pé seguir plano
       for (const l of ['left', 'right']) { _rotN(l + 'UpperLeg', -k / 2, 0, 0); _rotN(l + 'LowerLeg', k, 0, 0); _rotN(l + 'Foot', -k / 2, 0, 0); }
     }
   }
@@ -990,13 +990,13 @@
   const REP_FIX = Object.assign(grip(-25, -35, -20, -15), { hips: [-10, 0, 0], spine: [12, 0, 0], chest: [6, 0, 0], upperChest: [2, 0, 0], neck: [8, 0, 0] });
   function applyRepouso() {
     const tt = performance.now() / 1000;
-    const resp = Math.sin(tt * 2 * Math.PI / 4.2), bal = Math.sin(tt * 2 * Math.PI / 7.3), olhar = Math.sin(tt * 2 * Math.PI / 11);
+    const resp = Math.sin(tt * 2 * Math.PI / 6.5), bal = Math.sin(tt * 2 * Math.PI / 9.3), olhar = Math.sin(tt * 2 * Math.PI / 13); // respiração calma, ~9 por minuto
     for (const b of boneList) { const v = REP_FIX[b.name] || ZERO; b.rotation.set(rad(v[0]), rad(v[1]), rad(v[2])); }
     // respiração, leve balanço do tronco e cabeça olhando em volta
-    bones.spine.rotation.x += rad(1.2 * resp); bones.chest.rotation.x -= rad(1.6 * resp);
+    bones.spine.rotation.x += rad(0.7 * resp); bones.chest.rotation.x -= rad(0.9 * resp);
     bones.spine.rotation.z = rad(1.8 * bal); bones.chest.rotation.z = rad(-0.8 * bal);
-    bones.neck.rotation.x += rad(2 * Math.sin(tt * 0.9)); bones.head.rotation.y = rad(14 * olhar); bones.head.rotation.x = rad(3 * Math.sin(tt * 0.6));
-    for (const [s] of SIDES) { const p = s > 0 ? 'left' : 'right'; bones[p + 'Shoulder'].rotation.z = rad(s * 1.2 * resp); }
+    bones.neck.rotation.x += rad(1.2 * Math.sin(tt * 0.55)); bones.head.rotation.y = rad(14 * olhar); bones.head.rotation.x = rad(3 * Math.sin(tt * 0.6));
+    for (const [s] of SIDES) { const p = s > 0 ? 'left' : 'right'; bones[p + 'Shoulder'].rotation.z = rad(s * 0.7 * resp); }
     rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0);
     bones.hips.position.set(0, 0.135 + 0.002 * resp, 0);
     rig.updateMatrixWorld(true);
@@ -1980,8 +1980,9 @@
   }
   function passo(dt) {
     if (S.estado === 'preparo' || S.estado === 'concluindo' || S.estado === 'pergunta') {
-      // parado na posição inicial, com um leve balanço de quem está pronto
-      t += dt; phase = 0.035 * (1 - Math.cos(2 * Math.PI * t / 2.6)) / 2; lado = 0;
+      // parado na posição inicial; em pé, um balanço bem leve e lento de quem está pronto
+      // (no chão, com mãos/pés apoiados, fica parado)
+      t += dt; phase = cur.chao || cur.pitch === 'auto' || !movNatural() ? 0 : 0.012 * (1 - Math.cos(2 * Math.PI * t / 6.5)) / 2; lado = 0;
       conferirPreparo();
     } else if (S.estado === 'treino' && S.espera > 0) {
       S.espera -= dt; phase = 0;

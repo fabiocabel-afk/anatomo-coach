@@ -24,7 +24,7 @@ const r=await p.evaluate(()=>{
           const dy=Math.abs(minY1-minY0);if(dy>res.pesY){res.pesY=dy;res.pesYEx=c.id;}
           let dz=0;for(let i=0;i<pe0.length;i++)dz=Math.max(dz,Math.hypot(pe1[i][0]-pe0[i][0],pe1[i][2]-pe0[i][2]));if(dz>res.pesZ){res.pesZ=dz;res.pesZEx=c.id;}
         }
-        if(ex.chao){let d=0;for(let i=0;i<pe0.length;i++)d=Math.max(d,Math.hypot(pe1[i][0]-pe0[i][0],pe1[i][1]-pe0[i][1],pe1[i][2]-pe0[i][2]));if(d>res.chao){res.chao=d;res.chaoEx=c.id;}}
+        if(ex.chao||ex.pitch==='auto'){const dd=dif(o1,o0);if(dd>res.chao){res.chao=dd;res.chaoEx=c.id+' (graus)';}let d=0;for(let i=0;i<pe0.length;i++)d=Math.max(d,Math.hypot(pe1[i][0]-pe0[i][0],pe1[i][1]-pe0[i][1],pe1[i][2]-pe0[i][2]));if(d>res.chao){res.chao=d;res.chaoEx=c.id;}}
         const x=C.barraNoCorpo();if(x&&Object.keys(x.dentro).length)res.barra.push(c.id+'@'+ph+' t'+t+' '+JSON.stringify(x.dentro));
       }
       C.tempoNatural(null);
@@ -35,10 +35,10 @@ const r=await p.evaluate(()=>{
   }
   return res;});
 console.log(JSON.stringify({maxGrau:r.maxGrau,ex:r.maxGrauEx,pesY:r.pesY,pesYEx:r.pesYEx,pesZ:r.pesZ,pesZEx:r.pesZEx,chao:r.chao,chaoEx:r.chaoEx,estatico:r.estatico}));
-ok(r.maxGrau<=4,'movimento natural pequeno: no máximo '+r.maxGrau.toFixed(2)+'° ('+r.maxGrauEx+')');
+ok(r.maxGrau<=1.2,'movimento natural pequeno: no máximo '+r.maxGrau.toFixed(2)+'° ('+r.maxGrauEx+')');
 ok(r.pesY<0.004,'pés continuam no chão (variação '+(r.pesY*1000).toFixed(1)+' mm, '+r.pesYEx+')');
 ok(r.pesZ<0.02,'pés não deslizam (máx '+(r.pesZ*1000).toFixed(1)+' mm, '+r.pesZEx+')');
-ok(r.chao<0.02,'exercícios no chão: apoios quase parados (máx '+(r.chao*1000).toFixed(1)+' mm, '+r.chaoEx+')');
+ok(r.chao<1e-6,'exercícios no chão / mãos apoiadas: nada se mexe (máx '+(r.chao*1000).toFixed(1)+' mm, '+r.chaoEx+')');
 ok(r.barra.length===0,'barra não atravessa o corpo com o movimento natural '+r.barra.slice(0,5).join(' | '));
 ok(r.estatico<1e-6,'modo estático: pose idêntica, sem movimento');
 // perfis de alguns exercícios
