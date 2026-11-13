@@ -428,7 +428,9 @@
     { k: 'serratil_anterior', o: [[0.125, 1.33, 0.075], [0.135, 1.27, 0.07], [0.135, 1.21, 0.06]], i: [[0.158, 1.35, -0.03], [0.16, 1.30, -0.04], [0.155, 1.25, -0.045]],
       T: 0.009, digit: 4, nu: 14, nv: 22, cand: ['chest', 'upperChest'], layer: 0 },
     { k: 'reto_abdome', o: [[0.004, 0.895, 0.085], [0.045, 0.9, 0.085]], m: [[0.004, 1.10, 0.096], [0.075, 1.10, 0.092]], i: [[0.004, 1.285, 0.103], [0.08, 1.285, 0.098]],
-      T: 0.018, segs: [0.48, 0.66, 0.84], medialTendon: 0.12, nu: 46, nv: 12, cand: ['hips', 'spine', 'chest'], layer: 0 },
+      T: 0.018, segs: [0.48, 0.66, 0.84], medialTendon: 0.12, nu: 46, nv: 12, cand: ['hips', 'spine', 'chest'], layer: 0,
+      // um músculo só, em três porções (divididas nas linhas tendíneas), para mostrar onde o exercício concentra
+      porcoes: [['inf', 0, 0.48], ['med', 0.48, 0.66], ['sup', 0.66, 1]] },
     { k: 'obliquo_externo', o: [[0.09, 1.255, 0.095], [0.128, 1.235, 0.072], [0.145, 1.17, 0.035], [0.148, 1.10, 0.0]],
       i: [[0.078, 1.17, 0.092], [0.08, 1.04, 0.09], [0.115, 0.975, 0.075], [0.150, 0.985, 0.015]],
       T: 0.014, te: 0.28, nu: 18, nv: 20, cand: ['hips', 'spine', 'chest'], layer: 0 },
@@ -538,13 +540,10 @@
   const mA = [], mB = [];   // atributos aM (vec4) e aBulge
   for (const md of MDEF) {
     for (const [s, p] of SIDES) {
-      const id = INST.length;
-      INST.push({ k: md.k, side: p });
-      (BYKEY[md.k] = BYKEY[md.k] || []).push(id);
       const mir = q => [q[0] * s, q[1], q[2]];
       const o = md.o.map(mir), il = md.i.map(mir), ml = md.m ? md.m.map(mir) : null;
       const nu = md.nu || 24, nv = md.nv || 10;
-      const pos = [], wpos = [], idx = [], us = [];
+      const pos = [], wpos = [], us = [], mAv = [], mBv = [];
       const S = new V3(), N = new V3();
       const raw = [];
       for (let iu = 0; iu <= nu; iu++) {
@@ -590,20 +589,34 @@
           const r = row[iv];
           pos.push(r.S.x + r.N.x * off, r.S.y + r.N.y * off, r.S.z + r.N.z * off);
           wpos.push(r.S.x, r.S.y, r.S.z); us.push(u);
-          mA.push(id, v * width / 0.0042, tv, across);
-          mB.push(md.tendon ? 0 : md.T * 0.55 * bell * across * (1 - tv));
+          mAv.push(v * width / 0.0042, tv, across);
+          mBv.push(md.tendon ? 0 : md.T * 0.55 * bell * across * (1 - tv));
         }
       }
       const W = nv + 1;
-      for (let iu = 0; iu < nu; iu++) for (let iv = 0; iv < nv; iv++) {
-        const a = iu * W + iv, b = a + 1, c = a + W, d = c + 1;
-        idx.push(a, c, b, b, c, d);
+      // cada porção vira uma peça própria (mesmo músculo); a linha da divisão aparece nas duas, sem fresta
+      const porcoes = md.porcoes || [[null, 0, 1]];
+      for (const [reg, u0, u1] of porcoes) {
+        const r0 = Math.round(u0 * nu), r1 = Math.round(u1 * nu);
+        const id = INST.length;
+        INST.push({ k: md.k, side: p, reg });
+        (BYKEY[md.k] = BYKEY[md.k] || []).push(id);
+        const ppos = [], pwpos = [], pus = [], idx = [];
+        for (let iu = r0; iu <= r1; iu++) for (let iv = 0; iv <= nv; iv++) {
+          const q = iu * W + iv;
+          ppos.push(pos[q * 3], pos[q * 3 + 1], pos[q * 3 + 2]); pwpos.push(wpos[q * 3], wpos[q * 3 + 1], wpos[q * 3 + 2]); pus.push(us[q]);
+          mA.push(id, mAv[q * 3], mAv[q * 3 + 1], mAv[q * 3 + 2]); mB.push(mBv[q]);
+        }
+        for (let iu = 0; iu < r1 - r0; iu++) for (let iv = 0; iv < nv; iv++) {
+          const a = iu * W + iv, b = a + 1, c = a + W, d = c + 1;
+          idx.push(a, c, b, b, c, d);
+        }
+        // orientação: garante que a face aponta para fora (normal da pele)
+        const p0 = new V3(ppos[0], ppos[1], ppos[2]), pA = new V3(ppos[3 * W], ppos[3 * W + 1], ppos[3 * W + 2]), pB = new V3(ppos[3], ppos[4], ppos[5]);
+        const fn = new V3().crossVectors(pA.sub(p0), pB.sub(p0));
+        const flip = fn.dot(raw[r0][0].N) < 0;
+        muscleParts.push({ pos: ppos, wpos: pwpos, idx, us: pus, cands: side(md.cand, p), exp: 6, flip, endBone: md.end ? side([md.end], p)[0] : null, endFrom: md.endFrom || 0.8 });
       }
-      // orientação: garante que a face aponta para fora (normal da pele)
-      const p0 = new V3(pos[0], pos[1], pos[2]), pA = new V3(pos[3 * W], pos[3 * W + 1], pos[3 * W + 2]), pB = new V3(pos[3], pos[4], pos[5]);
-      const fn = new V3().crossVectors(pA.sub(p0), pB.sub(p0));
-      const flip = fn.dot(raw[0][0].N) < 0;
-      muscleParts.push({ pos, wpos, idx, us, cands: side(md.cand, p), exp: 6, flip, endBone: md.end ? side([md.end], p)[0] : null, endFrom: md.endFrom || 0.8 });
     }
   }
   const NM = INST.length;
@@ -784,6 +797,28 @@
     deltoides: ['deltoide_anterior', 'deltoide_lateral', 'deltoide_posterior'], trapezio: ['trapezio_desc', 'trapezio_transv', 'trapezio_asc']
   };
   const EXERCICIOS = window.CORPO3D_EXERCICIOS({ both, grip, relaxed, fist, flat, G });
+  /* Reto do abdome: o músculo inteiro trabalha, mas a parte mais perto do que se move puxa mais
+   * (pernas subindo → porção inferior; tronco subindo → porção superior). Os níveis são moderados,
+   * porque as pesquisas mostram concentração, não isolamento. Sem foco = músculo inteiro por igual. */
+  const PORCAO_NOME = { inf: 'inferior', med: 'média', sup: 'superior' };
+  const ABD_PESOS = {
+    inf: { inf: 1, med: 0.65, sup: 0.4 },
+    sup: { sup: 1, med: 0.65, inf: 0.4 },
+    supmed: { sup: 1, med: 0.85, inf: 0.45 },
+    med: { med: 1, sup: 0.65, inf: 0.65 }
+  };
+  const ABD_FOCO = {
+    abdominal: 'sup', toque_pes: 'sup', abdominal_completo: 'supmed',
+    elevacao_pernas: 'inf', tesoura: 'inf', dead_bug: 'inf', escalador: 'inf', joelho_peito_4apoios: 'inf',
+    ziguezague_garrafas: 'inf', abre_fecha_garrafas: 'inf', passagem_garrafa: 'inf', chutes_garrafa: 'inf',
+    marcha_joelho: 'inf', elevacao_perna_frontal: 'inf', elevacao_perna_deitado: 'inf',
+    bicicleta: 'med', canivete: 'med', canoa: 'med', rotacao_russa: 'med', prancha: 'med', toque_ombro: 'med',
+    urso: 'med', perdigueiro_toque: 'med', rolamento_ajoelhado: 'med'
+  };
+  for (const e of EXERCICIOS) if (ABD_FOCO[e.id] && (e.prim.includes('reto_abdome') || e.sec.includes('reto_abdome'))) e.abd = ABD_FOCO[e.id];
+  // texto da porção em foco: "inferior", "superior", "superior e média", "média"
+  const focoAbdTxt = ex => ex && ex.abd ? (ex.abd === 'supmed' ? 'superior e média' : PORCAO_NOME[ex.abd]) : '';
+  const pesoPorcao = (ex, reg) => (reg && ex && ex.abd) ? ABD_PESOS[ex.abd][reg] : 1;
   // espelha uma pose (troca esquerda ↔ direita)
   function espelharPose(P) {
     const o = {};
@@ -856,6 +891,7 @@
       const perna = cur.arco && /Leg|Foot/.test(b.name), qa = perna ? qSobe : q, qz = perna ? qLado : q;
       b.rotation.set(rad(a[0] + (c[0] - a[0]) * qa), rad(a[1] + (c[1] - a[1]) * qa), rad(a[2] + (c[2] - a[2]) * qz));
     }
+    if (!miniRender && !cur._calibrando && movNatural()) naturalizar(p);
     bones.hips.position.copy(HIPS0);
     rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0);
     if (cur.chao) {
@@ -877,6 +913,53 @@
     if (cur.bracos) bracosIK(p, li);
     atualizarProps();
     bones.hips.getWorldPosition(_w); shadow.position.x = _w.x; shadow.position.z = _w.z;
+  }
+  /* ---------- Movimento natural ----------
+   * Ninguém fica 100% parado: por cima da pose do exercício entram três camadas pequenas
+   * (no máximo 2–3 graus): respiração (soltando o ar no esforço), uma reação do tronco/joelhos
+   * ao esforço de cada repetição e um balanço lento que nunca se repete igual.
+   * Deitado ou apoiado no chão, só a respiração — mãos e pés apoiados não podem escorregar.
+   * Os pés continuam no chão: a altura do corpo é recalculada depois (como sempre). */
+  function movNatural() { try { return CAMCFG.mov !== 'estatico'; } catch (e) { return true; } }
+  const ssN = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+  function perfilEsforco(ex) {
+    if (ex._mov) return ex._mov;
+    const tem = k => ex.prim.includes(k), id = ex.id;
+    let pf;
+    if (/punho/.test(id)) pf = { tronco: -0.3, topo: 0, cabeca: 0.3, joelho: 0.3 };          // punho: quase nada se mexe
+    else if (ex.pernas || tem('vasto_lateral') || tem('reto_femoral') || tem('gluteo_maximo') || tem('biceps_femoral') || /agach|afundo|terra|stiff|bom_dia|levantamento|panturrilha|ponte|passada|subida/.test(id))
+      pf = { tronco: -0.8, topo: 0, cabeca: 1.2, joelho: 0 };                   // pernas: peito sobe no impulso, cabeça acompanha
+    else if (/desenvolvimento|overhead|arnold|acima_cabeca/.test(id))
+      pf = { tronco: 0, topo: -1.6, cabeca: -0.6, joelho: 0.8 };                // acima da cabeça: lombar arqueia um pouco no alto
+    else if (tem('biceps_braquial') || tem('braquiorradial') || tem('braquial'))
+      pf = { tronco: -1.8, topo: 0, cabeca: 0.6, joelho: 1 };                   // roscas: tronco vai levemente para trás
+    else if (tem('deltoide_lateral') || tem('deltoide_anterior'))
+      pf = { tronco: 1.2, topo: 0, cabeca: 0.5, joelho: 0.8 };                  // elevações: tronco vem um pouco à frente
+    else if (/remada|encolhimento|puxada|crucifixo_inverso/.test(id) || tem('trapezio_desc') || tem('latissimo_dorso'))
+      pf = { tronco: 0, topo: ex.equip === 'barra' ? -0.5 : -1.2, cabeca: 0.6, joelho: 0.6 }; // puxadas: peito estufa no fim (com barra, menos: ela passa rente ao corpo)
+    else pf = { tronco: -0.6, topo: 0, cabeca: 0.6, joelho: 0.6 };
+    ex._mov = pf; return pf;
+  }
+  const _rotN = (nome, x, y, z) => { const o = bones[nome]; if (!o) return; o.rotation.x += rad(x); o.rotation.y += rad(y); o.rotation.z += rad(z); };
+  let tNatFixo = null; // testes: fixa o relógio do movimento natural
+  function naturalizar(p) {
+    const tt = tNatFixo != null ? tNatFixo : performance.now() / 1000, PI2 = Math.PI * 2;
+    const resp = Math.sin(tt * PI2 / 3.6);
+    const br = 0.55 * resp + 0.45 * (1 - 2 * ssN(p)); // + = puxando o ar (peito abre); no esforço, solta o ar
+    const fr = cur.chao ? 0.4 : 1; // apoiado no chão: respiração mais contida, para mãos e pés não saírem do lugar
+    _rotN('chest', -0.9 * br * fr, 0, 0); _rotN('upperChest', -0.6 * br * fr, 0, 0); _rotN('neck', 0.5 * br * fr, 0, 0);
+    if (cur.chao) return;
+    // balanço lento (períodos diferentes: nunca se repete igual)
+    const s1 = Math.sin(tt * PI2 / 5.3), s2 = Math.sin(tt * PI2 / 7.7 + 1.3), s3 = Math.sin(tt * PI2 / 6.1 + 2.1);
+    _rotN('spine', 0.35 * s2, 0.4 * s1, 0.5 * s1); _rotN('neck', 0.5 * s3, 0.6 * s2, 0);
+    // reação ao esforço: impulso no meio do movimento + ajuste segurando no fim
+    const pf = perfilEsforco(cur), imp = Math.sin(Math.PI * Math.min(1, Math.max(0, p))), topo = ssN(p);
+    _rotN('spine', pf.tronco * imp + pf.topo * topo, 0, 0);
+    _rotN('neck', pf.cabeca * imp, 0, 0);
+    if (pf.joelho && !cur.pernas) {
+      const k = 2.2 * pf.joelho * imp; // joelhos amortecem; coxa e pé compensam para o pé seguir plano
+      for (const l of ['left', 'right']) { _rotN(l + 'UpperLeg', -k / 2, 0, 0); _rotN(l + 'LowerLeg', k, 0, 0); _rotN(l + 'Foot', -k / 2, 0, 0); }
+    }
   }
   function calibrate() {
     cur._calibrando = true;
@@ -1167,8 +1250,9 @@
       const k = INST[i].k;
       const role = repousoAtivo() ? 0 : cur.prim.includes(k) ? 2 : cur.sec.includes(k) ? 1 : 0;
       let pri = 0, sec = 0, bulge = 0, dim = 0;
-      if (role === 2) { pri = 0.3 + 0.7 * p; bulge = p; }
-      else if (role === 1) { sec = 0.25 + 0.5 * p; bulge = 0.45 * p; }
+      const w = pesoPorcao(cur, INST[i].reg); // porções do abdome: brilho conforme a concentração
+      if (role === 2) { pri = (0.3 + 0.7 * p) * w; bulge = p * w; }
+      else if (role === 1) { sec = (0.25 + 0.5 * p) * w; bulge = 0.45 * p * w; }
       if (focusKey) {
         if (focusIds.has(i)) { pri = 1; sec = 0; dim = 0; } else { dim = 0.82; pri *= 0.3; sec *= 0.3; }
       }
@@ -1270,7 +1354,7 @@
 
   /* ---------- Foco ---------- */
   let focusIds = new Set();
-  function setFocus(k, ids) { focusKey = k; focusIds = new Set(ids); showMuscleCard(k); }
+  function setFocus(k, ids) { focusKey = k; focusIds = new Set(ids); const regs = new Set(ids.map(i => INST[i].reg)); showMuscleCard(k, regs.size === 1 ? [...regs][0] : null); }
   // toque: amplia em direção ao ponto tocado, mantendo o mesmo ângulo de visão
   function focusByTap(hit) {
     setFocus(hit.k, [hit.id]); hideHint();
@@ -1287,7 +1371,8 @@
     if (!INFO[k]) return;
     const ids = BYKEY[k];
     setFocus(k, ids);
-    const inst = ids.find(i => INST[i].side === (sideName || 'left'));
+    const regAlvo = cur.abd ? (cur.abd === 'supmed' ? 'sup' : cur.abd) : 'med';
+    const inst = ids.find(i => INST[i].side === (sideName || 'left') && (!INST[i].reg || INST[i].reg === regAlvo)) ?? ids.find(i => INST[i].side === (sideName || 'left'));
     const cen = centroid(inst);
     bones.hips.getWorldPosition(_w);
     const dir = cen.clone().sub(new V3(_w.x, cen.y, _w.z)); if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); dir.normalize();
@@ -1385,7 +1470,7 @@
     const mus = $('mus'); mus.innerHTML = '';
     const seen = new Set(); let shown = 0, extra = 0;
     for (const [list, cls] of [[cur.prim, 'p'], [cur.sec, 's']]) for (const k of list) {
-      const pop = INFO[k][1].replace(/ \(.*\)$/, ''); if (seen.has(pop)) continue; seen.add(pop);
+      const pop = popNome(k, cur); if (seen.has(pop)) continue; seen.add(pop);
       if (shown >= 6) { extra++; continue; } shown++;
       const s = document.createElement('button'); s.className = 'm ' + cls; s.textContent = pop;
       s.textContent = pop;
@@ -1394,11 +1479,18 @@
     if (extra) { const s = document.createElement('span'); s.className = 'm more'; s.textContent = '+' + extra; mus.appendChild(s); }
     for (const el of chips.children) el.classList.toggle('on', el.dataset.id === cur.id);
   }
-  function showMuscleCard(k) {
+  function showMuscleCard(k, reg) {
     const inf = INFO[k];
     $('cardEx').hidden = true; $('cardMus').hidden = false; $('bClose').hidden = false;
-    $('mTec').textContent = inf[0]; $('mPopTxt').textContent = inf[1]; $('mReg').textContent = inf[2]; $('mFun').textContent = inf[3];
-    const role = cur.prim.includes(k) ? 'Principal neste exercício' : cur.sec.includes(k) ? 'Auxiliar neste exercício' : 'Não é o foco deste exercício';
+    const foco = cur.prim.includes(k) || cur.sec.includes(k) ? focoAbdTxt(cur) : '';
+    // tocou numa porção: "Reto do abdome (porção inferior)"; pela lista: mostra onde está o foco
+    $('mTec').textContent = inf[0] + (reg ? ' (porção ' + PORCAO_NOME[reg] + ')' : foco ? ' (foco na porção ' + foco + ')' : '');
+    $('mPopTxt').textContent = inf[1]; $('mReg').textContent = inf[2];
+    let fun = inf[3];
+    if (k === 'reto_abdome') fun += ' É um músculo só, dividido em gomos: todo ele trabalha junto, mas cada exercício concentra mais esforço numa porção.';
+    $('mFun').textContent = fun;
+    let role = cur.prim.includes(k) ? 'Principal neste exercício' : cur.sec.includes(k) ? 'Auxiliar neste exercício' : 'Não é o foco deste exercício';
+    if (reg && foco) { const w = pesoPorcao(cur, reg); role += w >= 1 ? ' · porção mais exigida' : w >= 0.8 ? ' · bem exigida' : w >= 0.6 ? ' · exigência média' : ' · exigência menor'; }
     $('mRole').textContent = role;
   }
   function setExercise(id, instantCam, daSequencia) {
@@ -1419,8 +1511,8 @@
   const REGIAO = { superior: 'Superior', inferior: 'Inferior', core: 'Abdômen e core', total: 'Corpo inteiro' };
   const ICON_LISTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>';
   let grupo = null;
-  const popNome = k => INFO[k][1].replace(/ \(.*\)$/, '');
-  const musculosTxt = ex => [...new Set(ex.prim.map(popNome))].join(' · ');
+  const popNome = (k, ex) => INFO[k][1].replace(/ \(.*\)$/, '') + (k === 'reto_abdome' && ex && ex.abd ? ' (' + focoAbdTxt(ex) + ')' : '');
+  const musculosTxt = ex => [...new Set(ex.prim.map(k => popNome(k, ex)))].join(' · ');
   function renderChips() {
     chips.innerHTML = '';
     const g = document.createElement('button'); g.className = 'chip grp'; g.id = 'bGrupo';
@@ -1620,7 +1712,7 @@
     const vistos = new Set();
     for (const [lista, cls] of [[ex.prim, 'p'], [ex.sec, 's']]) for (const k of lista) {
       if (vistos.has(k)) continue; vistos.add(k);
-      const b2 = document.createElement('button'); b2.className = 'm ' + cls; b2.textContent = INFO[k][1];
+      const b2 = document.createElement('button'); b2.className = 'm ' + cls; b2.textContent = k === 'reto_abdome' && ex.abd ? 'Abdômen (porção ' + focoAbdTxt(ex) + ')' : INFO[k][1];
       b2.addEventListener('click', () => { $('infoSheet').hidden = true; focusMuscle(k); }); mus.appendChild(b2);
     }
     secao('Músculos trabalhados', mus);
@@ -1995,6 +2087,7 @@
     for (const k of ['reps', 'ciclos', 'descanso', 'pausaRep', 'depois']) if (rascunho[k] !== undefined) $('v_' + k).textContent = String(rascunho[k]) + (k === 'reps' ? (cfgIso ? ' s' : '') : k === 'ciclos' ? '' : ' s');
     for (const o of $('cRitmo').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.ritmo);
     for (const o of $('cCan').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.caneleira);
+    try { movUI(); } catch (e) { /* ainda iniciando */ }
     $('cVoz').checked = rascunho.voz;
   }
   for (const btn of document.querySelectorAll('.stp button')) {
@@ -2005,6 +2098,13 @@
   }
   for (const o of $('cRitmo').children) o.addEventListener('click', () => { rascunho.ritmo = Number(o.dataset.v); cfgUI(); });
   for (const o of $('cCan').children) o.addEventListener('click', () => { rascunho.caneleira = Number(o.dataset.v); cfgUI(); });
+  // movimento do corpo: vale na hora e para todos os exercícios (preferência do perfil)
+  function movUI() { for (const o of $('cMov').children) o.classList.toggle('on', o.dataset.v === (movNatural() ? 'natural' : 'estatico')); }
+  for (const o of $('cMov').children) o.addEventListener('click', () => {
+    const antes = CAMCFG.mov; CAMCFG.mov = o.dataset.v;
+    if (!gravarCamCfg()) { CAMCFG.mov = antes; $('cfgMsg').textContent = 'Atenção: não consegui salvar o movimento do corpo neste aparelho.'; }
+    movUI();
+  });
   $('cVoz').addEventListener('change', e => { rascunho.voz = e.target.checked; });
   $('bTestVoz').addEventListener('click', () => {
     if (!VOZ_OK) { $('cfgMsg').textContent = 'Este navegador não tem leitura em voz alta. O contador na tela continua funcionando.'; return; }
@@ -3092,8 +3192,8 @@
   const CAMERA_KEY = chave('anatomotion.camera.v1');
   const VEL_GIRO = n => 2.5 * n; // graus por segundo: 1 = 2,5°/s … 10 = 25°/s (uma volta em ~14 s)
   const CAMCFG = (function () {
-    const c = { modo: 'fixa', giro: 180, vel: 3 };
-    try { const o = JSON.parse(localStorage.getItem(CAMERA_KEY) || '{}') || {}; if (o.modo === 'girar' || o.modo === 'fixa') c.modo = o.modo; if ([30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360].includes(o.giro)) c.giro = o.giro; if (Number.isInteger(o.vel) && o.vel >= 1 && o.vel <= 10) c.vel = o.vel; } catch (e) { /* padrão */ }
+    const c = { modo: 'fixa', giro: 180, vel: 3, mov: 'natural' };
+    try { const o = JSON.parse(localStorage.getItem(CAMERA_KEY) || '{}') || {}; if (o.modo === 'girar' || o.modo === 'fixa') c.modo = o.modo; if (o.mov === 'estatico') c.mov = 'estatico'; if ([30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360].includes(o.giro)) c.giro = o.giro; if (Number.isInteger(o.vel) && o.vel >= 1 && o.vel <= 10) c.vel = o.vel; } catch (e) { /* padrão */ }
     return c;
   })();
   function gravarCamCfg() { try { const tx = JSON.stringify(CAMCFG); localStorage.setItem(CAMERA_KEY, tx); return localStorage.getItem(CAMERA_KEY) === tx; } catch (e) { return false; } }
@@ -3489,6 +3589,13 @@
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
+    mirarEm: (k, th, ph, dist) => { const ids = BYKEY[k], c = new V3(); ids.forEach(i => c.add(centroid(i))); c.divideScalar(ids.length); tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: c.x, ty: c.y, tz: c.z }); },
+    tempoNatural: t => { tNatFixo = t; },
+    perfilMov: id => { const e = EXERCICIOS.find(x => x.id === id); return e ? perfilEsforco(e) : null; },
+    rotOssos: () => { const o = {}; for (const b of boneList) o[b.name] = [b.rotation.x, b.rotation.y, b.rotation.z].map(v => v * 180 / Math.PI); return o; },
+    movimento: v => { if (v) { CAMCFG.mov = v; gravarCamCfg(); } return CAMCFG.mov; },
+    focarPorcao: reg => { const id = BYKEY.reto_abdome.find(i => INST[i].reg === reg && INST[i].side === 'left'); setFocus('reto_abdome', [id]); return { t: $('mTec').textContent, r: $('mRole').textContent }; },
+    porcoes: k => (BYKEY[k] || []).map(i => ({ reg: INST[i].reg, side: INST[i].side, pri: stateData[i * 4] / 255, sec: stateData[i * 4 + 2] / 255 })),
     setView: (th, ph, dist, ty) => { tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: 0, ty, tz: 0 }); },
     focus: (k, s) => { focusMuscle(k, s); Object.assign(cam, camT); tweening = false; },
     clearFocus: () => { clearFocus(true); Object.assign(cam, camT); tweening = false; },
