@@ -2475,7 +2475,7 @@
       $('bMuAdd_' + tipo).disabled = fs.length >= Musica.MAX_POR_LISTA;
       if (!fs.length) { const p = document.createElement('p'); p.className = 'muVazio'; p.textContent = 'Nenhuma música. Sem músicas aqui, o app usa o som dele.'; bx.appendChild(p); }
       fs.forEach((f, i) => {
-        const r = document.createElement('div'); r.className = 'mur';
+        const r = document.createElement('div'); r.className = 'mur' + (f.falta ? ' falta' : '');
         r.appendChild(botao('ic sm muPrev', IC.play, 'Ouvir ' + f.nome, async b => {
           const on = b.classList.contains('on');
           for (const x of document.querySelectorAll('#muSheet .chip.on, #muSheet .muPrev.on')) { x.classList.remove('on'); if (x.classList.contains('muPrev')) x.innerHTML = IC.play; }
@@ -2484,7 +2484,7 @@
         }));
         const nm = document.createElement('div'); nm.className = 'trt';
         const b2 = document.createElement('b'); b2.textContent = f.nome; nm.appendChild(b2);
-        const s2 = document.createElement('small'); s2.textContent = fmtMB(f.tam); nm.appendChild(s2);
+        const s2 = document.createElement('small'); s2.textContent = f.falta ? 'arquivo faltando' : fmtMB(f.tam); nm.appendChild(s2);
         r.appendChild(nm);
         r.appendChild(botao('ic sm', IC.edit, 'Renomear ' + f.nome, () => renomearFaixa(f, r)));
         r.appendChild(botao('ic sm', IC.up, 'Subir', () => acaoMusica(() => Musica.mover(f.id, -1))));
@@ -2494,7 +2494,10 @@
         bx.appendChild(r);
       });
     }
-    const tot = lista.reduce((a, f) => a + (f.tam || 0), 0);
+    const nFalta = lista.filter(f => f.falta).length;
+    $('muFalta').hidden = !nFalta;
+    if (nFalta) $('muFaltaTx').textContent = nFalta + (nFalta > 1 ? ' músicas deste perfil estão' : ' música deste perfil está') + ' sem o arquivo neste aparelho (vieram de um backup). Enquanto isso, o app toca as outras ou o som dele.';
+    const tot = lista.filter(f => !f.falta).reduce((a, f) => a + (f.tam || 0), 0);
     $('muUso').textContent = lista.length ? 'Ocupando ' + fmtMB(tot) + ' neste aparelho.' : '';
   }
   async function acaoMusica(fn, ok) {
@@ -2531,6 +2534,7 @@
     }
   } else $('bTrMusica').hidden = true;
   $('bMuClose').addEventListener('click', fecharMusica);
+  $('bMuAchar').addEventListener('click', () => { Musica.desbloquear(); $('muAchar').click(); });
 
   /* =====================================================================
    * 10. MINIATURAS: o mesmo corpo 3D desenhado pequeno, um exercício por vez
@@ -2807,19 +2811,21 @@
   function renderPerfis(msg) {
     $('pfMsg').textContent = msg || perfisErro || '';
     const m = pfTela.modo, p = PERFIS.lista.find(x => x.id === pfTela.id);
-    if (m !== 'lista' && !p && !(m === 'editar' && pfEdit && !pfEdit.id)) { pfTela.modo = 'lista'; return renderPerfis(msg); }
+    if (m !== 'lista' && m !== 'backup' && !p && !(m === 'editar' && pfEdit && !pfEdit.id)) { pfTela.modo = 'lista'; return renderPerfis(msg); }
     $('bPfVoltar').hidden = m === 'lista';
     $('pfNota').hidden = m !== 'lista';
-    $('pfTitulo').textContent = m === 'lista' ? 'Perfis' : m === 'editar' ? (pfEdit && !pfEdit.id ? 'Novo perfil' : 'Editar perfil') : m === 'medidas' ? 'Medidas · ' + p.nome : m === 'historico' ? 'Exercícios feitos · ' + p.nome : 'Perfil';
+    $('pfTitulo').textContent = m === 'lista' ? 'Perfis' : m === 'editar' ? (pfEdit && !pfEdit.id ? 'Novo perfil' : 'Editar perfil') : m === 'medidas' ? 'Medidas · ' + p.nome : m === 'historico' ? 'Exercícios feitos · ' + p.nome : m === 'backup' ? 'Backup dos dados' : 'Perfil';
     $('bPfNovo').hidden = m !== 'lista' || PERFIS.lista.length >= 8;
     $('bPfEditar').hidden = m !== 'ver';
     $('bPfAdd').hidden = m !== 'medidas';
+    $('pfBkLinha').hidden = m !== 'lista';
     const box = $('pfList'); box.innerHTML = '';
     if (m === 'lista') telaLista(box);
     else if (m === 'ver') telaVer(box, p);
     else if (m === 'editar') { const r = document.createElement('div'); r.className = 'pfr editando'; r.appendChild(formPerfil()); box.appendChild(r); }
     else if (m === 'medidas') telaMedidas(box, p);
     else if (m === 'historico') telaHistorico(box, p);
+    else if (m === 'backup') telaBackup(box);
   }
   function telaLista(box) {
     for (const p of PERFIS.lista) {
@@ -3072,7 +3078,7 @@
   $('bPerfil').addEventListener('click', () => { pfEdit = null; pfTela.modo = 'lista'; renderPerfis(); $('pfSheet').hidden = false; });
   $('bPfEditar').addEventListener('click', () => { const p = PERFIS.lista.find(x => x.id === pfTela.id); if (!p) return; pfEdit = { id: p.id, nome: p.nome, cor: p.cor, corpo: lerCorpo(p.id) }; irPf('editar', p.id); });
   $('bPfAdd').addEventListener('click', () => { pfNova = pfNova ? null : { tipo: 'peso', dia: hojeStr(), valor: null }; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; });
-  $('bPfVoltar').addEventListener('click', () => { const m = pfTela.modo; if (m === 'editar' && pfEdit && !pfEdit.id) { pfEdit = null; irPf('lista'); } else irPf(m === 'ver' ? 'lista' : 'ver'); });
+  $('bPfVoltar').addEventListener('click', () => { const m = pfTela.modo; if (m === 'editar' && pfEdit && !pfEdit.id) { pfEdit = null; irPf('lista'); } else irPf(m === 'ver' || m === 'backup' ? 'lista' : 'ver'); });
   $('bPfClose').addEventListener('click', () => { pfEdit = null; $('pfSheet').hidden = true; });
   $('pfSheet').addEventListener('click', e => { if (e.target.id === 'pfSheet') { pfEdit = null; $('pfSheet').hidden = true; } });
   $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length], corpo: lerCorpo('__novo__') }; irPf('editar', null); });
@@ -3178,6 +3184,233 @@
     setTimeout(() => { if (!document.hidden) { saindo = false; $('sairMsg').textContent = 'Toque em voltar do celular mais uma vez para fechar.'; $('sairBox').hidden = false; } }, 900);
   });
 
+  /* =====================================================================
+   * 14. BACKUP — proteção do navegador + cópia em arquivo (exportar/importar)
+   *     O arquivo leva perfis, dados do corpo, pesos, exercícios feitos,
+   *     treinos, favoritos, ajustes, câmera e a "ficha" de cada música
+   *     (nome, tamanho, lista, ordem, perfil). Os arquivos de áudio não vão:
+   *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
+   * ===================================================================== */
+  const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
+  const BK_VERSAO = '/*VER*/';
+  const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
+  const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  let bkPend = null, bkMsg = '', bkOcupado = false;
+  // pede ao navegador para não apagar os dados sozinho quando o aparelho fica sem espaço
+  async function protegerArmazenamento() {
+    try {
+      if (!navigator.storage || !navigator.storage.persist) return 'sem';
+      if (await navigator.storage.persisted()) return 'sim';
+      return (await navigator.storage.persist()) ? 'sim' : 'nao';
+    } catch (e) { return 'sem'; }
+  }
+  setTimeout(() => { protegerArmazenamento(); }, 2500);
+  // chaves do app que entram no backup (as de cada perfil + a lista de perfis)
+  function chavesDoBackup(reg) {
+    const out = [PERFIS_KEY];
+    for (const p of reg.lista) for (const b of BASES_PERFIL) out.push(b + '@' + p.id);
+    return out;
+  }
+  async function montarBackup() {
+    let reg; try { reg = JSON.parse(localStorage.getItem(PERFIS_KEY) || 'null'); } catch (e) { reg = null; }
+    if (!reg || !Array.isArray(reg.lista) || !reg.lista.length) reg = JSON.parse(JSON.stringify(PERFIS));
+    const dados = {};
+    for (const k of chavesDoBackup(reg)) { if (k === PERFIS_KEY) continue; const v = localStorage.getItem(k); if (v !== null) dados[k] = v; }
+    let musicas = [], musErro = '';
+    if (window.Musica) { try { musicas = await Musica.fichas(); } catch (e) { musErro = (e && e.message) || 'erro'; } }
+    return { app: 'AnatoMotion', tipo: 'backup', formato: 1, versao: BK_VERSAO, criado: new Date().toISOString(), perfis: reg, dados, musicas, musErro };
+  }
+  // confere um backup antes de usar: nada é gravado se algo estiver estranho
+  function validarBackup(o) {
+    const erro = m => ({ ok: false, erro: m });
+    if (!o || typeof o !== 'object' || o.app !== 'AnatoMotion' || o.tipo !== 'backup') return erro('Este arquivo não é um backup do AnatoMotion.');
+    if (!(o.formato >= 1)) return erro('Backup sem formato reconhecido.');
+    if (o.formato > 1) return erro('Este backup foi feito por uma versão mais nova do app. Atualize o app e tente de novo.');
+    const reg = o.perfis;
+    if (!reg || !Array.isArray(reg.lista) || !reg.lista.length || reg.lista.length > 8) return erro('O backup não tem uma lista de perfis válida.');
+    const ids = new Set();
+    for (const p of reg.lista) { if (!p || !idValido(p.id) || typeof p.nome !== 'string' || !p.nome.trim() || ids.has(p.id)) return erro('Há um perfil inválido no backup.'); ids.add(p.id); }
+    if (!ids.has(reg.atual)) reg.atual = reg.lista[0].id;
+    if (!o.dados || typeof o.dados !== 'object') return erro('O backup está sem os dados.');
+    for (const [k, v] of Object.entries(o.dados)) {
+      const i = k.lastIndexOf('@'), base = k.slice(0, i), pid = k.slice(i + 1);
+      if (i < 0 || !BASES_PERFIL.includes(base) || !ids.has(pid)) return erro('O backup tem um item desconhecido (' + k.slice(0, 40) + ').');
+      if (typeof v !== 'string') return erro('O backup tem um item danificado (' + k + ').');
+      try { JSON.parse(v); } catch (e) { return erro('O backup tem um item danificado (' + k + ').'); }
+    }
+    const mus = Array.isArray(o.musicas) ? o.musicas : [];
+    for (const f of mus) if (!f || typeof f.id !== 'string' || !ids.has(f.perfil) || !['treino', 'pausa'].includes(f.lista)) return erro('A lista de músicas do backup está danificada.');
+    // resumo para mostrar antes de restaurar
+    let exs = 0, trs = 0;
+    for (const p of reg.lista) {
+      try { const h = JSON.parse(o.dados[HIST_BASE + '@' + p.id] || '{}'); if (Array.isArray(h.lista)) exs += h.lista.length; } catch (e) { /* ok */ }
+      try { const t = JSON.parse(o.dados['corpo3d.treinos.v1@' + p.id] || '{}'); if (Array.isArray(t.lista)) trs += t.lista.length; } catch (e) { /* ok */ }
+    }
+    return { ok: true, obj: o, resumo: { criado: Date.parse(o.criado), perfis: reg.lista.map(p => p.nome), exs, trs, mus: mus.length } };
+  }
+  function nomeArquivoBackup() { const d = new Date(), z = n => String(n).padStart(2, '0'); return 'anatomotion-backup-' + d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()) + '.json'; }
+  async function gerarArquivoBackup() {
+    const o = await montarBackup(); const aviso = o.musErro; delete o.musErro;
+    const txt = JSON.stringify(o);
+    const v = validarBackup(JSON.parse(txt)); // confere o próprio arquivo antes de entregar
+    if (!v.ok) throw new Error('O backup gerado não passou na conferência: ' + v.erro);
+    return { txt, nome: nomeArquivoBackup(), aviso };
+  }
+  function marcarBackupFeito() { try { localStorage.setItem(BK_ULTIMO, String(Date.now())); } catch (e) { /* ok */ } }
+  async function exportarBackup(compartilhar) {
+    if (bkOcupado) return; bkOcupado = true;
+    try {
+      protegerArmazenamento();
+      const { txt, nome, aviso } = await gerarArquivoBackup();
+      const extra = aviso ? ' (a lista de músicas não entrou: ' + aviso + ')' : '';
+      if (compartilhar) {
+        const arq = new File([txt], nome, { type: 'application/json' });
+        try { await navigator.share({ files: [arq], title: 'Backup AnatoMotion' }); }
+        catch (e) { if (e && e.name === 'AbortError') { bkMsg = 'Envio cancelado.'; return; } throw e; }
+        marcarBackupFeito(); bkMsg = 'Backup enviado' + extra + '. Guarde o arquivo num lugar seguro.';
+      } else {
+        const url = URL.createObjectURL(new Blob([txt], { type: 'application/json' }));
+        const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        marcarBackupFeito(); bkMsg = 'Arquivo "' + nome + '" salvo em Downloads' + extra + '.';
+      }
+    } catch (e) { bkMsg = 'Atenção: não consegui gerar o backup (' + ((e && e.message) || 'erro') + ').'; }
+    finally { bkOcupado = false; if (visivelPf('backup')) renderPerfis(); }
+  }
+  const visivelPf = modo => !$('pfSheet').hidden && pfTela.modo === modo;
+  async function lerArquivoBackup(arq) {
+    bkPend = null;
+    try {
+      if (arq.size > 20 * 1048576) throw new Error('arquivo grande demais para ser um backup');
+      const txt = await arq.text();
+      let o; try { o = JSON.parse(txt); } catch (e) { throw new Error('o arquivo não está no formato de backup (JSON)'); }
+      const v = validarBackup(o);
+      if (!v.ok) { bkMsg = 'Atenção: ' + v.erro + ' Nada foi alterado.'; }
+      else { bkPend = v; bkMsg = ''; }
+    } catch (e) { bkMsg = 'Atenção: não consegui ler o arquivo (' + ((e && e.message) || 'erro') + '). Nada foi alterado.'; }
+    renderPerfis();
+  }
+  // grava um backup no lugar dos dados atuais. Antes, guarda uma cópia do que existe (para desfazer).
+  // Se qualquer gravação falhar, volta tudo como estava.
+  async function aplicarBackup(o, desfazendo) {
+    if (bkOcupado) return; bkOcupado = true;
+    const falhar = m => { bkMsg = 'Atenção: ' + m; bkOcupado = false; renderPerfis(); };
+    let antes;
+    try { antes = await montarBackup(); delete antes.musErro; } catch (e) { return falhar('não consegui ler os dados atuais. Nada foi alterado.'); }
+    if (!desfazendo) {
+      try { const t = JSON.stringify(antes); localStorage.setItem(BK_ANTES, t); if (localStorage.getItem(BK_ANTES) !== t) throw new Error(); }
+      catch (e) { try { localStorage.removeItem(BK_ANTES); } catch (e2) { /* ok */ } return falhar('não há espaço para guardar a cópia dos dados atuais antes de restaurar. Nada foi alterado.'); }
+    }
+    const escrever = b => {
+      for (const k of chavesDoBackup(antes.perfis).concat(chavesDoBackup(b.perfis))) localStorage.removeItem(k);
+      for (const [k, v] of Object.entries(b.dados)) localStorage.setItem(k, v);
+      const regTx = JSON.stringify(b.perfis); localStorage.setItem(PERFIS_KEY, regTx);
+      // confere item por item
+      if (localStorage.getItem(PERFIS_KEY) !== regTx) throw new Error('perfis');
+      for (const [k, v] of Object.entries(b.dados)) if (localStorage.getItem(k) !== v) throw new Error(k);
+    };
+    try { escrever(o); }
+    catch (e) {
+      let volta = true;
+      try { for (const k of chavesDoBackup(o.perfis)) localStorage.removeItem(k); escrever(antes); } catch (e2) { volta = false; }
+      return falhar(volta ? 'não consegui gravar o backup neste aparelho (talvez falte espaço). Os dados atuais foram mantidos.' : 'a gravação falhou e não consegui voltar tudo. Use "Desfazer a última restauração" ou importe o arquivo de novo.');
+    }
+    let falta = 0, musAviso = '';
+    if (window.Musica) {
+      try { const r = await Musica.restaurarFichas(o.musicas || []); falta = r.faltando; }
+      catch (e) { musAviso = ' Mas a lista de músicas não foi restaurada (' + ((e && e.message) || 'erro') + ').'; }
+    }
+    if (desfazendo) try { localStorage.removeItem(BK_ANTES); } catch (e) { /* ok */ }
+    else try { const c = Date.parse(o.criado); if (isFinite(c) && !(Number(localStorage.getItem(BK_ULTIMO)) > c)) localStorage.setItem(BK_ULTIMO, String(c)); } catch (e) { /* ok */ }
+    const msg = (desfazendo ? 'Dados de antes da restauração de volta.' : 'Backup restaurado.') + musAviso +
+      (falta ? ' ' + falta + (falta > 1 ? ' músicas precisam' : ' música precisa') + ' ter o arquivo reencontrado (botão abaixo).' : '');
+    try { sessionStorage.setItem(BK_AVISO, msg); } catch (e) { /* ok */ }
+    bkPend = null; bkOcupado = false;
+    recarregarPerfil();
+  }
+  function lerAntes() { try { const o = JSON.parse(localStorage.getItem(BK_ANTES) || 'null'); const v = validarBackup(o); return v.ok ? v : null; } catch (e) { return null; } }
+  async function reencontrarMusicas(arqs) {
+    if (!window.Musica || !arqs.length) return;
+    bkMsg = 'Procurando o lugar de ' + arqs.length + (arqs.length > 1 ? ' arquivos…' : ' arquivo…'); if (visivelPf('backup')) renderPerfis();
+    let m;
+    try {
+      const r = await Musica.reencontrar(arqs);
+      m = r.encaixadas ? r.encaixadas + (r.encaixadas > 1 ? ' músicas voltaram' : ' música voltou') + ' ao lugar.' : 'Nenhum arquivo combinou com as músicas que faltam.';
+      if (r.naoUsados.length) m += ' Não usados: ' + r.naoUsados.slice(0, 6).join('; ') + (r.naoUsados.length > 6 ? '…' : '') + '.';
+      m += r.faltando ? ' Ainda faltam ' + r.faltando + '.' : ' Todas as músicas estão completas.';
+    } catch (e) { m = 'Atenção: não consegui guardar os arquivos (' + ((e && e.message) || 'erro') + ').'; }
+    bkMsg = m;
+    if (visivelPf('backup')) renderPerfis();
+    if (!$('muSheet').hidden) renderMusica(m);
+  }
+  function linhaBk(titulo, sub) {
+    const r = document.createElement('div'); r.className = 'bkLinha';
+    const b = document.createElement('b'); b.textContent = titulo; r.appendChild(b);
+    if (sub) { const sm = document.createElement('small'); sm.textContent = sub; r.appendChild(sm); }
+    return r;
+  }
+  function botoesBk(lista) {
+    const l = document.createElement('div'); l.className = 'btnLinha';
+    for (const [txt, cls, fn, id] of lista) { const b = document.createElement('button'); b.textContent = txt; if (cls) b.className = cls; if (id) b.id = id; b.disabled = bkOcupado; b.addEventListener('click', () => fn(b)); l.appendChild(b); }
+    return l;
+  }
+  function telaBackup(box) {
+    const tit = t => { const d = document.createElement('div'); d.className = 'ttl2'; const s2 = document.createElement('span'); s2.textContent = t; d.appendChild(s2); box.appendChild(d); };
+    if (bkMsg) { const m = document.createElement('p'); m.className = 'msg bkMsg'; m.id = 'bkMsg'; m.textContent = bkMsg; box.appendChild(m); }
+    const lugarFalta = document.createElement('div'); box.appendChild(lugarFalta); // músicas sem arquivo aparecem logo no topo
+    // proteção do navegador
+    tit('Proteção deste aparelho');
+    const prot = linhaBk('Verificando…'); prot.id = 'bkProt'; box.appendChild(prot);
+    protegerArmazenamento().then(r => {
+      const b = prot.querySelector('b');
+      if (r === 'sim') { b.textContent = '✓ Proteção ativa'; prot.classList.add('ok'); prot.appendChild(Object.assign(document.createElement('small'), { textContent: 'O navegador não vai apagar os dados sozinho quando faltar espaço. Limpar os dados do navegador manualmente ainda apaga tudo: por isso, faça backup.' })); }
+      else { b.textContent = 'Proteção não concedida pelo navegador'; prot.appendChild(Object.assign(document.createElement('small'), { textContent: r === 'sem' ? 'Este navegador não oferece essa proteção. Faça backups com frequência.' : 'Instalar o app na tela inicial e usá-lo com frequência costuma liberar a proteção. Enquanto isso, faça backups.' })); }
+    });
+    // exportar
+    tit('Fazer backup');
+    let ult = 0; try { ult = Number(localStorage.getItem(BK_ULTIMO)) || 0; } catch (e) { /* ok */ }
+    box.appendChild(linhaBk(ult ? 'Último backup: ' + fmtDataHora(ult) : 'Nenhum backup feito ainda', 'Vai no arquivo: perfis, dados do corpo, pesos, exercícios feitos, treinos, favoritos, ajustes e a lista de músicas. Os arquivos de áudio não vão: depois de restaurar, basta apontá-los de novo.'));
+    const podeEnviar = !!(navigator.canShare && (() => { try { return navigator.canShare({ files: [new File(['{}'], 'a.json', { type: 'application/json' })] }); } catch (e) { return false; } })());
+    const bts = [['Salvar arquivo', 'pri', () => exportarBackup(false), 'bBkSalvar']];
+    if (podeEnviar) bts.push(['Enviar…', '', () => exportarBackup(true), 'bBkEnviar']);
+    box.appendChild(botoesBk(bts));
+    if (podeEnviar) { const n = document.createElement('p'); n.className = 'nota'; n.style.marginTop = '0'; n.textContent = '"Enviar…" abre as opções do celular: Google Drive, WhatsApp, e-mail…'; box.appendChild(n); }
+    // restaurar
+    tit('Restaurar');
+    if (bkPend) {
+      const r = bkPend.resumo, c = document.createElement('div'); c.className = 'bkConf';
+      c.appendChild(linhaBk('Backup de ' + fmtDataHora(r.criado), r.perfis.length + (r.perfis.length > 1 ? ' perfis: ' : ' perfil: ') + r.perfis.join(', ') + ' · ' + r.exs + ' exercícios feitos · ' + r.trs + (r.trs === 1 ? ' treino' : ' treinos') + ' · ' + r.mus + (r.mus === 1 ? ' música' : ' músicas')));
+      const av = document.createElement('p'); av.className = 'msg'; av.textContent = 'Os dados atuais deste aparelho serão trocados pelos do backup. Antes, o app guarda uma cópia deles para você poder desfazer.'; c.appendChild(av);
+      c.appendChild(botoesBk([['Cancelar', '', () => { bkPend = null; bkMsg = ''; renderPerfis(); }], ['Restaurar', 'pri', () => aplicarBackup(bkPend.obj, false), 'bBkRestaurar']]));
+      box.appendChild(c);
+    } else {
+      box.appendChild(botoesBk([['Importar backup…', '', () => $('bkArquivo').click(), 'bBkImportar']]));
+    }
+    const antes = lerAntes();
+    if (antes && !bkPend) {
+      box.appendChild(linhaBk('Cópia de antes da última restauração', 'Dados deste aparelho de ' + fmtDataHora(antes.resumo.criado) + ', caso a restauração não tenha sido o que você queria.'));
+      box.appendChild(botoesBk([['Desfazer a última restauração', '', b => confirmar(b, 'Toque de novo para desfazer', () => aplicarBackup(antes.obj, true)), 'bBkDesfazer']]));
+    }
+    // músicas sem arquivo
+    if (window.Musica) Musica.faltando().then(n => {
+      if (!n || !lugarFalta.isConnected || pfTela.modo !== 'backup') return;
+      const s2 = document.createElement('div'); s2.id = 'bkFalta';
+      const t = document.createElement('div'); t.className = 'ttl2'; t.innerHTML = '<span>Músicas</span>'; s2.appendChild(t);
+      s2.appendChild(linhaBk(n + (n > 1 ? ' músicas estão' : ' música está') + ' sem o arquivo neste aparelho', 'Toque abaixo e selecione os arquivos (pode marcar vários, ou todos da pasta de músicas). O app encaixa cada um no lugar certo, em todos os perfis.'));
+      s2.appendChild(botoesBk([['Reencontrar músicas…', 'pri', () => $('muAchar').click(), 'bBkAchar']]));
+      lugarFalta.appendChild(s2);
+    }).catch(() => { /* ok */ });
+  }
+  $('bPfBackup').addEventListener('click', () => { bkPend = null; bkMsg = ''; irPf('backup'); });
+  $('bkArquivo').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) lerArquivoBackup(f); });
+  $('muAchar').addEventListener('change', e => { const fs = Array.from(e.target.files || []); e.target.value = ''; reencontrarMusicas(fs); });
+  // depois de restaurar, o app reabre: mostra o resultado na tela de backup
+  (function () {
+    let m = null; try { m = sessionStorage.getItem(BK_AVISO); sessionStorage.removeItem(BK_AVISO); } catch (e) { /* ok */ }
+    if (!m) return;
+    bkMsg = m; pfTela.modo = 'backup'; renderPerfis(); $('pfSheet').hidden = false;
+  })();
+
   setExercise('repouso', true);
   painelTreino();
 
@@ -3217,6 +3450,7 @@
     perfis: () => JSON.parse(JSON.stringify(PERFIS)),
     corpo: pid => lerCorpo(pid || PERFIS.atual),
     historico: pid => lerHistorico(pid || PERFIS.atual),
+    backup: { montar: () => gerarArquivoBackup(), validar: o => { const v = validarBackup(o); return v.ok ? { ok: true, resumo: v.resumo } : v; }, ler: f => lerArquivoBackup(f), aplicar: o => aplicarBackup(o, false), reencontrar: fs => reencontrarMusicas(fs) },
     // diagnóstico: partes do corpo que a barra atravessa na pose atual
     barraNoCorpo: () => {
       const b2 = barra.visible ? barra : barraW.visible ? barraW : null; if (!b2) return null;

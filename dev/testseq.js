@@ -81,15 +81,15 @@ s=await p.evaluate(()=>{for(let i=0;i<600&&__corpo.treino().estado==='treino';i+
 ok(s.tr.estado==='descanso'&&s.tr.ciclo===1&&!s.seq.troca&&s.rest,'descanso entre ciclos '+JSON.stringify(s.tr));
 await sleep(500);m=await p.evaluate(()=>__corpo.musica());ok(m.tipo==='pausa'&&m.tocando,'música de pausa no descanso');
 await p.evaluate(()=>__corpo.avancar(5.2));s=await p.evaluate(()=>__corpo.treino());ok(s.estado==='treino'&&s.ciclo===2,'ciclo 2');
-s=await p.evaluate(()=>{for(let i=0;i<600&&__corpo.seq().idx===0;i++)__corpo.avancar(0.05);return {seq:__corpo.seq(),tr:__corpo.treino(),at:__corpo.atual()};});
+s=await p.evaluate(()=>{for(let i=0;i<600&&__corpo.seq().idx===0;i++){if(!document.getElementById('concBox').hidden)document.getElementById('bConcSim').click();__corpo.avancar(0.05);}return {seq:__corpo.seq(),tr:__corpo.treino(),at:__corpo.atual()};});
 ok(s.seq.idx===1&&s.at==='prancha'&&s.tr.estado==='treino'&&s.tr.cfg.reps===4,'depois=0: foi direto para o exercício 2 '+JSON.stringify(s));
-s=await p.evaluate(()=>{for(let i=0;i<600&&__corpo.treino().estado==='treino';i++)__corpo.avancar(0.05);return {seq:__corpo.seq(),tr:__corpo.treino(),nx:document.getElementById('restNext').textContent};});
+s=await p.evaluate(()=>{for(let i=0;i<600&&['treino','pergunta','concluindo'].includes(__corpo.treino().estado);i++){if(!document.getElementById('concBox').hidden)document.getElementById('bConcSim').click();__corpo.avancar(0.05);}return {seq:__corpo.seq(),tr:__corpo.treino(),nx:document.getElementById('restNext').textContent};});
 ok(s.tr.estado==='descanso'&&s.seq.troca&&/Rosca/.test(s.nx),'descanso até o próximo exercício: '+s.nx);
 await shot('6_troca');
 await p.evaluate(()=>__corpo.avancar(5.2));
 s=await p.evaluate(()=>({seq:__corpo.seq(),tr:__corpo.treino(),at:__corpo.atual()}));
 ok(s.seq.idx===2&&s.at==='rosca'&&s.tr.estado==='treino','exercício 3 (rosca)');
-await p.evaluate(()=>{for(let i=0;i<600&&__corpo.treino().estado!=='fim';i++)__corpo.avancar(0.05);});
+await p.evaluate(()=>{for(let i=0;i<600&&__corpo.treino().estado!=='fim';i++){if(!document.getElementById('concBox').hidden)document.getElementById('bConcSim').click();__corpo.avancar(0.05);}});
 s=await p.evaluate(()=>({tr:__corpo.treino(),bot:document.querySelector('#bPlay').getAttribute('aria-label')}));
 ok(s.tr.estado==='fim'&&s.bot==='Repetir','sequência concluída');
 await sleep(700);m=await p.evaluate(()=>__corpo.musica());ok(!m.tocando,'música para no fim');
@@ -131,7 +131,7 @@ m=await p.evaluate(()=>__corpo.musica());ok(m.tipo==='pausa'&&m.nome==='Relax pa
 await p.evaluate(()=>__corpo.avancar(5.2));await esperar(()=>__corpo.musica().tipo==='treino'&&__corpo.musica().elTocando&&__corpo.musica().nome!=='Relax pausa',15000);
 m=await p.evaluate(()=>__corpo.musica());ok(m.tipo==='treino'&&m.nome===nome1,'ciclo 2 continua a mesma música de treino: '+m.nome);
 if(!(m.tipo==='treino'&&m.nome===nome1)){console.log(JSON.stringify(m),JSON.stringify(await p.evaluate(()=>__corpo.treino())));await sleep(5000);console.log(JSON.stringify(await p.evaluate(()=>__corpo.musica())));}
-await p.evaluate(()=>{for(let i=0;i<600&&__corpo.seq().idx===0;i++)__corpo.avancar(0.05);});await p.waitForFunction(n=>__corpo.musica().tipo==='treino'&&__corpo.musica().elTocando&&__corpo.musica().nome!==n,{timeout:8000,polling:100},nome1).catch(()=>{});
+await p.evaluate(()=>{for(let i=0;i<600&&__corpo.seq().idx===0;i++){if(!document.getElementById('concBox').hidden)document.getElementById('bConcSim').click();__corpo.avancar(0.05);}});await p.waitForFunction(n=>__corpo.musica().tipo==='treino'&&__corpo.musica().elTocando&&__corpo.musica().nome!==n,{timeout:8000,polling:100},nome1).catch(()=>{});
 m=await p.evaluate(()=>__corpo.musica());ok(m.tipo==='treino'&&m.nome!==nome1,'próximo exercício troca de música: '+m.nome);
 // voz abaixa (só confere que a cadeia existe)
 ok(typeof m.duck==='number','controle de volume da voz ativo');

@@ -344,6 +344,19 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .mur{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--bd)}
 .mur .trt{flex:1;min-width:0}
 .muPrev.on{background:var(--roxo-f);border-color:var(--roxo);color:#fff}
+.bkAbrir{width:100%;text-align:left;color:var(--tx);font:inherit;margin-top:4px}
+.bkAbrir .trt b{display:block;font-size:15px}.bkAbrir .trt small{display:block;color:var(--tx2);font-size:12px;margin-top:2px}
+.bkIc{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--roxo-f);color:#fff;flex:none}.bkIc svg{width:19px;height:19px}
+.bkLinha{padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--card2);margin-bottom:10px}
+.bkLinha b{display:block;font-size:14px}.bkLinha small{display:block;color:var(--tx2);font-size:12px;line-height:1.45;margin-top:4px}
+.bkLinha.ok b{color:#99CC33}
+.bkConf{border:1px solid var(--roxo);border-radius:14px;padding:10px;margin-bottom:10px}.bkConf .bkLinha{border:0;padding:0;background:none}
+.bkMsg{margin:0 0 6px}
+#bkFalta .ttl2{margin-top:4px}#bkFalta .bkLinha{border-color:#FF9901;background:rgba(255,153,1,.08)}
+.muFalta{border:1px solid #FF9901;border-radius:12px;padding:10px 12px;margin:4px 0 8px;background:rgba(255,153,1,.08)}
+.muFalta p{font-size:13px;line-height:1.45;margin:0 0 8px}
+.muFalta button{width:100%;height:42px;border-radius:12px;border:1px solid var(--roxo);background:var(--roxo-f);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+.mur.falta .trt b{color:var(--tx2)}.mur.falta .trt small{color:#FFC266}.mur.falta .muPrev{opacity:.3;pointer-events:none}
 .muVazio{font-size:13px;color:var(--tx2);margin:4px 0 8px}
 .muRen{flex:1;min-width:0;height:36px;border-radius:8px;border:1px solid var(--roxo);background:var(--bg);color:var(--tx);padding:0 8px;font-size:15px;font-family:inherit}
 .muApp{display:flex;flex-wrap:wrap;gap:8px}
@@ -493,6 +506,8 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <p class="msg" id="pfMsg"></p>
     <div id="pfList"></div>
     <div class="btnLinha"><button id="bPfNovo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo perfil</button></div>
+    <div id="pfBkLinha"><button class="pfr clic bkAbrir" id="bPfBackup" aria-label="Backup dos dados"><span class="bkIc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span><span class="trt"><b>Backup dos dados</b><small>salvar uma cópia ou restaurar</small></span><span class="pfChev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button></div>
+    <input type="file" id="bkArquivo" accept=".json,application/json" hidden>
   </div>
 </div>
 <div id="trSheet" class="sheetw" hidden>
@@ -526,6 +541,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><div class="lb">Volume</div><input type="range" id="muVol" min="0" max="100" step="5" aria-label="Volume da música"></div>
     <div class="cr"><label for="muAbaixar" class="lb">Abaixar quando a voz fala<small>a contagem fica clara por cima da música</small></label><span class="sw"><input type="checkbox" id="muAbaixar"><i></i></span></div>
     <p class="msg" id="muMsg"></p>
+    <div class="muFalta" id="muFalta" hidden><p id="muFaltaTx"></p><button class="pri" id="bMuAchar">Reencontrar músicas…</button></div>
     <div class="ttl2"><span>Minhas músicas · treino</span><em id="muN_treino"></em><button class="addM" id="bMuAdd_treino">+ Adicionar</button></div>
     <input type="file" id="muFile_treino" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
     <div id="muL_treino"></div>
@@ -541,6 +557,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <p class="nota">No iPhone, só aparecem arquivos guardados no app Arquivos; músicas do Apple Music ou Spotify não podem ser usadas por nenhum app da web.</p>
   </div>
 </div>
+<input type="file" id="muAchar" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
 <script>/*THREE*/</script>
 <script>/*MUS*/</script>
 <script>/*EXS*/</script>

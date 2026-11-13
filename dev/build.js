@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const VERSION = 'corpo3d-v2.22.1';
+const VERSION = 'corpo3d-v2.23.0';
 const three = fs.readFileSync(require.resolve('three/build/three.min.js'), 'utf8');
 const app = fs.readFileSync(path.join(__dirname, 'src/app.js'), 'utf8');
 const exs = fs.readFileSync(path.join(__dirname, 'src/exercicios.js'), 'utf8');
@@ -15,7 +15,7 @@ function fill(head, sw) {
     .split('/*THREE*/').join(three.replace(/<\/script/gi, '<\\/script'))
     .split('/*MUS*/').join(mus)
     .split('/*EXS*/').join(exs)
-    .split('/*APP*/').join(app);
+    .split('/*APP*/').join(app.split('/*VER*/').join(VERSION.replace('corpo3d-v', '')));
 }
 fs.mkdirSync('dist/pwa', { recursive: true });
 // endereço público do app (GitHub Pages). As redes (WhatsApp, Teams...) exigem endereço completo da imagem.

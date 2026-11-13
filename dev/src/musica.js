@@ -171,14 +171,25 @@ window.Musica = (function () {
   let cache = null; // metadados (sem os arquivos) das músicas do perfil atual
   let perfil = 'p1';
   const perfilDe = v => v.perfil || 'p1'; // músicas antigas, de antes dos perfis, são do Perfil 1
+  const SOBRA = '#sobra'; // arquivos guardados que ficaram sem lugar depois de uma importação (servem para desfazer)
+  const ficha = v => ({ id: v.id, nome: v.nome, lista: v.lista, perfil: perfilDe(v), ordem: v.ordem, tam: v.tam, tipo: v.tipo, arq: v.arq || '', mod: v.mod || 0 });
   function listar() {
     return db().then(d => new Promise((res, rej) => {
       const out = [], r = d.transaction('faixas').objectStore('faixas').openCursor();
-      r.onsuccess = () => { const c = r.result; if (c) { const v = c.value; if (perfilDe(v) === perfil) out.push({ id: v.id, nome: v.nome, lista: v.lista, ordem: v.ordem, tam: v.tam, tipo: v.tipo }); c.continue(); } else { out.sort((a, b) => a.ordem - b.ordem); cache = out; res(out.slice()); } };
+      r.onsuccess = () => { const c = r.result; if (c) { const v = c.value; if (perfilDe(v) === perfil) out.push(Object.assign(ficha(v), { falta: !v.blob })); c.continue(); } else { out.sort((a, b) => a.ordem - b.ordem); cache = out; res(out.slice()); } };
+      r.onerror = () => rej(r.error);
+    }));
+  }
+  // todos os registros, com os arquivos (só para backup/restauração)
+  function todos() {
+    return db().then(d => new Promise((res, rej) => {
+      const out = [], r = d.transaction('faixas').objectStore('faixas').openCursor();
+      r.onsuccess = () => { const c = r.result; if (c) { out.push(c.value); c.continue(); } else res(out); };
       r.onerror = () => rej(r.error);
     }));
   }
   const daLista = (l, nome) => (l || cache || []).filter(f => f.lista === nome);
+  const tocaveis = nome => daLista(null, nome).filter(f => !f.falta); // as que têm o arquivo neste aparelho
   function pedirPersistencia() { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* ok */ } }
   function nomeLimpo(n) { return String(n || 'Música').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_]+/g, ' ').trim().slice(0, 80) || 'Música'; }
   async function adicionar(arquivos, lista) {
@@ -192,7 +203,7 @@ window.Musica = (function () {
       if (f.type && !/^audio\//.test(f.type) && !/\.(mp3|m4a|aac|wav|ogg|oga|opus|flac|webm)$/i.test(f.name)) { res.recusadas.push(nome + ': não é um arquivo de áudio'); continue; }
       if (f.size > MAX_MB * 1048576) { res.recusadas.push(nome + ': maior que ' + MAX_MB + ' MB'); continue; }
       const id = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-      const reg = { id, nome, lista, perfil, ordem: ++ordem, tam: f.size, tipo: f.type || 'audio/mpeg', blob: f };
+      const reg = { id, nome, lista, perfil, ordem: ++ordem, tam: f.size, tipo: f.type || 'audio/mpeg', arq: String(f.name || ''), mod: f.lastModified || 0, blob: f };
       try {
         await tx('readwrite', s => s.put(reg));
         // confere se ficou gravado de verdade
@@ -231,6 +242,66 @@ window.Musica = (function () {
     blobs.clear();
   }
   function definirPerfil(pid) { if (pid && pid !== perfil) { perfil = String(pid); cache = null; blobs.clear(); } }
+  /* ---------- backup: a "ficha" de cada música (sem o arquivo de áudio) ---------- */
+  async function fichas() { return (await todos()).filter(v => perfilDe(v) !== SOBRA).map(ficha); }
+  // o arquivo escolhido é o desta ficha? mesmo tamanho em bytes e mesmo nome de arquivo (ou nome parecido)
+  const mesmoNome = (f, nomeArq) => !!nomeArq && ((f.arq && (f.arq === nomeArq || nomeLimpo(f.arq) === nomeLimpo(nomeArq))) || f.nome === nomeLimpo(nomeArq));
+  // restaura as fichas de um backup: as músicas cujo arquivo já está no aparelho continuam tocando;
+  // as outras ficam marcadas como "faltando arquivo" até a pessoa reencontrá-las
+  async function restaurarFichas(lista) {
+    lista = Array.isArray(lista) ? lista : [];
+    const atuais = await todos();
+    const pool = atuais.filter(v => v.blob);
+    const tomar = v => { const i = pool.indexOf(v); if (i >= 0) pool.splice(i, 1); return v.blob; };
+    const novos = [];
+    for (const f of lista) {
+      const reg = { id: String(f.id), nome: String(f.nome || 'Música').slice(0, 80), lista: f.lista === 'pausa' ? 'pausa' : 'treino', perfil: String(f.perfil || 'p1'), ordem: Number(f.ordem) || 0, tam: Number(f.tam) || 0, tipo: String(f.tipo || 'audio/mpeg'), arq: String(f.arq || ''), mod: Number(f.mod) || 0, blob: null };
+      let achou = pool.find(v => v.id === reg.id && v.blob.size === reg.tam);
+      if (!achou && reg.tam) achou = pool.find(v => v.blob.size === reg.tam && (reg.arq ? mesmoNome({ arq: v.arq, nome: v.nome }, reg.arq) : v.nome === reg.nome));
+      if (achou) reg.blob = tomar(achou);
+      novos.push(reg);
+    }
+    const agora = Date.now();
+    const sobras = pool.filter(v => perfilDe(v) !== SOBRA).map(v => Object.assign({}, v, { perfil: SOBRA, sobra: agora }));
+    const d = await db();
+    await new Promise((res, rej) => {
+      const t = d.transaction('faixas', 'readwrite'), s = t.objectStore('faixas');
+      s.clear(); for (const r of novos.concat(sobras)) s.put(r);
+      t.oncomplete = res; t.onerror = () => rej(t.error || new Error('Falha ao gravar as músicas'));
+      t.onabort = () => rej(t.error || new Error('Gravação das músicas cancelada (talvez falte espaço no aparelho).'));
+    });
+    // confere
+    const volta = await todos(), ids = new Set(volta.map(v => v.id));
+    if (novos.some(r => !ids.has(r.id))) throw new Error('A lista de músicas não foi gravada por completo.');
+    cache = null; blobs.clear(); await listar();
+    return { total: novos.length, comArquivo: novos.filter(r => r.blob).length, faltando: novos.filter(r => !r.blob).length };
+  }
+  async function faltando() { return (await fichasComFalta()).length; }
+  async function fichasComFalta() { return (await todos()).filter(v => perfilDe(v) !== SOBRA && !v.blob); }
+  // a pessoa escolhe vários arquivos de uma vez; cada um vai para a(s) ficha(s) que ele completa
+  async function reencontrar(arquivos) {
+    const falta = await fichasComFalta(), res = { encaixadas: 0, naoUsados: [], faltando: 0 };
+    for (const a of Array.from(arquivos || [])) {
+      const nomeA = String(a.name || '');
+      const mesmoTam = falta.filter(v => !v.blob && v.tam === a.size);
+      let alvo = mesmoTam.filter(v => mesmoNome(v, nomeA));
+      if (!alvo.length && mesmoTam.length && new Set(mesmoTam.map(v => (v.arq || v.nome))).size === 1) alvo = mesmoTam; // tamanho exato só bate com uma música
+      if (!alvo.length) { res.naoUsados.push(nomeLimpo(nomeA)); continue; }
+      for (const v of alvo) {
+        const novo = Object.assign({}, v, { blob: a, tipo: a.type || v.tipo, arq: v.arq || nomeA });
+        try {
+          await tx('readwrite', s => s.put(novo));
+          const volta = await tx('readonly', s => s.get(v.id));
+          if (!volta || !volta.blob || volta.blob.size !== a.size) throw new Error('verificação falhou');
+          v.blob = a; res.encaixadas++;
+        } catch (e) { res.naoUsados.push(nomeLimpo(nomeA) + ' (não consegui gravar' + (e && e.name === 'QuotaExceededError' ? ': falta espaço' : '') + ')'); break; }
+      }
+    }
+    res.faltando = falta.filter(v => !v.blob).length;
+    if (res.encaixadas) pedirPersistencia();
+    cache = null; blobs.clear(); await listar();
+    return res;
+  }
   async function mover(id, dir) {
     const l = await listar(), f = l.find(x => x.id === id); if (!f) return;
     const irm = l.filter(x => x.lista === f.lista), i = irm.indexOf(f), j = i + dir;
@@ -290,7 +361,7 @@ window.Musica = (function () {
   function modoEfetivo(tipo, modoPedido) {
     const m = modoPedido && modoPedido !== 'padrao' ? modoPedido : conf.modo;
     if (m === 'off') return 'off';
-    if (m === 'minhas' && daLista(null, tipo).length) return 'minhas';
+    if (m === 'minhas' && tocaveis(tipo).length) return 'minhas';
     return 'app';
   }
   let modoPedidoAtual = 'padrao';
@@ -338,7 +409,7 @@ window.Musica = (function () {
       else { const rk = tipo === 'pausa' ? 'rotPausa' : 'rotTreino'; iniciarSynth(tipo, st[rk]++); }
     } else {
       pararSynth();
-      const f = u && u.fonte === 'minhas' && daLista(null, tipo).find(x => x.id === u.id);
+      const f = u && u.fonte === 'minhas' && tocaveis(tipo).find(x => x.id === u.id);
       if (f) { try { await tocarFaixa(f, u.tempo); return; } catch (e) { st.aviso = String(e && (e.name + ': ' + e.message)); } }
       await proxima();
     }
@@ -351,7 +422,7 @@ window.Musica = (function () {
     else if (st.fonte === 'minhas' && st.faixaId) ultimo[st.tipo] = { fonte: 'minhas', id: st.faixaId, tempo: el ? el.currentTime : 0 };
   }
   async function proxima() {
-    const tipo = st.tipo, l = daLista(null, tipo); if (!l.length) { st.tocando && iniciarSynth(tipo, 0); return; }
+    const tipo = st.tipo, l = tocaveis(tipo); if (!l.length) { st.tocando && iniciarSynth(tipo, 0); return; }
     const rk = tipo === 'pausa' ? 'rotPausa' : 'rotTreino';
     for (let k = 0; k < l.length; k++) {
       const f = l[st[rk]++ % l.length];
@@ -409,6 +480,7 @@ window.Musica = (function () {
   return {
     desbloquear, tocar, pausar, retomar, parar, proxima, abaixar, soltarAbaixar, configurar, previa,
     listar, adicionar, alterar, remover, mover, apagarPerfil, definirPerfil, MAX_POR_LISTA, MAX_MB,
+    fichas, restaurarFichas, reencontrar, faltando,
     estilos: tipo => ESTILOS[tipo].map(e => e.nome),
     conf: () => Object.assign({}, conf),
     estado: () => ({ aviso: st.aviso || '', tocando: st.tocando, pausado: st.pausado, tipo: st.tipo, fonte: st.fonte, nome: st.nome, erro: st.erro, ctx: ctx ? ctx.state : 'sem', duck: duckG ? +duckG.gain.value.toFixed(2) : 1, rodada: { treino: st.rotTreino, pausa: st.rotPausa }, elTocando: !!(el && !el.paused) }),
