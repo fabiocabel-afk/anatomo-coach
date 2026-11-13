@@ -496,7 +496,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.23.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.23.1</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -507,7 +507,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div id="pfList"></div>
     <div class="btnLinha"><button id="bPfNovo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo perfil</button></div>
     <div id="pfBkLinha"><button class="pfr clic bkAbrir" id="bPfBackup" aria-label="Backup dos dados"><span class="bkIc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span><span class="trt"><b>Backup dos dados</b><small>salvar uma cópia ou restaurar</small></span><span class="pfChev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button></div>
-    <input type="file" id="bkArquivo" accept=".json,application/json" hidden>
+    <input type="file" id="bkArquivo" accept=".json,.txt,application/json,text/plain" hidden>
   </div>
 </div>
 <div id="trSheet" class="sheetw" hidden>
@@ -5246,7 +5246,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.23.0';
+  const BK_VERSAO = '2.23.1';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;
@@ -5311,18 +5311,30 @@ window.CORPO3D_EXERCICIOS = function (H) {
     return { txt, nome: nomeArquivoBackup(), aviso };
   }
   function marcarBackupFeito() { try { localStorage.setItem(BK_ULTIMO, String(Date.now())); } catch (e) { /* ok */ } }
+  // o arquivo fica pronto assim que a tela abre: o celular só abre o "Enviar" se ele for chamado
+  // logo no toque, sem esperar nada antes
+  let bkPronto = null;
+  function prepararBackup() { bkPronto = null; gerarArquivoBackup().then(r => { bkPronto = r; }).catch(() => { bkPronto = null; }); }
+  // o Android não aceita enviar arquivos .json: vai como texto (.txt), com o mesmo conteúdo
+  const arquivoParaEnviar = r => new File([r.txt], r.nome.replace(/\.json$/, '.txt'), { type: 'text/plain' });
   async function exportarBackup(compartilhar) {
     if (bkOcupado) return; bkOcupado = true;
     try {
       protegerArmazenamento();
-      const { txt, nome, aviso } = await gerarArquivoBackup();
-      const extra = aviso ? ' (a lista de músicas não entrou: ' + aviso + ')' : '';
       if (compartilhar) {
-        const arq = new File([txt], nome, { type: 'application/json' });
-        try { await navigator.share({ files: [arq], title: 'Backup AnatoMotion' }); }
-        catch (e) { if (e && e.name === 'AbortError') { bkMsg = 'Envio cancelado.'; return; } throw e; }
-        marcarBackupFeito(); bkMsg = 'Backup enviado' + extra + '. Guarde o arquivo num lugar seguro.';
+        let r = bkPronto, pEnvio;
+        if (r) pEnvio = navigator.share({ files: [arquivoParaEnviar(r)], title: 'Backup AnatoMotion' }); // chamado já no toque
+        else { r = await gerarArquivoBackup(); pEnvio = navigator.share({ files: [arquivoParaEnviar(r)], title: 'Backup AnatoMotion' }); }
+        try { await pEnvio; }
+        catch (e) {
+          if (e && e.name === 'AbortError') { bkMsg = 'Envio cancelado.'; return; }
+          if (e && e.name === 'NotAllowedError') { bkMsg = 'O celular não deixou enviar daqui. Use "Salvar arquivo" e depois envie o arquivo pela pasta Downloads (ou pelo app do Google Drive).'; return; }
+          throw e;
+        }
+        marcarBackupFeito(); bkMsg = 'Backup enviado' + (r.aviso ? ' (a lista de músicas não entrou: ' + r.aviso + ')' : '') + '. Guarde o arquivo num lugar seguro.';
       } else {
+        const { txt, nome, aviso } = bkPronto || await gerarArquivoBackup();
+        const extra = aviso ? ' (a lista de músicas não entrou: ' + aviso + ')' : '';
         const url = URL.createObjectURL(new Blob([txt], { type: 'application/json' }));
         const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 60000);
@@ -5424,11 +5436,12 @@ window.CORPO3D_EXERCICIOS = function (H) {
     tit('Fazer backup');
     let ult = 0; try { ult = Number(localStorage.getItem(BK_ULTIMO)) || 0; } catch (e) { /* ok */ }
     box.appendChild(linhaBk(ult ? 'Último backup: ' + fmtDataHora(ult) : 'Nenhum backup feito ainda', 'Vai no arquivo: perfis, dados do corpo, pesos, exercícios feitos, treinos, favoritos, ajustes e a lista de músicas. Os arquivos de áudio não vão: depois de restaurar, basta apontá-los de novo.'));
-    const podeEnviar = !!(navigator.canShare && (() => { try { return navigator.canShare({ files: [new File(['{}'], 'a.json', { type: 'application/json' })] }); } catch (e) { return false; } })());
+    const podeEnviar = !!(navigator.canShare && (() => { try { return navigator.canShare({ files: [new File(['{}'], 'a.txt', { type: 'text/plain' })] }); } catch (e) { return false; } })());
+    prepararBackup();
     const bts = [['Salvar arquivo', 'pri', () => exportarBackup(false), 'bBkSalvar']];
     if (podeEnviar) bts.push(['Enviar…', '', () => exportarBackup(true), 'bBkEnviar']);
     box.appendChild(botoesBk(bts));
-    if (podeEnviar) { const n = document.createElement('p'); n.className = 'nota'; n.style.marginTop = '0'; n.textContent = '"Enviar…" abre as opções do celular: Google Drive, WhatsApp, e-mail…'; box.appendChild(n); }
+    if (podeEnviar) { const n = document.createElement('p'); n.className = 'nota'; n.style.marginTop = '0'; n.textContent = '"Enviar…" abre as opções do celular: Google Drive, WhatsApp, e-mail… O arquivo enviado termina em .txt e pode ser importado do mesmo jeito.'; box.appendChild(n); }
     // restaurar
     tit('Restaurar');
     if (bkPend) {

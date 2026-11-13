@@ -3257,18 +3257,30 @@
     return { txt, nome: nomeArquivoBackup(), aviso };
   }
   function marcarBackupFeito() { try { localStorage.setItem(BK_ULTIMO, String(Date.now())); } catch (e) { /* ok */ } }
+  // o arquivo fica pronto assim que a tela abre: o celular só abre o "Enviar" se ele for chamado
+  // logo no toque, sem esperar nada antes
+  let bkPronto = null;
+  function prepararBackup() { bkPronto = null; gerarArquivoBackup().then(r => { bkPronto = r; }).catch(() => { bkPronto = null; }); }
+  // o Android não aceita enviar arquivos .json: vai como texto (.txt), com o mesmo conteúdo
+  const arquivoParaEnviar = r => new File([r.txt], r.nome.replace(/\.json$/, '.txt'), { type: 'text/plain' });
   async function exportarBackup(compartilhar) {
     if (bkOcupado) return; bkOcupado = true;
     try {
       protegerArmazenamento();
-      const { txt, nome, aviso } = await gerarArquivoBackup();
-      const extra = aviso ? ' (a lista de músicas não entrou: ' + aviso + ')' : '';
       if (compartilhar) {
-        const arq = new File([txt], nome, { type: 'application/json' });
-        try { await navigator.share({ files: [arq], title: 'Backup AnatoMotion' }); }
-        catch (e) { if (e && e.name === 'AbortError') { bkMsg = 'Envio cancelado.'; return; } throw e; }
-        marcarBackupFeito(); bkMsg = 'Backup enviado' + extra + '. Guarde o arquivo num lugar seguro.';
+        let r = bkPronto, pEnvio;
+        if (r) pEnvio = navigator.share({ files: [arquivoParaEnviar(r)], title: 'Backup AnatoMotion' }); // chamado já no toque
+        else { r = await gerarArquivoBackup(); pEnvio = navigator.share({ files: [arquivoParaEnviar(r)], title: 'Backup AnatoMotion' }); }
+        try { await pEnvio; }
+        catch (e) {
+          if (e && e.name === 'AbortError') { bkMsg = 'Envio cancelado.'; return; }
+          if (e && e.name === 'NotAllowedError') { bkMsg = 'O celular não deixou enviar daqui. Use "Salvar arquivo" e depois envie o arquivo pela pasta Downloads (ou pelo app do Google Drive).'; return; }
+          throw e;
+        }
+        marcarBackupFeito(); bkMsg = 'Backup enviado' + (r.aviso ? ' (a lista de músicas não entrou: ' + r.aviso + ')' : '') + '. Guarde o arquivo num lugar seguro.';
       } else {
+        const { txt, nome, aviso } = bkPronto || await gerarArquivoBackup();
+        const extra = aviso ? ' (a lista de músicas não entrou: ' + aviso + ')' : '';
         const url = URL.createObjectURL(new Blob([txt], { type: 'application/json' }));
         const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 60000);
@@ -3370,11 +3382,12 @@
     tit('Fazer backup');
     let ult = 0; try { ult = Number(localStorage.getItem(BK_ULTIMO)) || 0; } catch (e) { /* ok */ }
     box.appendChild(linhaBk(ult ? 'Último backup: ' + fmtDataHora(ult) : 'Nenhum backup feito ainda', 'Vai no arquivo: perfis, dados do corpo, pesos, exercícios feitos, treinos, favoritos, ajustes e a lista de músicas. Os arquivos de áudio não vão: depois de restaurar, basta apontá-los de novo.'));
-    const podeEnviar = !!(navigator.canShare && (() => { try { return navigator.canShare({ files: [new File(['{}'], 'a.json', { type: 'application/json' })] }); } catch (e) { return false; } })());
+    const podeEnviar = !!(navigator.canShare && (() => { try { return navigator.canShare({ files: [new File(['{}'], 'a.txt', { type: 'text/plain' })] }); } catch (e) { return false; } })());
+    prepararBackup();
     const bts = [['Salvar arquivo', 'pri', () => exportarBackup(false), 'bBkSalvar']];
     if (podeEnviar) bts.push(['Enviar…', '', () => exportarBackup(true), 'bBkEnviar']);
     box.appendChild(botoesBk(bts));
-    if (podeEnviar) { const n = document.createElement('p'); n.className = 'nota'; n.style.marginTop = '0'; n.textContent = '"Enviar…" abre as opções do celular: Google Drive, WhatsApp, e-mail…'; box.appendChild(n); }
+    if (podeEnviar) { const n = document.createElement('p'); n.className = 'nota'; n.style.marginTop = '0'; n.textContent = '"Enviar…" abre as opções do celular: Google Drive, WhatsApp, e-mail… O arquivo enviado termina em .txt e pode ser importado do mesmo jeito.'; box.appendChild(n); }
     // restaurar
     tit('Restaurar');
     if (bkPend) {

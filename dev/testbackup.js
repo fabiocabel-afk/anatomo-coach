@@ -37,6 +37,17 @@ ok(bk.app==='AnatoMotion'&&bk.perfis.lista.length===2&&Object.keys(bk.dados).len
 t=await p.evaluate(()=>document.getElementById('pfList').innerText);ok(/Último backup: \d\d\/\d\d\/\d{4}/.test(t)&&/salvo em Downloads/.test(t),'mostra último backup');
 fs.writeFileSync('/tmp/bk_ok.json',JSON.stringify(bk));
 const ruim=JSON.parse(JSON.stringify(bk));ruim.dados['xx.estranho@p1']='{}';fs.writeFileSync('/tmp/bk_ruim.json',JSON.stringify(ruim));
+// ---- Enviar (simula o compartilhar do Android, que só aceita ser chamado no toque e recusa .json)
+await p.evaluate(()=>{window.__env=[];navigator.canShare=()=>true;navigator.share=function(d){const f=d.files[0];const noToque=navigator.userActivation?navigator.userActivation.isActive:true;window.__env.push({nome:f.name,tipo:f.type,noToque});if(/\.json$/.test(f.name))return Promise.reject(new DOMException('Permission denied','NotAllowedError'));return f.text().then(t=>{window.__envTxt=t;});};});
+await cl('#bPfVoltar');await cl('#bPfBackup');await sleep(800);
+ok(await p.evaluate(()=>!!document.getElementById('bBkEnviar')),'botão Enviar aparece');
+await p.click('#bBkEnviar');await sleep(800);
+let env=await p.evaluate(()=>({e:window.__env,t:document.getElementById('pfList').innerText,ok:(()=>{try{return JSON.parse(window.__envTxt).app==='AnatoMotion'}catch(e){return false}})()}));
+ok(env.e.length===1&&/\.txt$/.test(env.e[0].nome)&&env.e[0].tipo==='text/plain'&&env.e[0].noToque&&env.ok&&/Backup enviado/.test(env.t),'Enviar: arquivo .txt, chamado no toque, conteúdo válido '+JSON.stringify(env.e));
+fs.writeFileSync('/tmp/bk_enviado.txt',await p.evaluate(()=>window.__envTxt));
+await p.evaluate(()=>{navigator.share=()=>Promise.reject(new DOMException('Permission denied','NotAllowedError'));});
+await p.click('#bBkEnviar');await sleep(600);
+ok(/não deixou enviar/.test(await p.evaluate(()=>document.getElementById('pfList').innerText)),'Enviar recusado pelo celular: orienta usar Salvar arquivo');
 // ---- arquivo errado / danificado: nada muda
 await p.$('#bkArquivo').then(i=>i.uploadFile('/tmp/aud/texto.txt'));await sleep(600);
 t=await p.evaluate(()=>document.getElementById('pfList').innerText);ok(/não está no formato de backup/.test(t)&&/Nada foi alterado/.test(t),'arquivo que não é backup é recusado');
@@ -54,7 +65,7 @@ await p.evaluate(async()=>{localStorage.clear();await new Promise(r=>{const q=in
 await p.reload();await carregar();
 const vazio=await estado();ok(vazio.h_p1===0&&vazio.tr===''&&vazio.mus==='','app zerado depois da limpeza');
 // ---- importar pelo botão
-await cl('#bPerfil');await cl('#bPfBackup');await p.$('#bkArquivo').then(i=>i.uploadFile(dl+'/'+arqs[0]));await sleep(700);
+await cl('#bPerfil');await cl('#bPfBackup');await p.$('#bkArquivo').then(i=>i.uploadFile('/tmp/bk_enviado.txt'));await sleep(700);
 t=await p.evaluate(()=>document.getElementById('pfList').innerText);
 ok(/2 perfis: Fabio, Ana/.test(t)&&/10 exercícios feitos/.test(t)&&/1 treino/.test(t)&&/2 músicas/.test(t),'resumo antes de restaurar');
 await p.screenshot({path:'shots/backup_confirmar.png'});
