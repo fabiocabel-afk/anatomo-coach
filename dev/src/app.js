@@ -1826,7 +1826,7 @@
   }
   function calarVoz() { if (VOZ_OK) try { window.speechSynthesis.cancel(); } catch (e) { /* ignora */ } if (window.Musica) Musica.soltarAbaixar(); }
 
-  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null, lado2: false };
+  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null, lado2: false, pausaEntreMs: 0 };
   const ICON_RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>';
   $('bReset').innerHTML = ICON_RESET;
 
@@ -1928,13 +1928,17 @@
     painelTreino();
   }
   // tempo do exercício para o histórico: começa no primeiro "Começa!", desconta as pausas
-  function marcarInicio() { if (!S.reg) S.reg = { inicio: Date.now(), pausadoMs: 0, pausaDesde: null }; }
+  // pausas programadas também entram no histórico: o descanso entre os ciclos (dentro do exercício)
+  // e o descanso entre um exercício e outro do treino montado (fica no exercício que vem depois).
+  // As pausas feitas pela pessoa (botão Parar) não contam em nada.
+  function marcarInicio() { if (!S.reg) { S.reg = { inicio: Date.now(), pausadoMs: 0, pausaDesde: null, descMs: 0, antesMs: SEQ ? S.pausaEntreMs : 0 }; S.pausaEntreMs = 0; } }
   function registroDoExercicio() {
-    const r = S.reg || { inicio: Date.now(), pausadoMs: 0 }, fim = Date.now();
+    const r = S.reg || { inicio: Date.now(), pausadoMs: 0, descMs: 0, antesMs: 0 }, fim = Date.now();
     return {
       id: 'h' + fim.toString(36) + Math.random().toString(36).slice(2, 5), ex: cur.id, nome: cur.nome,
-      treino: SEQ ? { id: SEQ.t.id, nome: SEQ.t.nome } : null, dia: hojeStr(new Date(r.inicio)),
-      inicio: r.inicio, fim, ativoSeg: Math.max(0, Math.round((fim - r.inicio - (r.pausadoMs || 0)) / 1000)),
+      treino: SEQ ? { id: SEQ.t.id, nome: SEQ.t.nome } : null, sessao: SEQ ? SEQ.sessao : null, dia: hojeStr(new Date(r.inicio)),
+      inicio: r.inicio, fim, ativoSeg: Math.max(0, Math.round((fim - r.inicio - (r.pausadoMs || 0) - (r.descMs || 0)) / 1000)),
+      descansoSeg: Math.round((r.descMs || 0) / 1000), pausaAntesSeg: Math.round((r.antesMs || 0) / 1000),
       ciclos: tc.ciclos, reps: tc.reps, iso: !!cur.isometria, ritmo: tc.ritmo, ritmoNome: ritmoNome(tc.ritmo),
       descanso: tc.descanso, caneleira: usaCaneleira() ? cfg.caneleira : 0, lados: cur.doisLados ? 2 : 1
     };
@@ -2017,6 +2021,7 @@
       lado = cur.alt ? Math.floor(t / per) % 2 : 0;
     } else if (S.estado === 'descanso') {
       S.resto -= dt;
+      if (S.troca) S.pausaEntreMs += dt * 1000; else if (S.reg) S.reg.descMs = (S.reg.descMs || 0) + dt * 1000;
       const n = Math.ceil(S.resto);
       if (n !== S.restoInt) {
         S.restoInt = n;
@@ -2507,7 +2512,8 @@
     const tr = TREINOS.find(x => x.id === id);
     if (!tr || !tr.itens.length) return false;
     if (window.Musica) { Musica.desbloquear(); Musica.parar(true); }
-    SEQ = { t: tr, idx: 0, feitos: [] };
+    SEQ = { t: tr, idx: 0, feitos: [], sessao: 's' + Date.now().toString(36) };
+    S.pausaEntreMs = 0;
     aplicarItem(); iniciarTreino();
     return true;
   }
@@ -2871,8 +2877,11 @@
   /* ---------- Gráficos simples em SVG (uma série, roxo do app) ---------- */
   const SVGNS = 'http://www.w3.org/2000/svg';
   function elSvg(tag, at) { const e = document.createElementNS(SVGNS, tag); for (const k in at) e.setAttribute(k, at[k]); return e; }
-  function grafico(alvo, tipo, dados, fmtEixo) {
-    // dados: [{ rot, v, dica }]
+  function grafico(alvo, tipo, dados, fmtEixo, opc) {
+    // dados: [{ rot, v, dica, partes? }] · tipo 'pilha': barras empilhadas (partes = [base, topo])
+    // opc: { sel: índice selecionado, aoTocar: i => … }
+    opc = opc || {};
+    const pilha = tipo === 'pilha'; if (pilha) tipo = 'barra';
     alvo.innerHTML = '';
     if (!dados.length) return;
     const W = 340, H = 170, ml = 34, mr = 10, mt = 14, mb = 26, iw = W - ml - mr, ih = H - mt - mb;
@@ -2894,10 +2903,20 @@
     const marcas = [];
     if (tipo === 'barra') {
       const larg = Math.max(3, Math.min(22, bw - 4));
+      // pedaço de barra: arredondado só em cima quando é o topo da pilha
+      const peca = (cls, x, y0, y1, topo) => {
+        const h = Math.max(1.5, y0 - y1), yy = y0 - h, r = topo ? Math.min(4, larg / 2, h) : 0;
+        return elSvg('path', { class: cls, d: 'M' + x + ',' + y0 + 'V' + (yy + r) + 'Q' + x + ',' + yy + ' ' + (x + r) + ',' + yy + 'H' + (x + larg - r) + 'Q' + (x + larg) + ',' + yy + ' ' + (x + larg) + ',' + (yy + r) + 'V' + y0 + 'Z' });
+      };
       dados.forEach((d, i) => {
         if (d.v > 0) {
-          const h = Math.max(2, y(lo) - y(d.v)), x = xc(i) - larg / 2, yy = y(d.v), r = Math.min(4, larg / 2, h);
-          svg.appendChild(elSvg('path', { class: 'gBarra', d: 'M' + x + ',' + (yy + h) + 'V' + (yy + r) + 'Q' + x + ',' + yy + ' ' + (x + r) + ',' + yy + 'H' + (x + larg - r) + 'Q' + (x + larg) + ',' + yy + ' ' + (x + larg) + ',' + (yy + r) + 'V' + (yy + h) + 'Z' }));
+          const x = xc(i) - larg / 2, g = elSvg('g', { class: 'gGrupo' + (opc.sel != null && opc.sel !== i ? ' gDim' : '') + (opc.sel === i ? ' gSel' : '') });
+          if (pilha && d.partes) {
+            const [a, b] = d.partes;
+            if (a > 0) g.appendChild(peca('gBarra', x, y(lo), y(lo + a), !(b > 0)));
+            if (b > 0) g.appendChild(peca('gBarra2', x, y(lo + a) - (a > 0 ? 2 : 0), y(lo + a + b), true)); // 2 px de fresta entre os pedaços
+          } else g.appendChild(peca('gBarra', x, y(lo), y(d.v), true));
+          svg.appendChild(g);
         }
         marcas.push({ i, x: xc(i), y: y(Math.max(d.v, lo)), d });
       });
@@ -2913,6 +2932,7 @@
     const mostrar = m => {
       realce.setAttribute('x1', m.x); realce.setAttribute('x2', m.x); realce.setAttribute('visibility', 'visible');
       dica.innerHTML = ''; const b = document.createElement('b'); b.textContent = m.d.dica; dica.appendChild(b);
+      if (m.d.dica2) { const sm = document.createElement('small'); sm.textContent = m.d.dica2; dica.appendChild(sm); }
       dica.hidden = false;
       const wR = alvo.clientWidth || W, k = wR / W;
       const dw = dica.offsetWidth || 120;
@@ -2921,6 +2941,7 @@
     marcas.forEach(m => {
       const hit = elSvg('rect', { x: m.x - bw / 2, y: mt, width: bw, height: ih + mb - 6, class: 'gToque' });
       hit.addEventListener('pointerenter', () => mostrar(m)); hit.addEventListener('pointerdown', () => mostrar(m));
+      if (opc.aoTocar) { hit.style.cursor = 'pointer'; hit.addEventListener('click', () => opc.aoTocar(m.i)); }
       svg.appendChild(hit);
     });
     svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { dica.hidden = true; realce.setAttribute('visibility', 'hidden'); } });
@@ -2930,7 +2951,7 @@
   /* ---------- Telas do perfil: lista → ver → editar / medidas / exercícios feitos ---------- */
   let pfEdit = null; // { id|null (novo), nome, cor, corpo }
   let pfTela = { modo: 'lista', id: null, dias: 14 };
-  function irPf(modo, id) { pfTela.modo = modo; if (id !== undefined) pfTela.id = id; if (modo !== 'editar') pfEdit = null; if (modo !== 'medidas') pfNova = null; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }
+  function irPf(modo, id) { if (modo !== 'historico') pfTela.diaSel = null; pfTela.modo = modo; if (id !== undefined) pfTela.id = id; if (modo !== 'editar') pfEdit = null; if (modo !== 'medidas') pfNova = null; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }
   function renderPerfis(msg) {
     $('pfMsg').textContent = msg || perfisErro || '';
     const m = pfTela.modo, p = PERFIS.lista.find(x => x.id === pfTela.id);
@@ -3058,43 +3079,151 @@
     });
     tb.appendChild(tbody); box.appendChild(tb);
   }
+  // tempos de um registro: exercício e pausas programadas (registros antigos não têm as pausas separadas)
+  const pausasSeg = r => (r.descansoSeg || 0) + (r.pausaAntesSeg || 0);
+  const minutos = seg => seg / 60;
+  const fmtMin = v => { const m = Math.round(v); return m + (m === 1 ? ' min' : ' min'); };
   function telaHistorico(box, p) {
     const hist = lerHistorico(p.id).sort((a, b) => b.inicio - a.inicio);
     if (!hist.length) { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Nenhum exercício registrado ainda. No fim de cada exercício, responda "Sim, concluí" para ele entrar aqui.'; box.appendChild(e); return; }
     const sg = document.createElement('div'); sg.className = 'seg'; sg.id = 'histDias';
-    for (const [n, nm] of [[7, '7 dias'], [14, '14 dias'], [30, '30 dias']]) { const b = botao(pfTela.dias === n ? 'on' : '', nm, null, () => { pfTela.dias = n; renderPerfis(); }); b.dataset.v = n; sg.appendChild(b); }
+    for (const [n, nm] of [[7, '7 dias'], [14, '14 dias'], [30, '30 dias']]) { const b = botao(pfTela.dias === n ? 'on' : '', nm, null, () => { pfTela.dias = n; pfTela.diaSel = null; renderPerfis(); }); b.dataset.v = n; sg.appendChild(b); }
     box.appendChild(sg);
     // por dia (últimos N dias, incluindo dias sem treino)
-    const porDia = {}; for (const r of hist) { const d = porDia[r.dia] || (porDia[r.dia] = { n: 0, seg: 0, itens: [] }); d.n++; d.seg += r.ativoSeg || 0; d.itens.push(r); }
-    const serie = []; const hj = new Date();
-    for (let i = pfTela.dias - 1; i >= 0; i--) { const d = new Date(hj.getFullYear(), hj.getMonth(), hj.getDate() - i), k = hojeStr(d), x = porDia[k]; serie.push({ rot: k.slice(8, 10) + '/' + k.slice(5, 7), v: x ? x.n : 0, dica: dataBR(k) + ': ' + (x ? x.n + (x.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(x.seg) : 'sem treino') }); }
-    const noPer = serie.reduce((a, d) => a + d.v, 0), segPer = Object.keys(porDia).filter(k => serie.some(s => s.dica.startsWith(dataBR(k)))).reduce((a, k) => a + porDia[k].seg, 0);
-    const g = document.createElement('div'); g.className = 'pfDados';
-    for (const [k, v] of [['Exercícios', String(noPer)], ['Dias de treino', String(serie.filter(d => d.v).length)], ['Tempo', durTxt(segPer)]]) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); g.appendChild(d); }
+    const porDia = {};
+    for (const r of hist) { const d = porDia[r.dia] || (porDia[r.dia] = { n: 0, seg: 0, pausa: 0, itens: [] }); d.n++; d.seg += r.ativoSeg || 0; d.pausa += pausasSeg(r); d.itens.push(r); }
+    const serie = [], dias = []; const hj = new Date();
+    for (let i = pfTela.dias - 1; i >= 0; i--) {
+      const d = new Date(hj.getFullYear(), hj.getMonth(), hj.getDate() - i), k = hojeStr(d), x = porDia[k]; dias.push(k);
+      serie.push({ rot: k.slice(8, 10) + '/' + k.slice(5, 7), v: x ? minutos(x.seg + x.pausa) : 0, partes: x ? [minutos(x.seg), minutos(x.pausa)] : [0, 0],
+        dica: dataBR(k) + ': ' + (x ? x.n + (x.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(x.seg + x.pausa) : 'sem treino'),
+        dica2: x ? 'exercício ' + durTxt(x.seg) + ' · pausas ' + durTxt(x.pausa) : '' });
+    }
+    if (pfTela.diaSel && !dias.includes(pfTela.diaSel)) pfTela.diaSel = null;
+    const doPer = dias.filter(k => porDia[k]).map(k => porDia[k]);
+    const nPer = doPer.reduce((a, d) => a + d.n, 0), segPer = doPer.reduce((a, d) => a + d.seg, 0), pausaPer = doPer.reduce((a, d) => a + d.pausa, 0);
+    const g = document.createElement('div'); g.className = 'pfDados duas';
+    const nDias = doPer.length;
+    for (const [k, v, sub] of [['Exercícios', String(nPer), nDias + (nDias === 1 ? ' dia de treino' : ' dias de treino')], ['Tempo de exercício', durTxt(segPer), ''], ['Pausas programadas', durTxt(pausaPer), ''], ['Duração média', nDias ? durTxt((segPer + pausaPer) / nDias) : '—', 'por dia de treino']]) {
+      const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2);
+      if (sub) { const s3 = document.createElement('small'); s3.textContent = sub; d.appendChild(s3); }
+      g.appendChild(d);
+    }
     box.appendChild(g);
     const gw = document.createElement('div'); gw.className = 'gWrap'; gw.id = 'grafHist'; box.appendChild(gw);
-    grafico(gw, 'barra', serie, v => String(Math.round(v)));
-    // tabela por dia
-    for (const k of Object.keys(porDia).sort().reverse()) {
+    const selI = pfTela.diaSel ? dias.indexOf(pfTela.diaSel) : null;
+    grafico(gw, 'pilha', serie, v => String(Math.round(v)), {
+      sel: selI, aoTocar: i => {
+        const k = dias[i]; if (!porDia[k]) return;
+        pfTela.diaSel = pfTela.diaSel === k ? null : k; // tocar de novo no mesmo dia mostra todos
+        const sc = $('pfSheet').querySelector('.box').scrollTop; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = sc;
+      }
+    });
+    const leg = document.createElement('div'); leg.className = 'gLeg';
+    leg.innerHTML = '<span><i class="gSw a"></i>Exercício</span><span><i class="gSw b"></i>Pausas programadas</span><em>minutos por dia · toque numa barra para ver só aquele dia</em>';
+    box.appendChild(leg);
+    if (pfTela.diaSel) {
+      const f = document.createElement('div'); f.className = 'histFiltro'; f.id = 'histFiltro';
+      const t = document.createElement('span'); t.textContent = 'Mostrando só ' + dataBR(pfTela.diaSel); f.appendChild(t);
+      f.appendChild(botao('', 'Mostrar todos', null, () => { pfTela.diaSel = null; renderPerfis(); }));
+      box.appendChild(f);
+    }
+    // tabela por dia (toque na linha: detalhes do dia, com a opção de excluir)
+    const chaves = Object.keys(porDia).sort().reverse().filter(k => !pfTela.diaSel || k === pfTela.diaSel);
+    for (const k of chaves) {
       const d = porDia[k], h = document.createElement('div'); h.className = 'histDia';
       const dt = new Date(k + 'T12:00:00'), sem = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-      h.textContent = (k === hojeStr() ? 'Hoje' : sem + ', ' + dataBR(k)) + ' · ' + d.n + (d.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(d.seg);
+      h.textContent = (k === hojeStr() ? 'Hoje' : sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dataBR(k)) + ' · ' + d.n + (d.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(d.seg) + (d.pausa ? ' + ' + durTxt(d.pausa) + ' de pausas' : '');
       box.appendChild(h);
-      const tb = document.createElement('table'); tb.className = 'tab'; const tbody = document.createElement('tbody');
+      const tb = document.createElement('table'); tb.className = 'tab tabHist'; const tbody = document.createElement('tbody');
       for (const r of d.itens) {
-        const tr = document.createElement('tr');
+        const tr = document.createElement('tr'); tr.className = 'clic'; tr.tabIndex = 0; tr.setAttribute('role', 'button'); tr.setAttribute('aria-label', 'Detalhes de ' + r.nome); tr.dataset.id = r.id;
         const t1 = document.createElement('td'); t1.textContent = horaTxt(r.inicio) + '–' + horaTxt(r.fim); t1.className = 'hora'; tr.appendChild(t1);
         const t2 = document.createElement('td'); const b = document.createElement('b'); b.textContent = r.nome; t2.appendChild(b); const sm = document.createElement('small'); sm.textContent = regTxt(r) + (r.treino ? ' · ' + r.treino.nome : ''); t2.appendChild(sm); tr.appendChild(t2);
-        const t3 = document.createElement('td'); t3.textContent = durTxt(r.ativoSeg); t3.className = 'num'; tr.appendChild(t3);
-        const t4 = document.createElement('td'); t4.appendChild(botao('ic sm', IC.x, 'Apagar ' + r.nome + ' do histórico', bt => confirmar(bt, 'Apagar?', () => {
-          const l = lerHistorico(p.id).filter(x => x.id !== r.id);
-          renderPerfis(gravarHistorico(p.id, l) ? 'Registro apagado.' : 'Atenção: não consegui gravar neste aparelho.');
-        }))); tr.appendChild(t4);
+        const t3 = document.createElement('td'); t3.className = 'num'; t3.textContent = durTxt(r.ativoSeg);
+        if (pausasSeg(r)) { const s4 = document.createElement('small'); s4.textContent = '+' + durTxt(pausasSeg(r)) + ' pausa'; t3.appendChild(s4); }
+        tr.appendChild(t3);
+        const abrir = () => abrirDiaHist(p.id, k, r.id);
+        tr.addEventListener('click', abrir); tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } });
         tbody.appendChild(tr);
       }
       tb.appendChild(tbody); box.appendChild(tb);
     }
   }
+  /* ---------- Card do dia: exercícios, tempos e pausas; aqui dentro é que se exclui ---------- */
+  let HD = null; // { pid, dia, sel: id do registro, confirma: null | 'ex' | 'treino' }
+  function abrirDiaHist(pid, dia, sel) { HD = { pid, dia, sel, confirma: null }; renderDiaHist(); $('hdSheet').hidden = false; $('hdSheet').querySelector('.box').scrollTop = 0; }
+  function fecharDiaHist() { $('hdSheet').hidden = true; HD = null; }
+  function renderDiaHist(msg) {
+    if (!HD) return;
+    const itens = lerHistorico(HD.pid).filter(r => r.dia === HD.dia).sort((a, b) => a.inicio - b.inicio);
+    if (!itens.length) { fecharDiaHist(); return; }
+    if (!itens.some(r => r.id === HD.sel)) HD.sel = itens[0].id;
+    const dt = new Date(HD.dia + 'T12:00:00');
+    $('hdTitulo').textContent = (HD.dia === hojeStr() ? 'Hoje, ' : dt.toLocaleDateString('pt-BR', { weekday: 'long' }).replace(/^./, c => c.toUpperCase()) + ', ') + dataBR(HD.dia);
+    $('hdMsg').textContent = msg || '';
+    const box = $('hdCorpo'); box.innerHTML = '';
+    const seg = itens.reduce((a, r) => a + (r.ativoSeg || 0), 0), pau = itens.reduce((a, r) => a + pausasSeg(r), 0);
+    const g = document.createElement('div'); g.className = 'pfDados duas';
+    for (const [k, v] of [['Exercícios', String(itens.length)], ['Exercício', durTxt(seg)], ['Pausas', durTxt(pau)], ['Total', durTxt(seg + pau)]]) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); g.appendChild(d); }
+    box.appendChild(g);
+    if (itens.some(r => r.descansoSeg === undefined)) { const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'Registros feitos antes desta versão não têm as pausas separadas: nelas, o descanso entre ciclos está somado ao tempo do exercício.'; box.appendChild(n); }
+    for (const r of itens) {
+      const aberto = r.id === HD.sel;
+      const c = document.createElement('div'); c.className = 'hdItem' + (aberto ? ' on' : ''); c.dataset.id = r.id;
+      const top = document.createElement('button'); top.className = 'hdTopo';
+      top.innerHTML = '<span class="hdHora"></span><span class="trt"><b></b><small></small></span><span class="hdTempo"></span>';
+      top.querySelector('.hdHora').textContent = horaTxt(r.inicio);
+      top.querySelector('b').textContent = r.nome;
+      top.querySelector('small').textContent = regTxt(r) + (r.treino ? ' · ' + r.treino.nome : '');
+      top.querySelector('.hdTempo').textContent = durTxt(r.ativoSeg) + (pausasSeg(r) ? ' + ' + durTxt(pausasSeg(r)) : '');
+      top.addEventListener('click', () => { HD.sel = aberto ? null : r.id; HD.confirma = null; renderDiaHist(); });
+      c.appendChild(top);
+      if (aberto) {
+        const det = document.createElement('div'); det.className = 'hdDet';
+        const linhas = [
+          ['Horário', horaTxt(r.inicio) + ' – ' + horaTxt(r.fim)],
+          ['Tempo de exercício', durTxt(r.ativoSeg)],
+          ['Descanso entre ciclos', r.descansoSeg === undefined ? 'não registrado' : durTxt(r.descansoSeg)],
+          ['Descanso antes (entre exercícios)', r.pausaAntesSeg ? durTxt(r.pausaAntesSeg) : '—'],
+          ['Séries', r.ciclos + (r.ciclos === 1 ? ' ciclo' : ' ciclos') + ' de ' + r.reps + (r.iso ? ' segundos' : ' repetições') + (r.lados === 2 ? ' de cada lado' : '')],
+          ['Ritmo', r.ritmoNome || '—']
+        ];
+        if (r.caneleira) linhas.push(['Caneleira', r.caneleira + ' kg']);
+        if (r.treino) linhas.push(['Treino', r.treino.nome]);
+        for (const [a, b] of linhas) { const l = document.createElement('div'); l.className = 'hdLin'; const x = document.createElement('span'); x.textContent = a; const y2 = document.createElement('b'); y2.textContent = b; l.appendChild(x); l.appendChild(y2); det.appendChild(l); }
+        // excluir: sempre com confirmação
+        const mesmoTreino = r.treino ? itens.filter(x => x.treino && (r.sessao ? x.sessao === r.sessao : x.treino.id === r.treino.id)) : [];
+        if (!HD.confirma) {
+          const bl = document.createElement('div'); bl.className = 'btnLinha hdAcoes';
+          bl.appendChild(botao('perigoTx', 'Excluir este exercício', null, () => { HD.confirma = 'ex'; renderDiaHist(); }));
+          if (mesmoTreino.length > 1) bl.appendChild(botao('perigoTx', 'Excluir o treino inteiro (' + mesmoTreino.length + ')', null, () => { HD.confirma = 'treino'; renderDiaHist(); }));
+          det.appendChild(bl);
+        } else {
+          const cf = document.createElement('div'); cf.className = 'hdConf'; cf.setAttribute('role', 'alertdialog');
+          const q = document.createElement('p');
+          q.textContent = HD.confirma === 'ex' ? 'Excluir "' + r.nome + '" das ' + horaTxt(r.inicio) + ' do histórico? Isso não pode ser desfeito.'
+            : 'Excluir o treino "' + r.treino.nome + '" deste dia, com os ' + mesmoTreino.length + ' exercícios? Isso não pode ser desfeito.';
+          cf.appendChild(q);
+          const bl = document.createElement('div'); bl.className = 'btnLinha';
+          bl.appendChild(botao('', 'Cancelar', null, () => { HD.confirma = null; renderDiaHist(); }));
+          bl.appendChild(botao('perigoCheio', 'Sim, excluir', null, () => {
+            const ids = new Set(HD.confirma === 'ex' ? [r.id] : mesmoTreino.map(x => x.id));
+            const l = lerHistorico(HD.pid).filter(x => !ids.has(x.id));
+            const okG = gravarHistorico(HD.pid, l);
+            HD.confirma = null;
+            if (okG) { HD.sel = null; renderPerfis(ids.size > 1 ? ids.size + ' registros excluídos.' : 'Registro excluído.'); renderDiaHist(ids.size > 1 ? 'Treino excluído.' : 'Exercício excluído.'); }
+            else renderDiaHist('Atenção: não consegui gravar neste aparelho. Nada foi excluído.');
+          }));
+          cf.appendChild(bl); det.appendChild(cf);
+        }
+        c.appendChild(det);
+      }
+      box.appendChild(c);
+    }
+  }
+  $('bHdClose').addEventListener('click', fecharDiaHist);
+  $('hdSheet').addEventListener('click', e => { if (e.target === $('hdSheet')) fecharDiaHist(); });
   function campoNum(rot, sufixo, valor, id, dica) {
     const w = document.createElement('label'); w.className = 'pfCampo';
     const t = document.createElement('span'); t.textContent = rot; w.appendChild(t);
@@ -3272,6 +3401,7 @@
   const visivel = id => { const e = $(id); return !!e && !e.hidden; };
   function voltarUmaTela() {
     if (visivel('sairBox')) { $('sairBox').hidden = true; return true; }
+    if (visivel('hdSheet')) { if (HD && HD.confirma) { HD.confirma = null; renderDiaHist(); } else fecharDiaHist(); return true; }
     if (visivel('atSheet')) { if (AT && AT.etapa === 'ajustar') { AT.etapa = 'escolher'; renderAddTreino(); } else fecharAddTreino(); return true; }
     if (visivel('infoSheet')) { $('infoSheet').hidden = true; return true; }
     if (visivel('pvSheet')) { fecharPrevia(); return true; }

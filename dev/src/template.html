@@ -171,7 +171,8 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .tab td.sobe{color:#FF9901}.tab td.desce{color:#99CC33}
 .tab td.hora,.tab td.num{white-space:nowrap;color:var(--tx2);font-size:12px}
 .tab td:last-child{width:34px}.tab .ic.sm{width:30px;height:30px}
-.histDia{font-size:12px;color:#C9A6FF;margin:12px 0 2px;text-transform:capitalize}
+.histDia{font-size:12px;color:#C9A6FF;margin:12px 0 2px}
+.pfDados.duas{grid-template-columns:1fr 1fr}
 #histDias{margin-bottom:10px}
 #pausaBox{position:absolute;inset:0;display:grid;place-items:center;z-index:6;background:rgba(10,8,14,.35)}
 #pausaBox .rc{background:rgba(30,26,35,.96);border:1px solid var(--roxo-f);border-radius:20px;padding:18px 20px;text-align:center;width:min(300px,86%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
@@ -234,7 +235,27 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .dd.desligado .ddBtn{opacity:.5}
 #pvFav .fav{width:36px;height:36px}
 #pvFav{display:flex;gap:2px}
-#atSheet{z-index:17}#camSheet{z-index:13}
+#atSheet{z-index:17}#hdSheet{z-index:18}
+.gBarra2{fill:#6E9A20}.gDim{opacity:.35}.gSel .gBarra,.gSel .gBarra2{filter:brightness(1.12)}
+.gLeg{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:var(--tx2);margin:-4px 0 10px}
+.gLeg span{display:inline-flex;align-items:center;gap:6px;color:var(--tx)}.gLeg em{flex-basis:100%;font-style:normal;font-size:11px}
+.gSw{width:12px;height:12px;border-radius:3px;display:inline-block}.gSw.a{background:#9D5FE0}.gSw.b{background:#6E9A20}
+.gDica small{display:block;font-weight:400;opacity:.85;margin-top:2px}
+.histFiltro{display:flex;align-items:center;gap:10px;justify-content:space-between;background:var(--card2);border:1px solid var(--roxo);border-radius:12px;padding:6px 6px 6px 12px;margin:2px 0 6px;font-size:13px}
+.histFiltro button{height:32px;border-radius:10px;border:1px solid var(--bd);background:transparent;color:var(--tx);padding:0 12px;font-size:13px;cursor:pointer}
+.tabHist tr.clic{cursor:pointer}.tabHist tr.clic:active td{background:rgba(157,95,224,.12)}
+.tabHist td:last-child{width:auto;text-align:right}.tabHist td.num small{font-size:10.5px;color:var(--tx2)}
+.hdItem{border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;background:var(--card2);overflow:hidden}.hdItem.on{border-color:var(--roxo)}
+.hdTopo{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:var(--tx);text-align:left;padding:10px 12px;font:inherit;cursor:pointer}
+.hdTopo .trt{flex:1;min-width:0}.hdTopo b{display:block;font-size:14px;font-weight:600}.hdTopo small{display:block;font-size:11.5px;color:var(--tx2)}
+.hdHora,.hdTempo{font-size:12px;color:var(--tx2);white-space:nowrap}
+.hdDet{padding:0 12px 12px;border-top:1px solid var(--bd)}
+.hdLin{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd);font-size:13px}.hdLin span{color:var(--tx2)}.hdLin b{font-weight:500;text-align:right}
+.hdAcoes{margin-top:12px;flex-wrap:wrap}
+.perigoTx{color:#FF6B7D!important;border-color:#5a1622!important;background:transparent!important}
+.perigoCheio{background:#B3263A!important;border-color:#FF2D45!important;color:#fff!important}
+.hdConf{margin-top:12px;border:1px solid #FF2D45;border-radius:12px;padding:10px;background:rgba(255,45,69,.08)}.hdConf p{margin:0 0 10px;font-size:13px;line-height:1.45}
+#camSheet{z-index:13}
 .btnLinha.tres button{flex-direction:column;height:64px;gap:4px;font-size:12.5px;padding:0 4px}
 .btnLinha.tres svg{width:20px;height:20px}
 .camLin{display:flex;align-items:center;margin:4px 0 2px}
@@ -466,6 +487,13 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <p class="nota" style="margin:0 0 10px">Exercício: <b id="atNome"></b></p>
     <p class="msg" id="atMsg"></p>
     <div id="atCorpo"></div>
+  </div>
+</div>
+<div id="hdSheet" class="sheetw" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="hdTitulo">
+    <div style="display:flex;align-items:center;margin-bottom:6px;gap:6px"><h2 id="hdTitulo" style="flex:1;margin:0;font-size:18px"></h2><button class="ic sm" id="bHdClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="msg" id="hdMsg"></p>
+    <div id="hdCorpo"></div>
   </div>
 </div>
 <div id="pvSheet" class="pvw" hidden>
