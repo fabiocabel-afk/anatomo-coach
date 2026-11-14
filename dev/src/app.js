@@ -874,6 +874,7 @@
   function applyPose(p) {
     ikErro = 0;
     if (repousoAtivo()) { applyRepouso(); return; }
+    if (emPeNoFim() && !cur._calibrando) { applyPeRepouso(); return; }
     if (cur.ik === 'flexao' && !cur._calibrando) { applyFlexao(p); atualizarProps(); return; }
     const li = cur.alt ? lado : 0;
     let A = cur._As[li], B = cur._Bs[li], q = p;
@@ -988,7 +989,32 @@
   function repousoAtivo() {
     if (cur.repouso) return true;
     if (miniRender) return false;
-    try { return S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso'); } catch (e) { return false; }
+    try { return S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso') || (S.estado === 'fim' && S.posFim === 'sentado'); } catch (e) { return false; }
+  }
+  // terminou e respondeu a pergunta: exercício de chão/mãos no chão → senta (repouso); em pé → fica em pé, parado
+  function emPeNoFim() { try { return !miniRender && S.estado === 'fim' && S.posFim === 'pe'; } catch (e) { return false; } }
+  function irRepousoFim() {
+    if (S.estado !== 'fim' || S.posFim) return;
+    fotografarPose();
+    S.posFim = (cur.chao || cur.pitch === 'auto' || cur.ik === 'flexao') ? 'sentado' : 'pe';
+    if (S.posFim === 'sentado') aimCamera(REPOUSO.cam);
+    else aimCamera({ th: (cur.cam && cur.cam.th) || 20, ph: 6, dist: 3.3, ty: 0.92 }); // em pé: corpo inteiro
+    painelTreino();
+  }
+  let _peRep = null;
+  function applyPeRepouso() {
+    if (!_peRep) { const e = EXERCICIOS.find(x => x.id === 'panturrilha'); _peRep = e && e._As ? e._As[0] : {}; }
+    for (const b of boneList) { const v = _peRep[b.name] || ZERO; b.rotation.set(rad(v[0]), rad(v[1]), rad(v[2])); }
+    if (movNatural()) naturalizar(0); // respiração calma (só chega aqui exercício em pé)
+    bones.hips.position.copy(HIPS0);
+    rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0); rig.updateMatrixWorld(true);
+    rig.position.y = -minY(CONTACT.feet);
+    rig.position.z = (cur._z0 || 0) - avgZ(CONTACT.feet);
+    rig.updateMatrixWorld(true);
+    // halteres, barra e anilha somem (largou o peso); caneleiras continuam presas
+    for (const d of dumbbells) d.visible = false;
+    halter1.visible = anilha.visible = barra.visible = barraW.visible = false;
+    bones.hips.getWorldPosition(_w); shadow.position.x = _w.x; shadow.position.z = _w.z;
   }
   const REP_FIX = Object.assign(grip(-25, -35, -20, -15), { hips: [-10, 0, 0], spine: [12, 0, 0], chest: [6, 0, 0], upperChest: [2, 0, 0], neck: [8, 0, 0] });
   function applyRepouso() {
@@ -1033,7 +1059,7 @@
     rig.position.copy(blend.rp.clone().lerp(rig.position, k));
     rig.quaternion.copy(blend.rq.clone().slerp(rig.quaternion, k));
     rig.updateMatrixWorld(true);
-    if (!repousoAtivo()) atualizarProps();
+    if (!repousoAtivo() && !emPeNoFim()) atualizarProps();
   }
 
   /* ---------- Exercícios de chão: corpo deitado, ajoelhado ou de lado ---------- */
@@ -1251,7 +1277,7 @@
   function applyMuscles(p) {
     for (let i = 0; i < NM; i++) {
       const k = INST[i].k;
-      const role = repousoAtivo() ? 0 : cur.prim.includes(k) ? 2 : cur.sec.includes(k) ? 1 : 0;
+      const role = repousoAtivo() || emPeNoFim() ? 0 : cur.prim.includes(k) ? 2 : cur.sec.includes(k) ? 1 : 0;
       let pri = 0, sec = 0, bulge = 0, dim = 0;
       const w = pesoPorcao(cur, INST[i].reg); // porções do abdome: brilho conforme a concentração
       if (role === 2) { pri = (0.3 + 0.7 * p) * w; bulge = p * w; }
@@ -1826,7 +1852,7 @@
   }
   function calarVoz() { if (VOZ_OK) try { window.speechSynthesis.cancel(); } catch (e) { /* ignora */ } if (window.Musica) Musica.soltarAbaixar(); }
 
-  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null, lado2: false, pausaEntreMs: 0 };
+  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null, lado2: false, pausaEntreMs: 0, posFim: null };
   const ICON_RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>';
   $('bReset').innerHTML = ICON_RESET;
 
@@ -1874,7 +1900,8 @@
     seqBarUI(); atualizarMusica(); telaAcesa(rodando || S.estado === 'pausado');
   }
   function iniciarTreino() {
-    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; setLado2(false); musicaNova = true; S.reg = null; esconderConclusao();
+    if (S.posFim) { fotografarPose(); bestAngle(false); } // saindo do repouso do fim: transição suave
+    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; S.posFim = null; setLado2(false); musicaNova = true; S.reg = null; esconderConclusao();
     preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos' : ' repetições') + (cur.doisLados || (cur.alt && !cur.isometria) ? ' de cada lado, ' : ', ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
   }
   // antes de contar: o corpo fica na posição inicial, só respirando, enquanto a voz anuncia;
@@ -1945,7 +1972,7 @@
   }
   function resetTreino(silencioso) {
     if ((S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso')) && !cur.repouso) { fotografarPose(); bestAngle(false); }
-    S.estado = 'previa'; S.ciclo = 1; S.rep = 0; S.resto = 0; t = 0; lastCycle = 0; S.espera = 0; S.troca = false; S.prep = null; setLado2(false);
+    S.estado = 'previa'; S.ciclo = 1; S.rep = 0; S.resto = 0; t = 0; lastCycle = 0; S.espera = 0; S.troca = false; S.prep = null; if (S.posFim) { fotografarPose(); bestAngle(false); } S.posFim = null; setLado2(false);
     if (!silencioso) calarVoz();
     painelTreino();
   }
@@ -2863,15 +2890,16 @@
   }
   function esconderConclusao() { $('concBox').hidden = true; concPend = null; concCb = null; }
   function respondeu(registrou) { const cb = concCb; concCb = null; if (cb) cb(registrou); }
-  $('bConcNao').addEventListener('click', () => { const cb = concCb; esconderConclusao(); if (cb) cb(false); });
+  $('bConcNao').addEventListener('click', () => { const cb = concCb; esconderConclusao(); if (cb) cb(false); irRepousoFim(); });
   $('bConcSim').addEventListener('click', () => {
     if (!concPend) return;
     const novos = concPend.filter(r => r.marcado).map(r => { const o = Object.assign({}, r); delete o.marcado; return o; });
-    if (!novos.length) { esconderConclusao(); return; }
+    if (!novos.length) { esconderConclusao(); irRepousoFim(); return; }
     const lista = lerHistorico(PERFIS.atual).concat(novos);
     if (!gravarHistorico(PERFIS.atual, lista)) { $('concMsg').textContent = 'Atenção: não consegui gravar no histórico deste aparelho. Toque de novo para tentar.'; return; }
     $('concMsg').textContent = novos.length === 1 ? 'Registrado no histórico.' : novos.length + ' exercícios registrados.';
     concPend = null;
+    irRepousoFim();
     if (concCb) { setTimeout(() => { if (!concPend) $('concBox').hidden = true; }, 700); respondeu(true); }
     else { falar('Registrado. Muito bem!', true); setTimeout(() => { if (!concPend) $('concBox').hidden = true; }, 1300); }
   });
@@ -3719,7 +3747,7 @@
   window.__corpo = {
     exercicios: EXERCICIOS.map(e => e.id), catalogo: () => EXERCICIOS.map(e => ({ id: e.id, equip: e.equip, regiao: e.regiao, alt: !!e.alt, info: !!(e.info && e.info.passos && e.info.passos.length) })), musculos: Object.keys(INFO),
     setExercise: id => setExercise(id, true),
-    atual: () => cur.id, repouso: () => repousoAtivo(),
+    atual: () => cur.id, repouso: () => repousoAtivo(), posFim: () => S.posFim,
     exAtual: () => cur,
     garrafasPos: () => garrafas.filter(g => g.visible).map(g => g.position.toArray()),
     pesPos: () => GR.pes.map(o => o.getWorldPosition(new V3()).toArray()),
