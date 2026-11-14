@@ -815,6 +815,9 @@
     bicicleta: 'med', canivete: 'med', canoa: 'med', rotacao_russa: 'med', prancha: 'med', toque_ombro: 'med',
     urso: 'med', perdigueiro_toque: 'med', rolamento_ajoelhado: 'med'
   };
+  // exercícios feitos de um lado só: no treino, depois das repetições do 1º lado vem o outro lado (espelhado)
+  const DOIS_LADOS = ['afundo', 'volante', 'prancha_lateral', 'prancha_lateral_quadril', 'abducao_deitado', 'aducao_deitado', 'ostra', 'elevacao_perna_deitado', 'ponte_unilateral', 'perdigueiro_toque'];
+  for (const e of EXERCICIOS) if (DOIS_LADOS.includes(e.id) && !e.alt) e.doisLados = true;
   for (const e of EXERCICIOS) if (ABD_FOCO[e.id] && (e.prim.includes('reto_abdome') || e.sec.includes('reto_abdome'))) e.abd = ABD_FOCO[e.id];
   // texto da porção em foco: "inferior", "superior", "superior e média", "média"
   const focoAbdTxt = ex => ex && ex.abd ? (ex.abd === 'supmed' ? 'superior e média' : PORCAO_NOME[ex.abd]) : '';
@@ -1314,7 +1317,7 @@
     const cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
     renderer.setClearColor(0x000000, 1);
     camera.setViewOffset(r.width, r.height, Math.floor(x), Math.floor(y) + desvioY, 1, 1);
-    renderer.setRenderTarget(pickRT); renderer.render(scene, camera);
+    renderer.setRenderTarget(pickRT); comEspelho(() => renderer.render(scene, camera));
     renderer.readRenderTargetPixels(pickRT, 0, 0, 1, 1, pickBuf);
     renderer.setRenderTarget(null); aplicarDesvio(); camera.updateProjectionMatrix();
     renderer.setClearColor(cc, ca);
@@ -1339,9 +1342,18 @@
   function centroid(id) {
     const P = instPositions(id), c = new V3(), n = P.length / 3;
     for (let i = 0; i < n; i++) { c.x += P[i * 3]; c.y += P[i * 3 + 1]; c.z += P[i * 3 + 2]; }
-    return c.divideScalar(Math.max(n, 1));
+    c.divideScalar(Math.max(n, 1));
+    if (espelhado()) c.x = -c.x; // na tela, o corpo está espelhado
+    return c;
   }
-  function hitPoint(id, r) {
+  function hitPoint(id, r0) {
+    const esp = espelhado();
+    const r = esp ? r0.clone() : r0; if (esp) { r.origin.x = -r.origin.x; r.direction.x = -r.direction.x; }
+    const res = hitPoint0(id, r);
+    if (res && res.__toque) { if (esp) res.x = -res.x; delete res.__toque; }
+    return res;
+  }
+  function hitPoint0(id, r) {
     const R = RANGES[id], P = instPositions(id), idx = muscleMesh.geometry.index.array;
     const a = new V3(), b = new V3(), c = new V3(), hit = new V3();
     let best = Infinity, out = null;
@@ -1349,7 +1361,8 @@
       a.fromArray(P, (idx[i] - R.v0) * 3); b.fromArray(P, (idx[i + 1] - R.v0) * 3); c.fromArray(P, (idx[i + 2] - R.v0) * 3);
       if (r.intersectTriangle(a, b, c, false, hit)) { const d = hit.distanceTo(r.origin); if (d < best) { best = d; out = hit.clone(); } }
     }
-    return out || centroid(id);
+    if (out) { out.__toque = true; return out; }
+    return centroid(id);
   }
 
   /* ---------- Foco ---------- */
@@ -1704,7 +1717,7 @@
     const ex = exArg && exArg.id ? exArg : cur, inf = ex.info || {};
     $('infoNome').textContent = ex.nome;
     const tags = $('infoTags'); tags.innerHTML = '';
-    for (const tx of [EQUIP[ex.equip], REGIAO[ex.regiao], ex.alt ? 'Alterna os lados' : null].filter(Boolean)) { const s2 = document.createElement('span'); s2.className = 'tag'; s2.textContent = tx; tags.appendChild(s2); }
+    for (const tx of [EQUIP[ex.equip], REGIAO[ex.regiao], ex.alt ? 'Alterna os lados' : ex.doisLados ? 'Um lado, depois o outro' : null].filter(Boolean)) { const s2 = document.createElement('span'); s2.className = 'tag'; s2.textContent = tx; tags.appendChild(s2); }
     const body = $('infoBody'); body.innerHTML = '';
     const p0 = document.createElement('p'); p0.id = 'infoDesc'; p0.textContent = ex.desc; body.appendChild(p0);
     const secao = (titulo, el) => { const h = document.createElement('div'); h.className = 'ih'; h.textContent = titulo; body.appendChild(h); body.appendChild(el); };
@@ -1813,7 +1826,7 @@
   }
   function calarVoz() { if (VOZ_OK) try { window.speechSynthesis.cancel(); } catch (e) { /* ignora */ } if (window.Musica) Musica.soltarAbaixar(); }
 
-  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null };
+  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null, lado2: false };
   const ICON_RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>';
   $('bReset').innerHTML = ICON_RESET;
 
@@ -1831,6 +1844,7 @@
     else if (S.estado === 'preparo' || (S.estado === 'pausado' && S.antes === 'preparo')) sub = 'Prepare-se · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (ativo) sub = 'Ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : S.espera > 0 ? ' · pausa' : '');
     else sub = (usaCaneleira() ? 'Caneleira ' + cfg.caneleira + ' kg · ' : '') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + (tc.descanso ? ' · desc. ' + tc.descanso + ' s' : '');
+    if (cur.doisLados && ['treino', 'preparo', 'pausado'].includes(S.estado) && !(S.estado === 'pausado' && S.antes === 'descanso')) sub += ' · ' + (S.lado2 ? '2º lado' : '1º lado');
     if (cur.repouso) sub = 'Escolha um exercício';
     if (SEQ && !cur.repouso) sub = (S.estado === 'fim' ? '' : (SEQ.idx + 1) + '/' + SEQ.t.itens.length + ' · ') + sub;
     $('nSub').textContent = sub;
@@ -1851,7 +1865,7 @@
     if (S.estado === 'pausado' && S.antes === 'pergunta') $('concBox').hidden = true;
     $('bParar').hidden = !sessao; $('bReset').hidden = sessao;
     $('pausaBox').hidden = S.estado !== 'pausado';
-    if (S.estado === 'pausado') $('pausaInfo').textContent = (SEQ ? SEQ.t.nome + ' · exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + '\n' : '') + cur.nome + ' · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.antes === 'treino' ? ' · ' + S.rep + '/' + tc.reps : '');
+    if (S.estado === 'pausado') $('pausaInfo').textContent = (SEQ ? SEQ.t.nome + ' · exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + '\n' : '') + cur.nome + ' · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (cur.doisLados && S.antes !== 'descanso' ? ' · ' + (S.lado2 ? '2º lado' : '1º lado') : '') + (S.antes === 'treino' ? ' · ' + S.rep + '/' + tc.reps : '');
     if (!$('rest').hidden) {
       $('restN').textContent = String(Math.max(0, Math.ceil(S.resto)));
       $('restNext').textContent = S.troca && SEQ ? 'Próximo: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
@@ -1860,8 +1874,8 @@
     seqBarUI(); atualizarMusica(); telaAcesa(rodando || S.estado === 'pausado');
   }
   function iniciarTreino() {
-    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; musicaNova = true; S.reg = null; esconderConclusao();
-    preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos, ' : ' repetições, ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
+    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; setLado2(false); musicaNova = true; S.reg = null; esconderConclusao();
+    preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos' : ' repetições') + (cur.doisLados ? ' de cada lado, ' : ', ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
   }
   // antes de contar: o corpo fica na posição inicial, só respirando, enquanto a voz anuncia;
   // depois a voz diz "Começa!" e só então a contagem começa
@@ -1922,23 +1936,30 @@
       treino: SEQ ? { id: SEQ.t.id, nome: SEQ.t.nome } : null, dia: hojeStr(new Date(r.inicio)),
       inicio: r.inicio, fim, ativoSeg: Math.max(0, Math.round((fim - r.inicio - (r.pausadoMs || 0)) / 1000)),
       ciclos: tc.ciclos, reps: tc.reps, iso: !!cur.isometria, ritmo: tc.ritmo, ritmoNome: ritmoNome(tc.ritmo),
-      descanso: tc.descanso, caneleira: usaCaneleira() ? cfg.caneleira : 0
+      descanso: tc.descanso, caneleira: usaCaneleira() ? cfg.caneleira : 0, lados: cur.doisLados ? 2 : 1
     };
   }
   function resetTreino(silencioso) {
     if ((S.estado === 'descanso' || (S.estado === 'pausado' && S.antes === 'descanso')) && !cur.repouso) { fotografarPose(); bestAngle(false); }
-    S.estado = 'previa'; S.ciclo = 1; S.rep = 0; S.resto = 0; t = 0; lastCycle = 0; S.espera = 0; S.troca = false; S.prep = null;
+    S.estado = 'previa'; S.ciclo = 1; S.rep = 0; S.resto = 0; t = 0; lastCycle = 0; S.espera = 0; S.troca = false; S.prep = null; setLado2(false);
     if (!silencioso) calarVoz();
     painelTreino();
   }
   function proximoCiclo() {
     if (S.troca) { proximoExercicio(); return; }
     if (S.estado === 'descanso' || S.estado === 'pausado') { fotografarPose(); bestAngle(false); }
-    S.ciclo++; S.espera = 0; S.rep = 0;
+    S.ciclo++; S.espera = 0; S.rep = 0; setLado2(false);
     preparar('Ciclo ' + S.ciclo + ' de ' + tc.ciclos + '.');
   }
   function repCompleta() {
     S.rep++;
+    if (S.rep >= tc.reps && cur.doisLados && !S.lado2) {
+      // terminou o 1º lado: anuncia o outro lado e, depois do "Começa!", conta de novo (o ciclo vale pelos dois lados)
+      t = 0; lastCycle = 0; phase = 0;
+      const n = S.rep; S.rep = 0; setLado2(true);
+      preparar(n + '. Agora o outro lado.');
+      return;
+    }
     if (S.rep >= tc.reps) {
       t = 0; lastCycle = 0; phase = 0;
       if (S.ciclo >= tc.ciclos) {
@@ -2216,7 +2237,8 @@
     tr.itens.forEach((it, i) => {
       const ex = exPorId(it.ex); if (!ex) return;
       const rep = ex.isometria ? 1 : ex.periodo * it.ritmo;
-      s += it.ciclos * it.reps * rep + (it.ciclos - 1) * it.descanso + (ex.isometria ? 0 : it.ciclos * (it.reps - 1) * it.pausaRep);
+      const L = ex.doisLados ? 2 : 1; // os dois lados: o dobro de repetições + o aviso da troca (~4 s)
+      s += L * it.ciclos * it.reps * rep + (it.ciclos - 1) * it.descanso + (ex.isometria ? 0 : L * it.ciclos * (it.reps - 1) * it.pausaRep) + (L - 1) * it.ciclos * 4;
       if (i < tr.itens.length - 1) s += it.depois;
     });
     return s;
@@ -3529,6 +3551,24 @@
   painelTreino();
 
   let last = null;
+  /* ---------- Outro lado: o corpo (e o que ele segura) é desenhado espelhado ----------
+   * Toda a lógica (poses, apoios no chão, IK) continua do lado original; só a imagem é espelhada.
+   * Luzes e chão ficam fora do espelho. */
+  const espelho = new THREE.Group();
+  for (const o of [...scene.children]) if (!o.isLight && o !== floor) espelho.add(o);
+  scene.add(espelho);
+  // troca de lado: a câmera vai para o ângulo espelhado, para o outro lado ser visto do mesmo jeito
+  function setLado2(v) {
+    if (v === S.lado2) return;
+    const antes = espelhado(); S.lado2 = v;
+    if (antes !== espelhado()) { cam.th = -cam.th; camT.th = -camT.th; cam.tx = -cam.tx; camT.tx = -camT.tx; }
+  }
+  function espelhado() { return !!(cur.doisLados && S.lado2 && !cur.repouso && !repousoAtivo()); }
+  function comEspelho(fn) {
+    const m = espelhado();
+    if (m) { espelho.scale.x = -1; espelho.updateMatrixWorld(true); }
+    try { fn(); } finally { if (m) { espelho.scale.x = 1; espelho.updateMatrixWorld(true); } }
+  }
   function loop(ts) {
     if (last === null) last = ts;
     const dt = Math.min((ts - last) / 1000, 0.1); last = ts;
@@ -3538,7 +3578,7 @@
     const coberto = MINI.quadro(dt);
     if (!coberto) {
       applyPose(phase); aplicarBlend(dt); applyMuscles(phase); placeCamera();
-      renderer.render(scene, camera);
+      comEspelho(() => renderer.render(scene, camera));
     }
     requestAnimationFrame(loop);
   }
@@ -3596,6 +3636,7 @@
     rotOssos: () => { const o = {}; for (const b of boneList) o[b.name] = [b.rotation.x, b.rotation.y, b.rotation.z].map(v => v * 180 / Math.PI); return o; },
     movimento: v => { if (v) { CAMCFG.mov = v; gravarCamCfg(); } return CAMCFG.mov; },
     focarPorcao: reg => { const id = BYKEY.reto_abdome.find(i => INST[i].reg === reg && INST[i].side === 'left'); setFocus('reto_abdome', [id]); return { t: $('mTec').textContent, r: $('mRole').textContent }; },
+    espelhado: () => espelhado(), lado2: () => S.lado2, doisLados: () => EXERCICIOS.filter(e => e.doisLados).map(e => e.id),
     porcoes: k => (BYKEY[k] || []).map(i => ({ reg: INST[i].reg, side: INST[i].side, pri: stateData[i * 4] / 255, sec: stateData[i * 4 + 2] / 255 })),
     setView: (th, ph, dist, ty) => { tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: 0, ty, tz: 0 }); },
     focus: (k, s) => { focusMuscle(k, s); Object.assign(cam, camT); tweening = false; },
