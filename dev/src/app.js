@@ -1717,7 +1717,7 @@
     const ex = exArg && exArg.id ? exArg : cur, inf = ex.info || {};
     $('infoNome').textContent = ex.nome;
     const tags = $('infoTags'); tags.innerHTML = '';
-    for (const tx of [EQUIP[ex.equip], REGIAO[ex.regiao], ex.alt ? 'Alterna os lados' : ex.doisLados ? 'Um lado, depois o outro' : null].filter(Boolean)) { const s2 = document.createElement('span'); s2.className = 'tag'; s2.textContent = tx; tags.appendChild(s2); }
+    for (const tx of [EQUIP[ex.equip], REGIAO[ex.regiao], ex.alt ? 'Alterna os lados · cada repetição = os dois lados' : ex.doisLados ? 'Um lado, depois o outro' : null].filter(Boolean)) { const s2 = document.createElement('span'); s2.className = 'tag'; s2.textContent = tx; tags.appendChild(s2); }
     const body = $('infoBody'); body.innerHTML = '';
     const p0 = document.createElement('p'); p0.id = 'infoDesc'; p0.textContent = ex.desc; body.appendChild(p0);
     const secao = (titulo, el) => { const h = document.createElement('div'); h.className = 'ih'; h.textContent = titulo; body.appendChild(h); body.appendChild(el); };
@@ -1875,7 +1875,7 @@
   }
   function iniciarTreino() {
     S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; setLado2(false); musicaNova = true; S.reg = null; esconderConclusao();
-    preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos' : ' repetições') + (cur.doisLados ? ' de cada lado, ' : ', ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
+    preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos' : ' repetições') + (cur.doisLados || (cur.alt && !cur.isometria) ? ' de cada lado, ' : ', ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
   }
   // antes de contar: o corpo fica na posição inicial, só respirando, enquanto a voz anuncia;
   // depois a voz diz "Começa!" e só então a contagem começa
@@ -2017,7 +2017,9 @@
       const per = cur.isometria ? 1 : cur.periodo * tc.ritmo;
       phase = (1 - Math.cos(2 * Math.PI * t / per)) / 2;
       const cyc = Math.floor(t / per);
-      if (cyc > lastCycle) { lastCycle = cyc; if (S.estado === 'treino') repCompleta(); }
+      // alternando os lados: uma repetição = um lado + o outro (conta só quando os dois foram feitos,
+      // assim os dois lados terminam sempre com a mesma quantidade)
+      if (cyc > lastCycle) { lastCycle = cyc; if (S.estado === 'treino' && (!cur.alt || cur.isometria || cyc % 2 === 0)) repCompleta(); }
       lado = cur.alt ? Math.floor(t / per) % 2 : 0;
     } else if (S.estado === 'descanso') {
       S.resto -= dt;
@@ -2241,7 +2243,7 @@
     let s = 0;
     tr.itens.forEach((it, i) => {
       const ex = exPorId(it.ex); if (!ex) return;
-      const rep = ex.isometria ? 1 : ex.periodo * it.ritmo;
+      const rep = ex.isometria ? 1 : ex.periodo * it.ritmo * (ex.alt ? 2 : 1); // alternado: cada repetição tem os dois lados
       const L = ex.doisLados ? 2 : 1; // os dois lados: o dobro de repetições + o aviso da troca (~4 s)
       s += L * it.ciclos * it.reps * rep + (it.ciclos - 1) * it.descanso + (ex.isometria ? 0 : L * it.ciclos * (it.reps - 1) * it.pausaRep) + (L - 1) * it.ciclos * 4;
       if (i < tr.itens.length - 1) s += it.depois;
@@ -3758,7 +3760,7 @@
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     camera2: () => ({ dif: ['th', 'ph', 'dist', 'tx', 'ty', 'tz'].map(k => +(camT[k] - cam[k]).toFixed(4)).join(','), tw: tweening, est: S.estado, rep: cur.repouso, foco: focusKey, ptrs: ptrs.size, cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
-    treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
+    treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, lado, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
     mirarEm: (k, th, ph, dist) => { const ids = BYKEY[k], c = new V3(); ids.forEach(i => c.add(centroid(i))); c.divideScalar(ids.length); tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: c.x, ty: c.y, tz: c.z }); },
     tempoNatural: t => { tNatFixo = t; },
