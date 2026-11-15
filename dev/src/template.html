@@ -298,6 +298,7 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .li span{font-size:12px;color:var(--tx2)}
 .empty{color:var(--tx2);font-size:14px;text-align:center;margin-top:30px}
 
+#muModo{display:grid;grid-template-columns:repeat(3,1fr);width:100%}#muModo button{min-width:0;padding:9px 4px;min-height:40px;text-align:center}
 #exSheet{z-index:14}#exSheet .box{max-height:calc(100% - 12px)}
 #list{flex:1;min-height:0;overflow-y:auto}#infoSheet{z-index:16}
 .exBar{display:flex;gap:8px;align-items:center;margin:2px 0 6px}
@@ -590,9 +591,13 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div style="display:flex;align-items:center;margin-bottom:6px"><span class="ttl">Trilha sonora</span><button class="ic" id="bMuClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="cr"><div class="lb">Tocar no treino</div></div>
     <div class="seg" id="muModo"><button data-v="app">Som do app</button><button data-v="minhas">Minhas músicas</button><button data-v="off">Sem música</button></div>
+    <div id="muSecSom">
     <div class="cr"><div class="lb">Volume</div><input type="range" id="muVol" min="0" max="100" step="5" aria-label="Volume da música"></div>
     <div class="cr"><label for="muAbaixar" class="lb">Abaixar quando a voz fala<small>a contagem fica clara por cima da música</small></label><span class="sw"><input type="checkbox" id="muAbaixar"><i></i></span></div>
+    </div>
     <p class="msg" id="muMsg"></p>
+    <p class="nota muVazio2" id="muSemNada" hidden>Sem música: o treino fica só com a voz.</p>
+    <div id="muSecMinhas">
     <div class="muFalta" id="muFalta" hidden><p id="muFaltaTx"></p><button class="pri" id="bMuAchar">Reencontrar músicas…</button></div>
     <div class="ttl2"><span>Minhas músicas · treino</span><em id="muN_treino"></em><button class="addM" id="bMuAdd_treino">+ Adicionar</button></div>
     <input type="file" id="muFile_treino" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
@@ -601,12 +606,16 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <input type="file" id="muFile_pausa" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
     <div id="muL_pausa"></div>
     <p class="nota" id="muUso"></p>
+    <p class="nota">Enquanto uma lista estiver vazia, toca o som do app no lugar.</p>
+    <p class="nota">No iPhone, só aparecem arquivos guardados no app Arquivos; músicas do Apple Music ou Spotify não podem ser usadas por nenhum app da web.</p>
+    </div>
+    <div id="muSecApp">
     <div class="ttl2"><span>Som do app · treino</span></div>
     <div class="muApp" id="muApp_treino"></div>
     <div class="ttl2"><span>Som do app · pausa</span></div>
     <div class="muApp" id="muApp_pausa"></div>
-    <p class="nota">O som do app é criado na hora pelo próprio aparelho: não usa arquivos nem tem direitos autorais. Ele também toca quando "Minhas músicas" está escolhido mas a lista estiver vazia. Cada exercício começa com uma música diferente, em rodízio. Toque num nome para ouvir.</p>
-    <p class="nota">No iPhone, só aparecem arquivos guardados no app Arquivos; músicas do Apple Music ou Spotify não podem ser usadas por nenhum app da web.</p>
+    <p class="nota">O som do app é criado na hora pelo próprio aparelho: não usa arquivos nem tem direitos autorais. Cada exercício começa com uma música diferente, em rodízio. Toque num nome para ouvir.</p>
+    </div>
   </div>
 </div>
 <div id="legenda" role="status" aria-live="polite" hidden></div>

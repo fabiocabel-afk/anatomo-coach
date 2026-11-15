@@ -2743,6 +2743,9 @@
   async function renderMusica(msg) {
     const eu = ++muRender;
     for (const o of $('muModo').children) o.classList.toggle('on', o.dataset.v === mcfg.modo);
+    // cada opção mostra só o que é dela: som do app → faixas do app; minhas músicas → as listas; sem música → nada
+    $('muSecApp').hidden = mcfg.modo !== 'app'; $('muSecMinhas').hidden = mcfg.modo !== 'minhas';
+    $('muSecSom').hidden = mcfg.modo === 'off'; $('muSemNada').hidden = mcfg.modo !== 'off';
     $('muVol').value = String(Math.round(mcfg.vol * 100));
     $('muAbaixar').checked = mcfg.abaixar;
     if (msg !== undefined) $('muMsg').textContent = msg;
