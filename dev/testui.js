@@ -18,7 +18,7 @@ await p.screenshot({path:'shots/ui_focus.png'});
 await p.click('#bBack');await new Promise(r=>setTimeout(r,300));
 console.log('voltou',await p.evaluate(()=>!document.getElementById('cardEx').hidden));
 // lista + busca
-await p.click('#bList');await p.type('#q','gluteo med');await new Promise(r=>setTimeout(r,200));
+await p.click('#bList');await p.click('#qModo [data-v="musculos"]');await p.type('#q','gluteo med');await new Promise(r=>setTimeout(r,200));
 const items=await p.$$eval('.li b',e=>e.map(x=>x.textContent));console.log('busca',items);
 await p.screenshot({path:'shots/ui_list.png'});
 await p.click('.li');await new Promise(r=>setTimeout(r,1800));

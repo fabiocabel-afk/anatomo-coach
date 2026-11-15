@@ -1803,7 +1803,7 @@
   $('bPvFazer').addEventListener('click', () => {
     const ex = previaEx; if (!ex) return;
     const cb = escolhaCb;
-    fecharPrevia(); fecharCatalogo();
+    fecharPrevia(); fecharCatalogo(); $('sheet').hidden = true;
     if (cb) cb(ex.id); else setExercise(ex.id);
   });
   $('bPvInfo').addEventListener('click', () => { if (previaEx) abrirInfo(previaEx); });
@@ -1842,21 +1842,75 @@
 
   // lista / busca de músculos
   const REG_ORDER = ['Pescoço', 'Ombro', 'Tronco', 'Costas', 'Braço', 'Antebraço', 'Quadril', 'Coxa', 'Joelho', 'Perna'];
+  /* ---------- Lupa: busca por partes do corpo, por objetos e por músculos ---------- */
+  // cada músculo pertence a uma parte do corpo (nomes do dia a dia)
+  const PARTES = [
+    ['Peito', ['peitoral_maior', 'serratil_anterior']],
+    ['Ombros', ['deltoide_anterior', 'deltoide_lateral', 'deltoide_posterior']],
+    ['Costas', ['latissimo_dorso', 'trapezio_desc', 'trapezio_transv', 'trapezio_asc', 'infraespinal', 'redondo_maior', 'eretor_espinha']],
+    ['Braços', ['biceps_braquial', 'braquial', 'triceps_lateral', 'triceps_longa']],
+    ['Antebraço', ['braquiorradial', 'flexores_antebraco', 'extensores_antebraco']],
+    ['Abdômen', ['reto_abdome', 'obliquo_externo']],
+    ['Glúteo e quadril', ['gluteo_maximo', 'gluteo_medio', 'tensor_fascia_lata', 'iliopsoas']],
+    ['Coxa', ['reto_femoral', 'vasto_lateral', 'vasto_medial', 'sartorio', 'adutores', 'gracil', 'biceps_femoral', 'semitendineo', 'trato_iliotibial']],
+    ['Perna e joelho', ['gastrocnemio_medial', 'gastrocnemio_lateral', 'soleo', 'tendao_calcaneo', 'tibial_anterior', 'fibular_longo', 'extensor_dedos', 'ligamento_patela']],
+    ['Pescoço', ['esternocleidomastoideo']]
+  ];
+  const PARTE_DE = {}; for (const [n, ks] of PARTES) for (const k of ks) PARTE_DE[k] = n;
+  const partesDoEx = ex => PARTES.map(p => p[0]).filter(n => ex.prim.some(k => PARTE_DE[k] === n));
+  const OBJETOS = [
+    ['Halteres', ex => ex.equip === 'halteres'], ['Barra', ex => ex.equip === 'barra'], ['Anilha', ex => ex.equip === 'anilha'],
+    ['Caneleira', ex => ex.equip === 'caneleira'], ['Garrafas', ex => ex.prop === 'garrafas'],
+    ['Sem objetos (só o corpo)', ex => ex.equip === 'corpo' && ex.prop !== 'garrafas']
+  ];
+  const objetoDoEx = ex => (OBJETOS.find(o => o[1](ex)) || ['—'])[0];
+  const exBuscaveis = () => EXERCICIOS.filter(e => !e.repouso);
+  let qModo = 'corpo';
+  function itemEx(ex, sub) {
+    const it = document.createElement('button'); it.className = 'li liEx'; it.dataset.ex = ex.id;
+    it.innerHTML = '<b></b><span></span>'; it.firstChild.textContent = ex.nome; it.lastChild.textContent = sub;
+    it.addEventListener('click', () => abrirPrevia(ex));
+    return it;
+  }
+  function cabecalho(box, nome, n) { const h = document.createElement('div'); h.className = 'lh'; h.textContent = nome + (n != null ? ' · ' + n : ''); box.appendChild(h); }
   function renderList(q) {
     const box = $('list'); box.innerHTML = ''; const nq = norm(q || '');
-    for (const reg of REG_ORDER) {
-      const keys = Object.keys(INFO).filter(k => INFO[k][2] === reg && (!nq || norm(INFO[k][0] + ' ' + INFO[k][1]).includes(nq)));
-      if (!keys.length) continue;
-      const h = document.createElement('div'); h.className = 'lh'; h.textContent = reg; box.appendChild(h);
-      for (const k of keys) {
-        const it = document.createElement('button'); it.className = 'li';
-        it.innerHTML = '<b></b><span></span>'; it.firstChild.textContent = INFO[k][0]; it.lastChild.textContent = INFO[k][1];
-        it.addEventListener('click', () => { $('sheet').hidden = true; focusMuscle(k); });
-        box.appendChild(it);
+    for (const o of $('qModo').children) o.classList.toggle('on', o.dataset.v === qModo);
+    $('q').placeholder = qModo === 'musculos' ? 'glúteo médio' : qModo === 'objetos' ? 'halteres, garrafa, rosca…' : 'perna, abdômen, rosca…';
+    const casa = (ex, extra) => !nq || norm(ex.nome + ' ' + ex.prim.concat(ex.sec).map(k => INFO[k][0] + ' ' + INFO[k][1]).join(' ') + ' ' + extra).includes(nq);
+    if (qModo === 'corpo') {
+      for (const [parte] of PARTES) {
+        const exs = exBuscaveis().filter(ex => partesDoEx(ex).includes(parte) && casa(ex, parte + ' ' + objetoDoEx(ex)));
+        if (!exs.length) continue;
+        cabecalho(box, parte, exs.length);
+        for (const ex of exs) box.appendChild(itemEx(ex, objetoDoEx(ex) + ' · ' + musculosTxt(ex)));
       }
+      if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum exercício encontrado.</p>';
+    } else if (qModo === 'objetos') {
+      for (const [obj, f] of OBJETOS) {
+        const exs = exBuscaveis().filter(ex => f(ex) && casa(ex, obj + ' ' + partesDoEx(ex).join(' ')));
+        if (!exs.length) continue;
+        cabecalho(box, obj, exs.length);
+        for (const ex of exs) box.appendChild(itemEx(ex, partesDoEx(ex).join(' · ')));
+      }
+      if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum exercício encontrado.</p>';
+    } else {
+      for (const [parte, ks] of PARTES) {
+        const keys = ks.filter(k => INFO[k] && (!nq || norm(INFO[k][0] + ' ' + INFO[k][1] + ' ' + parte).includes(nq)));
+        if (!keys.length) continue;
+        cabecalho(box, parte);
+        for (const k of keys) {
+          const it = document.createElement('button'); it.className = 'li';
+          it.innerHTML = '<b></b><span></span>'; it.firstChild.textContent = INFO[k][0]; it.lastChild.textContent = INFO[k][1];
+          it.addEventListener('click', () => { $('sheet').hidden = true; focusMuscle(k); });
+          box.appendChild(it);
+        }
+      }
+      if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum músculo com esse nome.</p>';
     }
-    if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum músculo com esse nome.</p>';
+    box.scrollTop = 0;
   }
+  for (const o of $('qModo').children) o.addEventListener('click', () => { qModo = o.dataset.v; renderList($('q').value); });
   $('bList').addEventListener('click', () => { $('sheet').hidden = false; $('q').value = ''; renderList(''); });
   /* Teclado aberto: os painéis com busca (músculos e exercícios) ocupam só a área visível acima do teclado,
    * para os resultados filtrados não ficarem escondidos embaixo dele. Navegadores que já encolhem a página
@@ -3986,6 +4040,7 @@
     movimento: v => { if (v) { CAMCFG.mov = v; gravarCamCfg(); } return CAMCFG.mov; },
     focarPorcao: reg => { const id = BYKEY.reto_abdome.find(i => INST[i].reg === reg && INST[i].side === 'left'); setFocus('reto_abdome', [id]); return { t: $('mTec').textContent, r: $('mRole').textContent }; },
     espelhado: () => espelhado(), lado2: () => S.lado2, doisLados: () => EXERCICIOS.filter(e => e.doisLados).map(e => e.id),
+    lupa: m => { if (m) { qModo = m; renderList($('q').value); } return qModo; },
     porcoes: k => (BYKEY[k] || []).map(i => ({ reg: INST[i].reg, side: INST[i].side, pri: stateData[i * 4] / 255, sec: stateData[i * 4 + 2] / 255 })),
     setView: (th, ph, dist, ty) => { tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: 0, ty, tz: 0 }); },
     focus: (k, s) => { focusMuscle(k, s); Object.assign(cam, camT); tweening = false; },

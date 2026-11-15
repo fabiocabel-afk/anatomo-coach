@@ -298,6 +298,8 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .li span{font-size:12px;color:var(--tx2)}
 .empty{color:var(--tx2);font-size:14px;text-align:center;margin-top:30px}
 
+#qModo{display:grid;grid-template-columns:repeat(3,1fr);width:100%;margin-bottom:6px;flex:none}#qModo button{min-width:0;padding:9px 4px;min-height:40px;text-align:center}
+.liEx{flex-direction:column!important;align-items:flex-start!important;gap:2px!important}.liEx span{font-size:12px;color:var(--tx2)}
 #muModo{display:grid;grid-template-columns:repeat(3,1fr);width:100%}#muModo button{min-width:0;padding:9px 4px;min-height:40px;text-align:center}
 #exSheet{z-index:14}#exSheet .box{max-height:calc(100% - 12px)}
 #list{flex:1;min-height:0;overflow-y:auto}#infoSheet{z-index:16}
@@ -406,7 +408,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 <header>
   <h1>Anato<b>Motion</b></h1><span></span>
   <button class="ic txt" id="bTreinos" aria-label="Meus treinos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M9 10h6M9 13.5h6M9 17h3.5"/></svg><i class="rot">Treinos</i></button>
-  <button class="ic txt" id="bList" aria-label="Lista de músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><i class="rot">Músculos</i></button>
+  <button class="ic txt" id="bList" aria-label="Buscar exercícios e músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><i class="rot">Buscar</i></button>
   <button class="ic" id="bConfig" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   <button class="avatar" id="bPerfil" aria-label="Perfil"></button>
 </header>
@@ -454,6 +456,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 <div id="sheet" hidden>
   <div class="box">
     <div class="top"><input id="q" type="search" placeholder="glúteo médio" autocomplete="off"><button class="ic" id="bSheetClose" aria-label="Fechar lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="seg" id="qModo"><button data-v="corpo">Partes do corpo</button><button data-v="objetos">Objetos</button><button data-v="musculos">Músculos</button></div>
     <div id="list"></div>
   </div>
 </div>
@@ -549,7 +552,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.32.3</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.33.0</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -3975,7 +3978,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
   $('bPvFazer').addEventListener('click', () => {
     const ex = previaEx; if (!ex) return;
     const cb = escolhaCb;
-    fecharPrevia(); fecharCatalogo();
+    fecharPrevia(); fecharCatalogo(); $('sheet').hidden = true;
     if (cb) cb(ex.id); else setExercise(ex.id);
   });
   $('bPvInfo').addEventListener('click', () => { if (previaEx) abrirInfo(previaEx); });
@@ -4014,21 +4017,75 @@ window.CORPO3D_EXERCICIOS = function (H) {
 
   // lista / busca de músculos
   const REG_ORDER = ['Pescoço', 'Ombro', 'Tronco', 'Costas', 'Braço', 'Antebraço', 'Quadril', 'Coxa', 'Joelho', 'Perna'];
+  /* ---------- Lupa: busca por partes do corpo, por objetos e por músculos ---------- */
+  // cada músculo pertence a uma parte do corpo (nomes do dia a dia)
+  const PARTES = [
+    ['Peito', ['peitoral_maior', 'serratil_anterior']],
+    ['Ombros', ['deltoide_anterior', 'deltoide_lateral', 'deltoide_posterior']],
+    ['Costas', ['latissimo_dorso', 'trapezio_desc', 'trapezio_transv', 'trapezio_asc', 'infraespinal', 'redondo_maior', 'eretor_espinha']],
+    ['Braços', ['biceps_braquial', 'braquial', 'triceps_lateral', 'triceps_longa']],
+    ['Antebraço', ['braquiorradial', 'flexores_antebraco', 'extensores_antebraco']],
+    ['Abdômen', ['reto_abdome', 'obliquo_externo']],
+    ['Glúteo e quadril', ['gluteo_maximo', 'gluteo_medio', 'tensor_fascia_lata', 'iliopsoas']],
+    ['Coxa', ['reto_femoral', 'vasto_lateral', 'vasto_medial', 'sartorio', 'adutores', 'gracil', 'biceps_femoral', 'semitendineo', 'trato_iliotibial']],
+    ['Perna e joelho', ['gastrocnemio_medial', 'gastrocnemio_lateral', 'soleo', 'tendao_calcaneo', 'tibial_anterior', 'fibular_longo', 'extensor_dedos', 'ligamento_patela']],
+    ['Pescoço', ['esternocleidomastoideo']]
+  ];
+  const PARTE_DE = {}; for (const [n, ks] of PARTES) for (const k of ks) PARTE_DE[k] = n;
+  const partesDoEx = ex => PARTES.map(p => p[0]).filter(n => ex.prim.some(k => PARTE_DE[k] === n));
+  const OBJETOS = [
+    ['Halteres', ex => ex.equip === 'halteres'], ['Barra', ex => ex.equip === 'barra'], ['Anilha', ex => ex.equip === 'anilha'],
+    ['Caneleira', ex => ex.equip === 'caneleira'], ['Garrafas', ex => ex.prop === 'garrafas'],
+    ['Sem objetos (só o corpo)', ex => ex.equip === 'corpo' && ex.prop !== 'garrafas']
+  ];
+  const objetoDoEx = ex => (OBJETOS.find(o => o[1](ex)) || ['—'])[0];
+  const exBuscaveis = () => EXERCICIOS.filter(e => !e.repouso);
+  let qModo = 'corpo';
+  function itemEx(ex, sub) {
+    const it = document.createElement('button'); it.className = 'li liEx'; it.dataset.ex = ex.id;
+    it.innerHTML = '<b></b><span></span>'; it.firstChild.textContent = ex.nome; it.lastChild.textContent = sub;
+    it.addEventListener('click', () => abrirPrevia(ex));
+    return it;
+  }
+  function cabecalho(box, nome, n) { const h = document.createElement('div'); h.className = 'lh'; h.textContent = nome + (n != null ? ' · ' + n : ''); box.appendChild(h); }
   function renderList(q) {
     const box = $('list'); box.innerHTML = ''; const nq = norm(q || '');
-    for (const reg of REG_ORDER) {
-      const keys = Object.keys(INFO).filter(k => INFO[k][2] === reg && (!nq || norm(INFO[k][0] + ' ' + INFO[k][1]).includes(nq)));
-      if (!keys.length) continue;
-      const h = document.createElement('div'); h.className = 'lh'; h.textContent = reg; box.appendChild(h);
-      for (const k of keys) {
-        const it = document.createElement('button'); it.className = 'li';
-        it.innerHTML = '<b></b><span></span>'; it.firstChild.textContent = INFO[k][0]; it.lastChild.textContent = INFO[k][1];
-        it.addEventListener('click', () => { $('sheet').hidden = true; focusMuscle(k); });
-        box.appendChild(it);
+    for (const o of $('qModo').children) o.classList.toggle('on', o.dataset.v === qModo);
+    $('q').placeholder = qModo === 'musculos' ? 'glúteo médio' : qModo === 'objetos' ? 'halteres, garrafa, rosca…' : 'perna, abdômen, rosca…';
+    const casa = (ex, extra) => !nq || norm(ex.nome + ' ' + ex.prim.concat(ex.sec).map(k => INFO[k][0] + ' ' + INFO[k][1]).join(' ') + ' ' + extra).includes(nq);
+    if (qModo === 'corpo') {
+      for (const [parte] of PARTES) {
+        const exs = exBuscaveis().filter(ex => partesDoEx(ex).includes(parte) && casa(ex, parte + ' ' + objetoDoEx(ex)));
+        if (!exs.length) continue;
+        cabecalho(box, parte, exs.length);
+        for (const ex of exs) box.appendChild(itemEx(ex, objetoDoEx(ex) + ' · ' + musculosTxt(ex)));
       }
+      if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum exercício encontrado.</p>';
+    } else if (qModo === 'objetos') {
+      for (const [obj, f] of OBJETOS) {
+        const exs = exBuscaveis().filter(ex => f(ex) && casa(ex, obj + ' ' + partesDoEx(ex).join(' ')));
+        if (!exs.length) continue;
+        cabecalho(box, obj, exs.length);
+        for (const ex of exs) box.appendChild(itemEx(ex, partesDoEx(ex).join(' · ')));
+      }
+      if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum exercício encontrado.</p>';
+    } else {
+      for (const [parte, ks] of PARTES) {
+        const keys = ks.filter(k => INFO[k] && (!nq || norm(INFO[k][0] + ' ' + INFO[k][1] + ' ' + parte).includes(nq)));
+        if (!keys.length) continue;
+        cabecalho(box, parte);
+        for (const k of keys) {
+          const it = document.createElement('button'); it.className = 'li';
+          it.innerHTML = '<b></b><span></span>'; it.firstChild.textContent = INFO[k][0]; it.lastChild.textContent = INFO[k][1];
+          it.addEventListener('click', () => { $('sheet').hidden = true; focusMuscle(k); });
+          box.appendChild(it);
+        }
+      }
+      if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum músculo com esse nome.</p>';
     }
-    if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum músculo com esse nome.</p>';
+    box.scrollTop = 0;
   }
+  for (const o of $('qModo').children) o.addEventListener('click', () => { qModo = o.dataset.v; renderList($('q').value); });
   $('bList').addEventListener('click', () => { $('sheet').hidden = false; $('q').value = ''; renderList(''); });
   /* Teclado aberto: os painéis com busca (músculos e exercícios) ocupam só a área visível acima do teclado,
    * para os resultados filtrados não ficarem escondidos embaixo dele. Navegadores que já encolhem a página
@@ -5800,7 +5857,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.32.3';
+  const BK_VERSAO = '2.33.0';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;
@@ -6158,6 +6215,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     movimento: v => { if (v) { CAMCFG.mov = v; gravarCamCfg(); } return CAMCFG.mov; },
     focarPorcao: reg => { const id = BYKEY.reto_abdome.find(i => INST[i].reg === reg && INST[i].side === 'left'); setFocus('reto_abdome', [id]); return { t: $('mTec').textContent, r: $('mRole').textContent }; },
     espelhado: () => espelhado(), lado2: () => S.lado2, doisLados: () => EXERCICIOS.filter(e => e.doisLados).map(e => e.id),
+    lupa: m => { if (m) { qModo = m; renderList($('q').value); } return qModo; },
     porcoes: k => (BYKEY[k] || []).map(i => ({ reg: INST[i].reg, side: INST[i].side, pri: stateData[i * 4] / 255, sec: stateData[i * 4 + 2] / 255 })),
     setView: (th, ph, dist, ty) => { tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: 0, ty, tz: 0 }); },
     focus: (k, s) => { focusMuscle(k, s); Object.assign(cam, camT); tweening = false; },

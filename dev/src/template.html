@@ -298,6 +298,8 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .li span{font-size:12px;color:var(--tx2)}
 .empty{color:var(--tx2);font-size:14px;text-align:center;margin-top:30px}
 
+#qModo{display:grid;grid-template-columns:repeat(3,1fr);width:100%;margin-bottom:6px;flex:none}#qModo button{min-width:0;padding:9px 4px;min-height:40px;text-align:center}
+.liEx{flex-direction:column!important;align-items:flex-start!important;gap:2px!important}.liEx span{font-size:12px;color:var(--tx2)}
 #muModo{display:grid;grid-template-columns:repeat(3,1fr);width:100%}#muModo button{min-width:0;padding:9px 4px;min-height:40px;text-align:center}
 #exSheet{z-index:14}#exSheet .box{max-height:calc(100% - 12px)}
 #list{flex:1;min-height:0;overflow-y:auto}#infoSheet{z-index:16}
@@ -406,7 +408,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 <header>
   <h1>Anato<b>Motion</b></h1><span></span>
   <button class="ic txt" id="bTreinos" aria-label="Meus treinos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M9 10h6M9 13.5h6M9 17h3.5"/></svg><i class="rot">Treinos</i></button>
-  <button class="ic txt" id="bList" aria-label="Lista de músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><i class="rot">Músculos</i></button>
+  <button class="ic txt" id="bList" aria-label="Buscar exercícios e músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><i class="rot">Buscar</i></button>
   <button class="ic" id="bConfig" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   <button class="avatar" id="bPerfil" aria-label="Perfil"></button>
 </header>
@@ -454,6 +456,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 <div id="sheet" hidden>
   <div class="box">
     <div class="top"><input id="q" type="search" placeholder="glúteo médio" autocomplete="off"><button class="ic" id="bSheetClose" aria-label="Fechar lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="seg" id="qModo"><button data-v="corpo">Partes do corpo</button><button data-v="objetos">Objetos</button><button data-v="musculos">Músculos</button></div>
     <div id="list"></div>
   </div>
 </div>
