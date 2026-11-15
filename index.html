@@ -547,7 +547,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.32.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.32.1</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -4165,7 +4165,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
   // cedo demais: por isso há um tempo mínimo proporcional ao texto, e um máximo caso o aviso nunca chegue
   const agora = () => performance.now();
   function preparar(texto) {
-    if (window.__semPreparo) { S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.prep = null; marcarInicio(); falar(texto + ' Começa!', true); painelTreino(); return; }
+    if (window.__semPreparo) { S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.prep = null; S.feitos = S.ciclo; marcarInicio(); falar(texto + ' Começa!', true); painelTreino(); return; }
     fotografarPose();
     S.estado = 'preparo'; t = 0; lastCycle = 0; phase = 0;
     const tok = {}, est = texto.length * 70; // ~70 ms por letra na voz em português
@@ -4206,7 +4206,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     painelTreino();
   }
   function comecarContagem() {
-    S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; marcarInicio();
+    S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.feitos = S.ciclo; marcarInicio(); // "Começa!": a cápsula já marca este ciclo
     painelTreino();
   }
   // tempo do exercício para o histórico: começa no primeiro "Começa!", desconta as pausas
@@ -4247,7 +4247,6 @@ window.CORPO3D_EXERCICIOS = function (H) {
       return;
     }
     if (S.rep >= tc.reps) {
-      S.feitos = S.ciclo; // ciclo concluído (aparece na cápsula do treino)
       t = 0; lastCycle = 0; phase = 0;
       if (S.ciclo >= tc.ciclos) {
         const reg = registroDoExercicio(); S.reg = null;
@@ -5774,7 +5773,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.32.0';
+  const BK_VERSAO = '2.32.1';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;

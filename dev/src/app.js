@@ -2003,7 +2003,7 @@
   // cedo demais: por isso há um tempo mínimo proporcional ao texto, e um máximo caso o aviso nunca chegue
   const agora = () => performance.now();
   function preparar(texto) {
-    if (window.__semPreparo) { S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.prep = null; marcarInicio(); falar(texto + ' Começa!', true); painelTreino(); return; }
+    if (window.__semPreparo) { S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.prep = null; S.feitos = S.ciclo; marcarInicio(); falar(texto + ' Começa!', true); painelTreino(); return; }
     fotografarPose();
     S.estado = 'preparo'; t = 0; lastCycle = 0; phase = 0;
     const tok = {}, est = texto.length * 70; // ~70 ms por letra na voz em português
@@ -2044,7 +2044,7 @@
     painelTreino();
   }
   function comecarContagem() {
-    S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; marcarInicio();
+    S.prep = null; S.estado = 'treino'; t = 0; lastCycle = 0; phase = 0; S.feitos = S.ciclo; marcarInicio(); // "Começa!": a cápsula já marca este ciclo
     painelTreino();
   }
   // tempo do exercício para o histórico: começa no primeiro "Começa!", desconta as pausas
@@ -2085,7 +2085,6 @@
       return;
     }
     if (S.rep >= tc.reps) {
-      S.feitos = S.ciclo; // ciclo concluído (aparece na cápsula do treino)
       t = 0; lastCycle = 0; phase = 0;
       if (S.ciclo >= tc.ciclos) {
         const reg = registroDoExercicio(); S.reg = null;
