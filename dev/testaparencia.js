@@ -7,19 +7,21 @@ await p.evaluateOnNewDocument(()=>{window.__semPreparo=true;window.__falas=[];co
    localStorage.setItem('anatomotion.historico.v1@p1',JSON.stringify({v:1,lista:[{id:'a',ex:'agachamento',nome:'Agachamento livre',dia:(d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))(new Date()),inicio:Date.now()-500000,fim:Date.now()-100000,ativoSeg:300,descansoSeg:60,pausaAntesSeg:0,ciclos:3,reps:10,ritmoNome:'Normal'}]}));}});
 await p.goto('file://'+path.resolve('dist/corpo3d.html'));await p.waitForFunction('window.__corpo',{timeout:60000});
 const ok=(c,m)=>{console.log((c?'OK  ':'FALHA ')+m);if(!c)process.exitCode=1;};
-let x=await p.evaluate(()=>{document.getElementById('bCfg').click();return {claro:document.body.classList.contains('claro'),tema:[...document.querySelectorAll('#cTema button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(','),leg:[...document.querySelectorAll('#cLeg button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(','),meta:document.getElementById('metaTema').content};});
+let x=await p.evaluate(()=>{document.getElementById('bConfig').click();return {claro:document.body.classList.contains('claro'),tema:[...document.querySelectorAll('#cTema button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(','),leg:[...document.querySelectorAll('#cLeg button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(','),meta:document.getElementById('metaTema').content};});
 ok(!x.claro&&x.tema==='Escuro*,Claro'&&x.leg==='Desligada*,Ligada'&&x.meta==='#131016','padrão: tema escuro e legenda desligada');
-// tema claro
+// Ajustes ficou só com o exercício; tema/legenda/movimento estão na engrenagem do topo
+x=await p.evaluate(()=>({noAjustes:!!document.querySelector('#cfgSheet #cTema, #cfgSheet #cLeg, #cfgSheet #cMov'),naEngrenagem:!!document.querySelector('#cnfSheet #cTema')&&!!document.querySelector('#cnfSheet #cLeg')&&!!document.querySelector('#cnfSheet #cMov'),aberto:!document.getElementById('cnfSheet').hidden}));
+ok(!x.noAjustes&&x.naEngrenagem&&x.aberto,'opções de aparência saíram de Ajustes e estão na engrenagem do topo');
 await p.evaluate(()=>document.querySelector('#cTema [data-v="claro"]').click());await sleep(200);
 x=await p.evaluate(()=>({claro:document.body.classList.contains('claro'),bg:getComputedStyle(document.body).backgroundColor,meta:document.getElementById('metaTema').content,salvo:JSON.parse(localStorage.getItem('anatomotion.camera.v1@p1')).tema}));
 ok(x.claro&&x.bg==='rgb(244, 241, 247)'&&x.meta==='#F4F1F7'&&x.salvo==='claro','tema claro aplicado na hora e salvo no perfil');
 // legenda desligada: nada aparece
-await p.evaluate(()=>document.getElementById('bCfgClose').click());
+await p.evaluate(()=>document.getElementById('bCnfClose').click());
 await p.evaluate(()=>{__corpo.setExercise('agachamento');document.getElementById('bPlay').click();});await sleep(200);
 ok(await p.evaluate(()=>document.getElementById('legenda').hidden),'legenda desligada: não aparece');
 await p.evaluate(()=>document.getElementById('bReset')&&document.getElementById('bReset').click());await p.evaluate(()=>__corpo.setExercise('repouso'));
 // liga a legenda
-await p.evaluate(()=>{document.getElementById('bCfg').click();document.querySelector('#cLeg [data-v="sim"]').click();document.getElementById('bCfgClose').click();});
+await p.evaluate(()=>{document.getElementById('bConfig').click();document.querySelector('#cLeg [data-v="sim"]').click();document.getElementById('bCnfClose').click();});
 await p.reload();await p.waitForFunction('window.__corpo',{timeout:60000});await sleep(300);
 ok(await p.evaluate(()=>document.body.classList.contains('claro')&&__corpo.legenda()===true),'depois de reabrir: continua claro e com legenda');
 // com voz (falsa): mostra o texto falado e some pouco depois do fim da fala

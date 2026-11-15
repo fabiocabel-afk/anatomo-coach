@@ -1945,7 +1945,7 @@
   }
   function calarVoz() { if (VOZ_OK) try { window.speechSynthesis.cancel(); } catch (e) { /* ignora */ } if (window.Musica) Musica.soltarAbaixar(); esconderLegenda(); }
 
-  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null, lado2: false, pausaEntreMs: 0, posFim: null };
+  const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null, lado2: false, pausaEntreMs: 0, posFim: null, feitos: 0 };
   const ICON_RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>';
   $('bReset').innerHTML = ICON_RESET;
 
@@ -1994,7 +1994,7 @@
   }
   function iniciarTreino() {
     if (S.posFim) { fotografarPose(); bestAngle(false); } // saindo do repouso do fim: transição suave
-    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; S.posFim = null; setLado2(false); musicaNova = true; S.reg = null; esconderConclusao();
+    S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; S.posFim = null; S.feitos = 0; setLado2(false); musicaNova = true; S.reg = null; esconderConclusao();
     preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos' : ' repetições') + (cur.doisLados || (cur.alt && !cur.isometria) ? ' de cada lado, ' : ', ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
   }
   // antes de contar: o corpo fica na posição inicial, só respirando, enquanto a voz anuncia;
@@ -2085,6 +2085,7 @@
       return;
     }
     if (S.rep >= tc.reps) {
+      S.feitos = S.ciclo; // ciclo concluído (aparece na cápsula do treino)
       t = 0; lastCycle = 0; phase = 0;
       if (S.ciclo >= tc.ciclos) {
         const reg = registroDoExercicio(); S.reg = null;
@@ -2237,7 +2238,6 @@
     for (const k of ['reps', 'ciclos', 'descanso', 'pausaRep', 'depois']) if (rascunho[k] !== undefined) $('v_' + k).textContent = String(rascunho[k]) + (k === 'reps' ? (cfgIso ? ' s' : '') : k === 'ciclos' ? '' : ' s');
     for (const o of $('cRitmo').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.ritmo);
     for (const o of $('cCan').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.caneleira);
-    try { movUI(); aparenciaUI(); } catch (e) { /* ainda iniciando */ }
     $('cVoz').checked = rascunho.voz;
   }
   for (const btn of document.querySelectorAll('.stp button')) {
@@ -2250,25 +2250,29 @@
   for (const o of $('cCan').children) o.addEventListener('click', () => { rascunho.caneleira = Number(o.dataset.v); cfgUI(); });
   // movimento do corpo: vale na hora e para todos os exercícios (preferência do perfil)
   function movUI() { for (const o of $('cMov').children) o.classList.toggle('on', o.dataset.v === (movNatural() ? 'natural' : 'estatico')); }
-  // tema e legenda: valem na hora, para todos os exercícios deste perfil
+  // Configurações (engrenagem no topo): tema, legenda e movimento — valem na hora, para todo o perfil
+  function abrirConfig() { movUI(); aparenciaUI(); $('cnfMsg').textContent = ''; $('cnfSheet').hidden = false; }
+  $('bConfig').addEventListener('click', abrirConfig);
+  $('bCnfClose').addEventListener('click', () => { $('cnfSheet').hidden = true; });
+  $('cnfSheet').addEventListener('click', e => { if (e.target === $('cnfSheet')) $('cnfSheet').hidden = true; });
   function aparenciaUI() {
     for (const o of $('cTema').children) o.classList.toggle('on', o.dataset.v === CAMCFG.tema);
     for (const o of $('cLeg').children) o.classList.toggle('on', o.dataset.v === (CAMCFG.legenda ? 'sim' : 'nao'));
   }
   for (const o of $('cTema').children) o.addEventListener('click', () => {
     const antes = CAMCFG.tema; CAMCFG.tema = o.dataset.v;
-    if (!gravarCamCfg()) { CAMCFG.tema = antes; $('cfgMsg').textContent = 'Atenção: não consegui salvar o tema neste aparelho.'; }
+    if (!gravarCamCfg()) { CAMCFG.tema = antes; $('cnfMsg').textContent = 'Atenção: não consegui salvar o tema neste aparelho.'; }
     aplicarTema(); aparenciaUI();
   });
   for (const o of $('cLeg').children) o.addEventListener('click', () => {
     const antes = CAMCFG.legenda; CAMCFG.legenda = o.dataset.v === 'sim';
-    if (!gravarCamCfg()) { CAMCFG.legenda = antes; $('cfgMsg').textContent = 'Atenção: não consegui salvar a legenda neste aparelho.'; }
+    if (!gravarCamCfg()) { CAMCFG.legenda = antes; $('cnfMsg').textContent = 'Atenção: não consegui salvar a legenda neste aparelho.'; }
     if (!CAMCFG.legenda) esconderLegenda();
     aparenciaUI();
   });
   for (const o of $('cMov').children) o.addEventListener('click', () => {
     const antes = CAMCFG.mov; CAMCFG.mov = o.dataset.v;
-    if (!gravarCamCfg()) { CAMCFG.mov = antes; $('cfgMsg').textContent = 'Atenção: não consegui salvar o movimento do corpo neste aparelho.'; }
+    if (!gravarCamCfg()) { CAMCFG.mov = antes; $('cnfMsg').textContent = 'Atenção: não consegui salvar o movimento do corpo neste aparelho.'; }
     movUI();
   });
   $('cVoz').addEventListener('change', e => { rascunho.voz = e.target.checked; });
@@ -2670,9 +2674,14 @@
   function seqBarUI() {
     const bar = $('seqBar'); bar.hidden = !SEQ;
     if (!SEQ) return;
-    $('seqNome').textContent = SEQ.t.nome;
-    const prox = SEQ.t.itens[SEQ.idx + 1];
-    $('seqSub').textContent = 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + (prox ? ' · depois: ' + nomeEx(prox.ex) : ' · último');
+    // no descanso antes do próximo exercício, a cápsula já mostra o próximo (com 0 ciclos feitos)
+    const antes = S.estado === 'pausado' ? S.antes : S.estado;
+    const indo = S.troca && antes === 'descanso' && SEQ.idx < SEQ.t.itens.length - 1;
+    const i = SEQ.idx + (indo ? 1 : 0), it = SEQ.t.itens[i];
+    const feitos = indo ? 0 : S.feitos, total = indo ? it.ciclos : tc.ciclos;
+    $('seqNome').textContent = SEQ.t.nome + ' (' + feitos + '/' + total + ')';
+    const prox = SEQ.t.itens[i + 1];
+    $('seqSub').textContent = 'Exercício ' + (i + 1) + ' de ' + SEQ.t.itens.length + (prox ? ' · depois: ' + nomeEx(prox.ex) : ' · último');
   }
   $('bSeqSair').addEventListener('click', () => confirmar($('bSeqSair'), 'Sair?', () => sairSequencia(false)));
   $('bTreinos').addEventListener('click', abrirTreinos);
@@ -3564,6 +3573,7 @@
     if (visivel('pvSheet')) { fecharPrevia(); return true; }
     if (visivel('exSheet')) { if (visivel('exGrupoMenu')) fecharGrupoMenu(); else fecharCatalogo(); return true; }
     if (visivel('camSheet')) { $('camSheet').hidden = true; return true; }
+    if (visivel('cnfSheet')) { $('cnfSheet').hidden = true; return true; }
     if (visivel('muSheet')) { $('bMuClose').click(); return true; }
     if (visivel('edSheet')) { $('bEdClose').click(); return true; }
     if (visivel('pfSheet')) { if (pfTela.modo !== 'lista') $('bPfVoltar').click(); else $('bPfClose').click(); return true; }
@@ -3903,6 +3913,7 @@
     setPhase: (p, l) => { S.estado = 'congelado'; phase = p; cicloU = p; lado = l || 0; },
     cfgAtual: () => Object.assign({}, cfg),
     treinos: () => JSON.parse(JSON.stringify(TREINOS)),
+    capsula: () => ({ nome: $('seqNome').textContent, sub: $('seqSub').textContent }),
     seq: () => SEQ ? { id: SEQ.t.id, idx: SEQ.idx, troca: S.troca, espera: +S.espera.toFixed(2), tc: Object.assign({}, tc) } : null,
     executarTreino: id => executarTreino(id),
     musica: () => window.Musica ? Musica.estado() : null,

@@ -44,9 +44,9 @@ ok(r.estatico<1e-6,'modo estático: pose idêntica, sem movimento');
 // perfis de alguns exercícios
 const pf=r.perfis;console.log('rosca',JSON.stringify(pf.rosca_direta||pf.rosca),'desenv',JSON.stringify(pf.desenvolvimento_barra),'lateral',JSON.stringify(pf.elevacao_lateral),'agach',JSON.stringify(pf.agachamento));
 // botão em Ajustes
-await p.evaluate(()=>document.getElementById('bCfg')?document.getElementById('bCfg').click():null);await new Promise(r=>setTimeout(r,400));
+await p.evaluate(()=>document.getElementById('bConfig').click());await new Promise(r=>setTimeout(r,400));
 const ui=await p.evaluate(()=>{const s=document.getElementById('cMov');return s?[...s.children].map(x=>x.textContent+(x.classList.contains('on')?'*':'')).join(','):null;});
-ok(ui==='Natural*,Estático','botão Movimento do corpo em Ajustes: '+ui);
+ok(ui==='Natural*,Estático','botão Movimento do corpo nas Configurações: '+ui);
 await p.evaluate(()=>document.querySelector('#cMov [data-v="estatico"]').click());
 const salvo=await p.evaluate(()=>{const k=Object.keys(localStorage).find(k=>k.startsWith('anatomotion.camera.v1'));return k&&JSON.parse(localStorage.getItem(k)).mov;});
 ok(salvo==='estatico'&&await p.evaluate(()=>__corpo.movimento()==='estatico'),'escolha Estático gravada no perfil');

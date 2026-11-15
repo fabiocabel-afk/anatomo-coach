@@ -25,7 +25,9 @@ header h1 b{color:var(--marca);font-weight:700}
 .avatar{flex:none;width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.18);color:#fff;font-size:15px;font-weight:700;display:grid;place-items:center;cursor:pointer;padding:0;font-family:inherit}
 span.avatar{width:38px;height:38px;cursor:default}
 i.rot{font-style:normal}
-@media (max-width:400px){#bList i.rot{display:none}#bList{padding:0;width:40px;justify-content:center}}
+@media (max-width:440px){#bList i.rot{display:none}#bList{padding:0;width:40px;justify-content:center}}
+/* telas estreitas: com a engrenagem no topo, "Treinos" fica só com o ícone */
+@media (max-width:405px){#bTreinos i.rot{display:none}#bTreinos{padding:0;width:40px;justify-content:center}}
 .pfr{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--bd);border-radius:14px;margin-bottom:8px;background:var(--card2)}
 .pfr.atual{border-color:var(--roxo)}
 .pfr .trt{flex:1;min-width:0}
@@ -265,7 +267,7 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .perigoTx{color:var(--vermTx)!important;border-color:#5a1622!important;background:transparent!important}
 .perigoCheio{background:#B3263A!important;border-color:#FF2D45!important;color:#fff!important}
 .hdConf{margin-top:12px;border:1px solid #FF2D45;border-radius:12px;padding:10px;background:rgba(255,45,69,.08)}.hdConf p{margin:0 0 10px;font-size:13px;line-height:1.45}
-#camSheet{z-index:13}
+#camSheet{z-index:13}#cnfSheet{z-index:13}
 .btnLinha.tres button{flex-direction:column;height:64px;gap:4px;font-size:12.5px;padding:0 4px}
 .btnLinha.tres svg{width:20px;height:20px}
 .camLin{display:flex;align-items:center;margin:4px 0 2px}
@@ -401,8 +403,9 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 <body>
 <header>
   <h1>Anato<b>Motion</b></h1><span></span>
-  <button class="ic txt" id="bTreinos" aria-label="Meus treinos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M9 10h6M9 13.5h6M9 17h3.5"/></svg>Treinos</button>
+  <button class="ic txt" id="bTreinos" aria-label="Meus treinos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M9 10h6M9 13.5h6M9 17h3.5"/></svg><i class="rot">Treinos</i></button>
   <button class="ic txt" id="bList" aria-label="Lista de músculos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><i class="rot">Músculos</i></button>
+  <button class="ic" id="bConfig" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   <button class="avatar" id="bPerfil" aria-label="Perfil"></button>
 </header>
 <div id="chips"></div>
@@ -474,6 +477,16 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="pvBtns"><button class="pri" id="bFicar">Ficar</button><button id="bSair">Sair</button></div>
   </div>
 </div>
+<div id="cnfSheet" class="sheetw" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="cnfTit">
+    <div style="display:flex;align-items:center;margin-bottom:4px"><span class="ttl" id="cnfTit">Configurações</span><button class="ic" id="bCnfClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="nota" style="margin:0 0 6px">Aparência e acessibilidade. Vale na hora, para todos os exercícios deste perfil.</p>
+    <div class="cr"><div class="lb">Tema<small>cores do aplicativo</small></div><div class="seg" id="cTema"><button data-v="escuro">Escuro</button><button data-v="claro">Claro</button></div></div>
+    <div class="cr"><div class="lb">Legenda<small>mostra escrito tudo o que a voz fala, mesmo com a voz desligada</small></div><div class="seg" id="cLeg"><button data-v="nao">Desligada</button><button data-v="sim">Ligada</button></div></div>
+    <div class="cr"><div class="lb">Movimento do corpo<small>natural: respira e reage ao esforço, sem exagero</small></div><div class="seg" id="cMov"><button data-v="natural">Natural</button><button data-v="estatico">Estático</button></div></div>
+    <p class="msg" id="cnfMsg"></p>
+  </div>
+</div>
 <div id="camSheet" class="sheetw" hidden>
   <div class="box">
     <div style="display:flex;align-items:center;margin-bottom:4px"><span class="ttl">Câmera</span><button class="ic" id="bCamClose" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -532,11 +545,6 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><div class="lb">Ritmo</div><div class="seg" id="cRitmo"><button data-v="1.45">Lento</button><button data-v="1">Normal</button><button data-v="0.7">Rápido</button><button data-v="0.5">Turbo</button></div></div>
     <div class="cr"><div class="lb">Caneleira<small>peso usado nos exercícios com caneleira</small></div><div class="seg" id="cCan"><button data-v="1">1 kg</button><button data-v="3">3 kg</button><button data-v="5">5 kg</button></div></div>
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
-    <div class="ttl2 cfgBloco"><span>Aparência e acessibilidade</span></div>
-    <p class="nota" style="margin:-4px 0 2px">Vale na hora, para todos os exercícios deste perfil.</p>
-    <div class="cr"><div class="lb">Tema<small>cores do aplicativo</small></div><div class="seg" id="cTema"><button data-v="escuro">Escuro</button><button data-v="claro">Claro</button></div></div>
-    <div class="cr"><div class="lb">Legenda<small>mostra escrito tudo o que a voz fala, mesmo com a voz desligada</small></div><div class="seg" id="cLeg"><button data-v="nao">Desligada</button><button data-v="sim">Ligada</button></div></div>
-    <div class="cr"><div class="lb">Movimento do corpo<small>natural: respira e reage ao esforço, sem exagero</small></div><div class="seg" id="cMov"><button data-v="natural">Natural</button><button data-v="estatico">Estático</button></div></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
     <p class="nota" style="text-align:center;margin-top:12px">Versão /*VER*/</p>
