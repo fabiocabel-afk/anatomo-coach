@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="AnatoMotion">
 <!--PWA_HEAD-->
 <style>
-:root{--roxo:#8B4FC4;--roxo-f:#642A90;--bg:#131016;--card:#1E1A23;--card2:#28232E;--tx:#F3EEF6;--tx2:#A79FB0;--bd:#332C3A;--pri:#FF2D45;--sec:#FF9901;--lilas:var(--lilas);--aviso:var(--aviso);--ok:#99CC33;--laranja:#FF9901;--vermTx:var(--vermTx);--vermTx2:var(--vermTx2);--titulo:#fff;--marca:#9D5FE0;--sobre:var(--sobre);--sobre2:var(--sobre2);--eixo:var(--eixo);--grade:var(--grade);--grade2:var(--grade2);--grade3:var(--grade3);--menu:var(--menu);--dica:var(--dica);--cena:#131016;--imers0:var(--imers0);--imers1:var(--imers1);--marcaSel:rgba(100,42,144,.18)}
+:root{--roxo:#8B4FC4;--roxo-f:#642A90;--bg:#131016;--card:#1E1A23;--card2:#28232E;--tx:#F3EEF6;--tx2:#A79FB0;--bd:#332C3A;--pri:#FF2D45;--sec:#FF9901;--lilas:#C9A6FF;--aviso:#FFC266;--ok:#99CC33;--laranja:#FF9901;--vermTx:#FF8A98;--vermTx2:#FFB3BF;--titulo:#fff;--marca:#9D5FE0;--sobre:rgba(30,26,35,.95);--sobre2:rgba(19,16,22,.86);--eixo:#8f8799;--grade:rgba(255,255,255,.07);--grade2:rgba(255,255,255,.25);--grade3:rgba(255,255,255,.28);--menu:#241f2b;--dica:#2b2533;--cena:#131016;--imers0:rgba(18,16,22,0);--imers1:rgba(18,16,22,.5);--marcaSel:rgba(100,42,144,.18)}
 /* tema claro: mesmas variáveis, valores claros (contraste conferido) */
 body.claro{--roxo:#7B3FB8;--bg:#F4F1F7;--card:#FFFFFF;--card2:#F1ECF6;--tx:#1E1A23;--tx2:#5E5768;--bd:#DCD3E5;--lilas:#5B2687;--aviso:#8A4B00;--ok:#3F6B0A;--laranja:#A85400;--vermTx:#B3263A;--vermTx2:#9C1F33;--titulo:#1E1A23;--marca:#7E3FC2;--sobre:rgba(255,255,255,.95);--sobre2:rgba(255,255,255,.92);--eixo:#6B6474;--grade:rgba(0,0,0,.08);--grade2:rgba(0,0,0,.25);--grade3:rgba(0,0,0,.3);--menu:#FFFFFF;--dica:#FFFFFF;--cena:#ECE7F1;--imers0:rgba(244,241,247,0);--imers1:rgba(244,241,247,.65);--marcaSel:rgba(100,42,144,.12)}
 body.claro .sheetw,body.claro #sheet{background:rgba(30,20,40,.35)}
@@ -293,6 +293,35 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .atCriar{flex:none;display:flex;align-items:center;gap:6px;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--roxo);background:var(--roxo-f);color:#fff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
 .atCriar svg,.btnLinha .pri svg{width:18px;height:18px}
 .atAjuste{padding:0}
+.atSec{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--lilas);margin:4px 0 8px}
+#atSecLista{margin-top:16px}
+.atGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.atCel{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:8px 2px}
+.atCel>span{font-size:12px;color:var(--tx2);text-align:center;line-height:1.15}
+.atCel .stp{gap:2px}.atCel .stp button{width:30px;height:30px;font-size:18px}.atCel .stp output{min-width:38px;font-size:16px}
+.atRitmo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;flex-wrap:wrap}
+.atRitmo>span{font-size:13px;color:var(--tx2)}.atRitmo .seg button{padding:7px 10px}
+#atPeso{margin-top:10px;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:8px 10px 4px}
+#rowPeso{display:block;padding:12px 0}#rowPeso[hidden]{display:none}
+.pesoBox{width:100%}
+.pesoTop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pesoTop .lb small{display:block}
+.pesoVal{display:flex;align-items:center;gap:4px}
+.pesoVal button{width:34px;height:34px;border-radius:50%;border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-size:20px;line-height:1;cursor:pointer}
+.pesoNum{min-width:74px;text-align:center;font-size:22px;font-weight:700;color:var(--tx);white-space:nowrap}
+#atPeso .pesoNum{font-size:20px;min-width:70px}.pesoTop .lb{flex:1;min-width:0}.pesoVal{flex:none}
+.rgBox{position:relative;margin-top:6px}
+.rgBox::after{content:'';position:absolute;left:50%;top:0;height:30px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--lilas);pointer-events:none}
+.regua{overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;outline:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)}
+.regua::-webkit-scrollbar{display:none}
+.regua:focus-visible{box-shadow:0 0 0 2px var(--roxo);border-radius:8px}
+.rgTr{display:flex;width:max-content;height:48px}
+.rgEsp{flex:none;display:block;width:50px}
+.rgTk{flex:none;width:12px;position:relative;scroll-snap-align:center}
+.rgTk::before{content:'';position:absolute;left:5px;top:6px;width:2px;height:10px;border-radius:1px;background:var(--bd)}
+.rgTk.rgM::before{height:16px;background:var(--tx2)}
+.rgTk.rgG::before{height:24px;top:2px;background:var(--tx)}
+.rgTk em{position:absolute;top:29px;left:6px;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--tx2);white-space:nowrap}
 #exMsg.okMsg{color:var(--ok);font-size:13px;padding:4px 2px}
 .ttl2.comIc svg{width:16px;height:16px;flex:none}
 .li span{font-size:12px;color:var(--tx2)}
@@ -548,7 +577,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr" id="rowPausaRep" hidden><div class="lb">Pausa<small>entre uma repetição e outra</small></div><div class="stp" data-k="pausaRep"><button data-d="-1" aria-label="Menos pausa">−</button><output id="v_pausaRep"></output><button data-d="1" aria-label="Mais pausa">+</button></div></div>
     <div class="cr" id="rowDepois" hidden><div class="lb">Descanso até o próximo<small id="cfgDepoisSub">antes do próximo exercício</small></div><div class="stp" data-k="depois"><button data-d="-1" aria-label="Menos descanso até o próximo">−</button><output id="v_depois"></output><button data-d="1" aria-label="Mais descanso até o próximo">+</button></div></div>
     <div class="cr"><div class="lb">Ritmo</div><div class="seg" id="cRitmo"><button data-v="1.45">Lento</button><button data-v="1">Normal</button><button data-v="0.7">Rápido</button><button data-v="0.5">Turbo</button></div></div>
-    <div class="cr"><div class="lb">Caneleira<small>peso usado nos exercícios com caneleira</small></div><div class="seg" id="cCan"><button data-v="1">1 kg</button><button data-v="3">3 kg</button><button data-v="5">5 kg</button></div></div>
+    <div class="cr" id="rowPeso" hidden></div>
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>

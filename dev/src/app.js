@@ -763,7 +763,7 @@
     w.position.set(ha.x - ta.x, ha.y - ta.y + 0.05, ha.z - ta.z); bones[p + 'LowerArmTwist'].add(w); caneleirasPunho.push(w);
   }
   let pesoCaneleira = 1;
-  function escalaCaneleira(kg) { const e = kg >= 5 ? 1.32 : kg >= 3 ? 1.16 : 1; for (const c of caneleiras.concat(caneleirasPunho)) c.scale.set(e, 1, e); }
+  function escalaCaneleira(kg) { const e = 1 + Math.min(0.6, Math.max(0, (Number(kg) || 1) - 1) * 0.08); for (const c of caneleiras.concat(caneleirasPunho)) c.scale.set(e, 1, e); }
   // garrafas (calistenia): ficam paradas no chão
   const garrafas = [];
   {
@@ -1935,17 +1935,32 @@
    *    congelado (usado pelos testes)
    * ===================================================================== */
   const CFG_KEY = chave('corpo3d.treino.v1');
-  const CFG_PADRAO = { reps: 10, ciclos: 3, descanso: 30, voz: true, ritmo: 1, caneleira: 1 };
+  // pesos: cada objeto tem o seu (halteres = cada halter; caneleira = cada perna/punho)
+  const PESOS = {
+    halteres: { nome: 'Halteres', max: 40, passo: 0.5, padrao: 4, rotulo: 5, sub: 'cada halter' },
+    anilha: { nome: 'Anilha', max: 100, passo: 1, padrao: 12, rotulo: 10, sub: 'a anilha' },
+    caneleira: { nome: 'Caneleira', max: 20, passo: 0.5, padrao: 3, rotulo: 2, sub: 'cada caneleira' }
+  };
+  const tipoPeso = ex => (ex && PESOS[ex.equip] ? ex.equip : null);
+  function pesoValido(tipo, v) {
+    const P = PESOS[tipo]; v = Number(v);
+    if (!P || v === null || !Number.isFinite(v)) return null;
+    return clamp(Math.round(v / P.passo) * P.passo, P.passo, P.max);
+  }
+  const kgTxt = v => String(Math.round(Number(v) * 10) / 10).replace('.', ',');
+  const pesoPadrao = () => { const o = {}; for (const k in PESOS) o[k] = PESOS[k].padrao; return o; };
+  const CFG_PADRAO = { reps: 10, ciclos: 3, descanso: 30, voz: true, ritmo: 1, pesos: pesoPadrao() };
   const LIM = { reps: [1, 50, 1], ciclos: [1, 10, 1], descanso: [0, 300, 5], pausaRep: [0, 30, 1], depois: [0, 300, 5] };
   const RITMO_VALORES = [1.45, 1, 0.7, 0.5]; // lento, normal, rápido, turbo
   function lerCfg() {
     let o = {};
     try { o = JSON.parse(localStorage.getItem(CFG_KEY) || '{}') || {}; } catch (e) { o = {}; }
-    const c = Object.assign({}, CFG_PADRAO);
+    const c = Object.assign({}, CFG_PADRAO, { pesos: pesoPadrao() });
     for (const k of ['reps', 'ciclos', 'descanso']) { const v = Math.round(Number(o[k])); if (Number.isFinite(v)) c[k] = clamp(v, LIM[k][0], LIM[k][1]); }
     if (typeof o.voz === 'boolean') c.voz = o.voz;
     if (RITMO_VALORES.includes(Number(o.ritmo))) c.ritmo = Number(o.ritmo);
-    if ([1, 3, 5].includes(Number(o.caneleira))) c.caneleira = Number(o.caneleira);
+    if (o.pesos && typeof o.pesos === 'object') { for (const k in PESOS) { const v = pesoValido(k, o.pesos[k]); if (v !== null) c.pesos[k] = v; } }
+    else if ([3, 5].includes(Number(o.caneleira))) c.pesos.caneleira = Number(o.caneleira); // versão antiga (1, 3 ou 5 kg; 1 era o padrão)
     return c;
   }
   function salvarCfg(c) {
@@ -1957,8 +1972,18 @@
   let cfg = lerCfg();
   let tc = cfg;          // configuração do treino em andamento (a geral ou a do exercício da sequência)
   let SEQ = null;        // sequência em execução: { t: treino salvo, idx }
-  escalaCaneleira(cfg.caneleira);
-  const usaCaneleira = () => { const l = Array.isArray(cur.prop) ? cur.prop : [cur.prop]; return l.indexOf('caneleira') >= 0 || l.indexOf('caneleiraPunho') >= 0; };
+  // peso do exercício na tela: o do item do treino montado, ou o geral do perfil
+  function pesoAtual() {
+    const tp = tipoPeso(cur); if (!tp) return 0;
+    const v = SEQ && tc.peso != null ? pesoValido(tp, tc.peso) : null;
+    return v !== null ? v : cfg.pesos[tp];
+  }
+  function pesoFalado() {
+    const tp = tipoPeso(cur); if (!tp) return '';
+    const v = pesoAtual(), nm = tp === 'halteres' ? (cur.prop === 'halter1' ? 'halter' : 'halteres') : tp;
+    return ', com ' + nm + ' de ' + kgTxt(v) + (v > 1 ? ' quilos' : ' quilo');
+  }
+  escalaCaneleira(cfg.pesos.caneleira);
 
   // voz (síntese do próprio aparelho, em português)
   const VOZ_OK = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined';
@@ -2018,6 +2043,7 @@
   $('bReset').innerHTML = ICON_RESET;
 
   function painelTreino() {
+    if (tipoPeso(cur) === 'caneleira') escalaCaneleira(pesoAtual());
     const ativo = S.estado !== 'previa' && S.estado !== 'congelado';
     $('nRep').textContent = String(S.rep);
     $('nRepTot').textContent = String(tc.reps);
@@ -2030,7 +2056,7 @@
     else if (S.estado === 'concluindo' || (S.estado === 'pausado' && S.antes === 'concluindo')) sub = 'Ciclo ' + S.ciclo + ' concluído' + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (S.estado === 'preparo' || (S.estado === 'pausado' && S.antes === 'preparo')) sub = 'Prepare-se · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (ativo) sub = 'Ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : S.espera > 0 ? ' · pausa' : '');
-    else sub = (usaCaneleira() ? 'Caneleira ' + cfg.caneleira + ' kg · ' : '') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + (tc.descanso ? ' · desc. ' + tc.descanso + ' s' : '');
+    else sub = (tipoPeso(cur) ? PESOS[tipoPeso(cur)].nome + ' ' + kgTxt(pesoAtual()) + ' kg · ' : '') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + (tc.descanso ? ' · desc. ' + tc.descanso + ' s' : '');
     if (cur.doisLados && ['treino', 'preparo', 'pausado'].includes(S.estado) && !(S.estado === 'pausado' && S.antes === 'descanso')) sub += ' · ' + (S.lado2 ? '2º lado' : '1º lado');
     if (cur.repouso) sub = 'Escolha um exercício';
     if (SEQ && !cur.repouso) sub = (S.estado === 'fim' ? '' : (SEQ.idx + 1) + '/' + SEQ.t.itens.length + ' · ') + sub;
@@ -2063,7 +2089,7 @@
   function iniciarTreino() {
     if (S.posFim) { fotografarPose(); bestAngle(false); } // saindo do repouso do fim: transição suave
     S.ciclo = 1; S.rep = 0; S.espera = 0; S.troca = false; S.posFim = null; S.feitos = 0; setLado2(false); musicaNova = true; S.reg = null; esconderConclusao();
-    preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + (usaCaneleira() ? ', com caneleira de ' + cfg.caneleira + (cfg.caneleira > 1 ? ' quilos' : ' quilo') : '') + '. ' + tc.reps + (cur.isometria ? ' segundos' : ' repetições') + (cur.doisLados || (cur.alt && !cur.isometria) ? ' de cada lado, ' : ', ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
+    preparar((SEQ ? (SEQ.idx === 0 ? 'Treino ' + SEQ.t.nome + '. ' : '') + 'Exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + ': ' : '') + cur.nome + pesoFalado() + '. ' + tc.reps + (cur.isometria ? ' segundos' : ' repetições') + (cur.doisLados || (cur.alt && !cur.isometria) ? ' de cada lado, ' : ', ') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + '.' + (tc.ciclos > 1 ? ' Ciclo 1.' : ''));
   }
   // antes de contar: o corpo fica na posição inicial, só respirando, enquanto a voz anuncia;
   // depois a voz diz "Começa!" e só então a contagem começa
@@ -2128,7 +2154,7 @@
       inicio: r.inicio, fim, ativoSeg: Math.max(0, Math.round((fim - r.inicio - (r.pausadoMs || 0) - (r.descMs || 0)) / 1000)),
       descansoSeg: Math.round((r.descMs || 0) / 1000), pausaAntesSeg: Math.round((r.antesMs || 0) / 1000),
       ciclos: tc.ciclos, reps: tc.reps, iso: !!cur.isometria, ritmo: tc.ritmo, ritmoNome: ritmoNome(tc.ritmo),
-      descanso: tc.descanso, caneleira: usaCaneleira() ? cfg.caneleira : 0, lados: cur.doisLados ? 2 : 1
+      descanso: tc.descanso, peso: pesoAtual(), pesoTipo: tipoPeso(cur), lados: cur.doisLados ? 2 : 1
     };
   }
   function resetTreino(silencioso) {
@@ -2299,12 +2325,67 @@
   $('bEscolher').addEventListener('click', () => abrirTreinos());
   $('bSkip').addEventListener('click', () => { if (S.estado === 'descanso' || S.estado === 'pausado') proximoCiclo(); });
 
+  /* ---------- Régua de peso: rola para o lado até o valor (com − e + para o ajuste fino) ---------- */
+  const RG_PASSO_PX = 12;
+  function reguaPeso(tipo, valor, aoMudar) {
+    const P = PESOS[tipo], n = Math.round(P.max / P.passo); // índice 0 = 1 passo
+    let v = pesoValido(tipo, valor) || P.padrao, ignorar = false, raf = 0;
+    const box = document.createElement('div'); box.className = 'pesoBox'; box.dataset.tipo = tipo;
+    const top = document.createElement('div'); top.className = 'pesoTop';
+    const lb = document.createElement('div'); lb.className = 'lb'; lb.textContent = P.nome;
+    const sm = document.createElement('small'); sm.textContent = P.sub + ' (até ' + P.max + ' kg)'; lb.appendChild(sm);
+    const vl = document.createElement('div'); vl.className = 'pesoVal';
+    const out = document.createElement('output'); out.className = 'pesoNum';
+    const sc = document.createElement('div'); sc.className = 'regua'; sc.tabIndex = 0; sc.setAttribute('role', 'slider');
+    sc.setAttribute('aria-label', 'Peso ' + P.nome.toLowerCase()); sc.setAttribute('aria-valuemin', P.passo); sc.setAttribute('aria-valuemax', P.max);
+    const tr = document.createElement('div'); tr.className = 'rgTr';
+    const esq = document.createElement('i'), dir = document.createElement('i'); esq.className = dir.className = 'rgEsp';
+    tr.appendChild(esq);
+    for (let i = 0; i < n; i++) {
+      const kg = (i + 1) * P.passo, tk = document.createElement('span');
+      const rot = Math.abs(kg / P.rotulo - Math.round(kg / P.rotulo)) < 1e-6 || i === 0;
+      tk.className = 'rgTk' + (rot ? ' rgG' : Number.isInteger(kg) ? ' rgM' : '');
+      if (rot) { const e = document.createElement('em'); e.textContent = kgTxt(kg); tk.appendChild(e); }
+      tr.appendChild(tk);
+    }
+    tr.appendChild(dir); sc.appendChild(tr);
+    const idx = x => Math.round(x / P.passo) - 1;
+    const mostrar = () => { out.textContent = kgTxt(v) + ' kg'; sc.setAttribute('aria-valuenow', v); sc.setAttribute('aria-valuetext', kgTxt(v) + ' quilos'); };
+    const rolarPara = () => { ignorar = true; sc.scrollLeft = idx(v) * RG_PASSO_PX; requestAnimationFrame(() => { ignorar = false; }); };
+    const definir = (nv, rolar) => {
+      nv = pesoValido(tipo, nv); if (nv === null) return;
+      const mudou = nv !== v; v = nv; mostrar(); if (rolar) rolarPara();
+      if (mudou && aoMudar) aoMudar(v);
+    };
+    let wAnt = 0;
+    const medir = () => { const w = sc.clientWidth; if (!w || w === wAnt) return; wAnt = w; const m = Math.max(0, w / 2 - RG_PASSO_PX / 2) + 'px'; esq.style.width = dir.style.width = m; rolarPara(); };
+    sc.addEventListener('scroll', () => {
+      if (ignorar || raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; const i = clamp(Math.round(sc.scrollLeft / RG_PASSO_PX), 0, n - 1); definir((i + 1) * P.passo, false); });
+    }, { passive: true });
+    sc.addEventListener('keydown', e => {
+      const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
+      if (d) { e.preventDefault(); definir(v + d * P.passo, true); }
+    });
+    // o − e o + dão o ajuste fino
+    vl.appendChild(botao('', '−', 'Menos peso', () => definir(v - P.passo, true)));
+    vl.appendChild(out);
+    vl.appendChild(botao('', '+', 'Mais peso', () => definir(v + P.passo, true)));
+    top.appendChild(lb); top.appendChild(vl);
+    const rg = document.createElement('div'); rg.className = 'rgBox'; rg.appendChild(sc);
+    box.appendChild(top); box.appendChild(rg);
+    mostrar();
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(medir).observe(sc);
+    requestAnimationFrame(medir);
+    box.valor = () => v; box.definir = x => definir(x, true);
+    return box;
+  }
+
   // configuração
   let rascunho = null;
   function cfgUI() {
     for (const k of ['reps', 'ciclos', 'descanso', 'pausaRep', 'depois']) if (rascunho[k] !== undefined) $('v_' + k).textContent = String(rascunho[k]) + (k === 'reps' ? (cfgIso ? ' s' : '') : k === 'ciclos' ? '' : ' s');
     for (const o of $('cRitmo').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.ritmo);
-    for (const o of $('cCan').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.caneleira);
     $('cVoz').checked = rascunho.voz;
   }
   for (const btn of document.querySelectorAll('.stp button')) {
@@ -2314,7 +2395,6 @@
     });
   }
   for (const o of $('cRitmo').children) o.addEventListener('click', () => { rascunho.ritmo = Number(o.dataset.v); cfgUI(); });
-  for (const o of $('cCan').children) o.addEventListener('click', () => { rascunho.caneleira = Number(o.dataset.v); cfgUI(); });
   // movimento do corpo: vale na hora e para todos os exercícios (preferência do perfil)
   function movUI() { for (const o of $('cMov').children) o.classList.toggle('on', o.dataset.v === (movNatural() ? 'natural' : 'estatico')); }
   // Configurações (engrenagem no topo): tema, legenda e movimento — valem na hora, para todo o perfil
@@ -2354,9 +2434,14 @@
   $('bCfg').addEventListener('click', () => {
     cfgItem = SEQ ? SEQ.t.itens[SEQ.idx] : null;
     cfgIso = !!(cfgItem && cur.isometria);
-    rascunho = Object.assign({}, cfg);
+    rascunho = Object.assign({}, cfg, { pesos: Object.assign({}, cfg.pesos) });
     if (cfgItem) Object.assign(rascunho, { reps: cfgItem.reps, ciclos: cfgItem.ciclos, descanso: cfgItem.descanso, ritmo: cfgItem.ritmo, pausaRep: cfgItem.pausaRep, depois: cfgItem.depois });
     else { delete rascunho.pausaRep; delete rascunho.depois; }
+    // peso do objeto deste exercício (só aparece se ele usa halteres, anilha ou caneleira)
+    const tp = cur.repouso ? null : tipoPeso(cur);
+    rascunho.peso = tp ? pesoAtual() : null;
+    const rp = $('rowPeso'); rp.innerHTML = ''; rp.hidden = !tp;
+    if (tp) rp.appendChild(reguaPeso(tp, rascunho.peso, x => { rascunho.peso = x; }));
     const ultimo = !SEQ || SEQ.idx >= SEQ.t.itens.length - 1;
     $('cfgTitulo').textContent = cfgItem ? 'Ajustar este exercício' : 'Configurar treino';
     $('cfgSub').hidden = !cfgItem;
@@ -2373,24 +2458,26 @@
     const ritmoAntes = tc.ritmo;
     let ok = true, okTreino = true;
     if (cfgItem && SEQ && SEQ.t.itens[SEQ.idx] === cfgItem) {
-      // voz e caneleira continuam gerais; o resto vai para o exercício do treino
-      cfg = Object.assign({}, cfg, { voz: rascunho.voz, caneleira: rascunho.caneleira });
+      // a voz continua geral; o resto (inclusive o peso) vai para o exercício do treino
+      cfg = Object.assign({}, cfg, { voz: rascunho.voz });
       ok = salvarCfg(cfg);
       const novo = { reps: rascunho.reps, ciclos: rascunho.ciclos, descanso: rascunho.descanso, ritmo: rascunho.ritmo, pausaRep: rascunho.pausaRep, depois: rascunho.depois };
+      if (tipoPeso(cur) && rascunho.peso != null) novo.peso = rascunho.peso;
       const lista = TREINOS.map(tr => tr.id !== SEQ.t.id ? tr : Object.assign({}, tr, { alterado: Date.now(), itens: tr.itens.map((it, i) => i === SEQ.idx ? Object.assign({}, it, novo) : it) }));
       okTreino = gravarTreinos(lista);
       if (okTreino) { TREINOS = lista; SEQ.t = TREINOS.find(tr => tr.id === SEQ.t.id); }
       else Object.assign(SEQ.t.itens[SEQ.idx], novo); // vale agora, mesmo sem gravar
       tc = Object.assign({}, cfg, novo);
     } else {
-      cfg = Object.assign({}, rascunho); delete cfg.pausaRep; delete cfg.depois;
+      const tp = tipoPeso(cur);
+      if (tp && !cur.repouso && rascunho.peso != null) rascunho.pesos[tp] = rascunho.peso;
+      cfg = Object.assign({}, rascunho); delete cfg.pausaRep; delete cfg.depois; delete cfg.peso;
       ok = salvarCfg(cfg);
       if (!SEQ) tc = cfg;
     }
     // mudou o ritmo no meio: continua do mesmo ponto do movimento, só que na velocidade nova
     if (tc.ritmo !== ritmoAntes && ritmoAntes > 0) { t = t * tc.ritmo / ritmoAntes; }
     if (!cfg.voz) calarVoz();
-    escalaCaneleira(cfg.caneleira);
     painelTreino();
     if (ok && okTreino) { $('cfgSheet').hidden = true; cfgItem = null; }
     else if (!okTreino) $('cfgMsg').textContent = 'Atenção: não consegui gravar no treino guardado. O ajuste vale só para agora.';
@@ -2411,13 +2498,17 @@
 
   function itemPadrao(exId) {
     const ex = exPorId(exId);
-    return { ex: exId, reps: ex && ex.isometria ? 30 : cfg.reps, ciclos: cfg.ciclos, descanso: cfg.descanso, pausaRep: 0, ritmo: cfg.ritmo, depois: 60 };
+    const it = { ex: exId, reps: ex && ex.isometria ? 30 : cfg.reps, ciclos: cfg.ciclos, descanso: cfg.descanso, pausaRep: 0, ritmo: cfg.ritmo, depois: 60 };
+    const tp = tipoPeso(ex); if (tp) it.peso = cfg.pesos[tp];
+    return it;
   }
   function limparItem(o) {
     const it = itemPadrao(o && o.ex);
     if (!o || !exPorId(o.ex)) return null;
     for (const k in LIM_IT) { const v = Math.round(Number(o[k])); if (Number.isFinite(v)) it[k] = clamp(v, LIM_IT[k][0], LIM_IT[k][1]); }
     if (RITMOS.some(r => r[0] === Number(o.ritmo))) it.ritmo = Number(o.ritmo);
+    const tp = tipoPeso(exPorId(o.ex));
+    if (tp && o.peso != null) { const v = pesoValido(tp, o.peso); if (v !== null) it.peso = v; }
     return it;
   }
   function limparTreino(o) {
@@ -2459,7 +2550,7 @@
     return s;
   }
   const minTxt = s => s < 60 ? Math.round(s) + ' s' : '~' + Math.round(s / 60) + ' min';
-  const itemTxt = it => { const ex = exPorId(it.ex); return it.reps + (ex && ex.isometria ? ' s' : ' reps') + ' · ' + it.ciclos + (it.ciclos > 1 ? ' ciclos' : ' ciclo') + ' · desc. ' + it.descanso + ' s' + (it.pausaRep ? ' · pausa ' + it.pausaRep + ' s' : '') + ' · ' + ritmoNome(it.ritmo).toLowerCase(); };
+  const itemTxt = it => { const ex = exPorId(it.ex); return it.reps + (ex && ex.isometria ? ' s' : ' reps') + ' · ' + it.ciclos + (it.ciclos > 1 ? ' ciclos' : ' ciclo') + ' · desc. ' + it.descanso + ' s' + (it.pausaRep ? ' · pausa ' + it.pausaRep + ' s' : '') + ' · ' + ritmoNome(it.ritmo).toLowerCase() + (it.peso && tipoPeso(ex) ? ' · ' + kgTxt(it.peso) + ' kg' : ''); };
   const svg = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
   const IC = {
     play: svg('<path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/>'), edit: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'),
@@ -2571,8 +2662,10 @@
         for (const [v, nm] of RITMOS) { const o = botao(it.ritmo === v ? 'on' : '', nm, null, () => { it.ritmo = v; for (const x of sg.children) x.classList.toggle('on', x === o); sm.textContent = itemTxt(it); }); sg.appendChild(o); }
         r.appendChild(sg); f.appendChild(r);
         if (i < t0.itens.length - 1) linha('depois', 'Descanso até o próximo', 'antes de ' + nomeEx(t0.itens[i + 1].ex), ' s');
+        const tpE = tipoPeso(ex);
+        if (tpE) { if (it.peso == null) it.peso = cfg.pesos[tpE]; f.appendChild(reguaPeso(tpE, it.peso, x => { it.peso = x; sm.textContent = itemTxt(it); })); }
         const tr2 = document.createElement('div'); tr2.className = 'edb';
-        tr2.appendChild(botao('lk', 'Trocar exercício', null, () => abrirCatalogo(id2 => { it.ex = id2; const e2 = exPorId(id2); if (e2 && e2.isometria && it.reps < 10) it.reps = 30; renderEditor(); })));
+        tr2.appendChild(botao('lk', 'Trocar exercício', null, () => abrirCatalogo(id2 => { it.ex = id2; const e2 = exPorId(id2); if (e2 && e2.isometria && it.reps < 10) it.reps = 30; const tp2 = tipoPeso(e2); if (tp2) it.peso = cfg.pesos[tp2]; else delete it.peso; renderEditor(); })));
         tr2.appendChild(botao('lk', 'Duplicar', null, () => { t0.itens.splice(i + 1, 0, Object.assign({}, it)); ED.aberto = i + 1; renderEditor(); }));
         f.appendChild(tr2);
         c.appendChild(f);
@@ -2623,78 +2716,73 @@
     b.addEventListener('pointerdown', e => e.stopPropagation());
     return b;
   }
-  let AT = null; // { ex, etapa: 'escolher'|'ajustar', treinoId|null, novoNome, item }
-  function abrirAddTreino(ex) { AT = { ex, etapa: 'escolher', treinoId: null, novoNome: '', item: itemPadrao(ex.id) }; renderAddTreino(); $('atSheet').hidden = false; }
+  let AT = null; // { ex, novoNome, item }
+  function abrirAddTreino(ex) { AT = { ex, novoNome: '', item: itemPadrao(ex.id) }; renderAddTreino(); $('atSheet').hidden = false; }
   function fecharAddTreino() { $('atSheet').hidden = true; AT = null; }
+  // um container só: em cima os ajustes do exercício (simplificados), embaixo os treinos.
+  // Tocar num treino já adiciona com esses ajustes.
   function renderAddTreino(msg) {
     const box = $('atCorpo'); box.innerHTML = '';
     $('atMsg').textContent = msg || '';
     $('atNome').textContent = AT.ex.nome;
-    $('bAtVoltar').hidden = AT.etapa === 'escolher';
-    if (AT.etapa === 'escolher') {
-      $('atTitulo').textContent = 'Adicionar ao treino';
-      if (!TREINOS.length) { const p = document.createElement('p'); p.className = 'nota'; p.style.margin = '0 0 8px'; p.textContent = 'Você ainda não tem treinos. Crie o primeiro:'; box.appendChild(p); }
-      for (const tr of TREINOS) {
-        const r = document.createElement('button'); r.className = 'atOp'; r.dataset.id = tr.id;
-        const ic = document.createElement('span'); ic.className = 'atIc'; ic.innerHTML = IC_PRANCHETA; r.appendChild(ic);
-        const tx = document.createElement('div'); tx.className = 'trt';
-        const b = document.createElement('b'); b.textContent = tr.nome; tx.appendChild(b);
-        const jaTem = tr.itens.filter(i => i.ex === AT.ex.id).length;
-        const sm = document.createElement('small'); sm.textContent = tr.itens.length + (tr.itens.length === 1 ? ' exercício' : ' exercícios') + (jaTem ? ' · já tem este' + (jaTem > 1 ? ' (' + jaTem + '×)' : '') : ''); tx.appendChild(sm);
-        r.appendChild(tx);
-        r.addEventListener('click', () => { AT.treinoId = tr.id; AT.etapa = 'ajustar'; renderAddTreino(); });
-        box.appendChild(r);
-      }
-      const nv = document.createElement('div'); nv.className = 'atNovo';
-      const inp = document.createElement('input'); inp.className = 'inp'; inp.id = 'atNovoNome'; inp.maxLength = 60; inp.placeholder = 'Nome do novo treino'; inp.value = AT.novoNome;
-      inp.addEventListener('input', () => { AT.novoNome = inp.value; });
-      const criar = () => { const n = inp.value.trim(); if (!n) { $('atMsg').textContent = 'Dê um nome ao novo treino.'; inp.focus(); return; } AT.novoNome = n; AT.treinoId = null; AT.etapa = 'ajustar'; renderAddTreino(); };
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') criar(); });
-      nv.appendChild(inp);
-      nv.appendChild(botao('atCriar', IC_PRANCHETA_MAIS + '<span>Novo treino</span>', 'Criar novo treino', criar));
-      box.appendChild(nv);
-      return;
-    }
-    // ajustar o exercício antes de adicionar
-    const tr = AT.treinoId ? TREINOS.find(x => x.id === AT.treinoId) : null;
-    $('atTitulo').textContent = tr ? 'Adicionar em "' + tr.nome + '"' : 'Novo treino "' + AT.novoNome + '"';
-    const it = AT.item, ex = AT.ex, f = document.createElement('div'); f.className = 'edf atAjuste';
-    const linha = (k, rot, sub, un) => {
-      const r = document.createElement('div'); r.className = 'cr';
-      const lb = document.createElement('div'); lb.className = 'lb'; lb.textContent = rot;
-      if (sub) { const s2 = document.createElement('small'); s2.textContent = sub; lb.appendChild(s2); }
+    $('bAtVoltar').hidden = true;
+    $('atTitulo').textContent = 'Adicionar ao treino';
+    const it = AT.item, ex = AT.ex;
+    const sec = (txt, id) => { const h = document.createElement('div'); h.className = 'atSec'; if (id) h.id = id; h.textContent = txt; box.appendChild(h); };
+    sec('1. Ajuste o exercício');
+    const g = document.createElement('div'); g.className = 'atGrid';
+    const cel = (k, rot, un) => {
+      const c = document.createElement('div'); c.className = 'atCel';
+      const lb = document.createElement('span'); lb.textContent = rot; c.appendChild(lb);
       const st2 = document.createElement('div'); st2.className = 'stp'; st2.dataset.k = k;
-      const out = document.createElement('output'); out.textContent = it[k] + (un || '');
+      const out = document.createElement('output'); const mostra = () => { out.textContent = it[k] + (un || ''); }; mostra();
       const L = LIM_IT[k];
-      st2.appendChild(botao('', '−', 'Menos ' + rot.toLowerCase(), () => { it[k] = clamp(it[k] - L[2], L[0], L[1]); out.textContent = it[k] + (un || ''); }));
+      st2.appendChild(botao('', '−', 'Menos ' + rot.toLowerCase(), () => { it[k] = clamp(it[k] - L[2], L[0], L[1]); mostra(); }));
       st2.appendChild(out);
-      st2.appendChild(botao('', '+', 'Mais ' + rot.toLowerCase(), () => { it[k] = clamp(it[k] + L[2], L[0], L[1]); out.textContent = it[k] + (un || ''); }));
-      r.appendChild(lb); r.appendChild(st2); f.appendChild(r);
+      st2.appendChild(botao('', '+', 'Mais ' + rot.toLowerCase(), () => { it[k] = clamp(it[k] + L[2], L[0], L[1]); mostra(); }));
+      c.appendChild(st2); g.appendChild(c);
     };
-    if (ex.isometria) linha('reps', 'Segundos', 'tempo segurando a posição', ' s'); else linha('reps', 'Repetições', 'por ciclo');
-    linha('ciclos', 'Ciclos', 'séries deste exercício');
-    linha('descanso', 'Descanso', 'entre um ciclo e outro', ' s');
-    if (!ex.isometria) linha('pausaRep', 'Pausa', 'entre uma repetição e outra', ' s');
-    const r = document.createElement('div'); r.className = 'cr';
-    const lb = document.createElement('div'); lb.className = 'lb'; lb.textContent = 'Ritmo'; r.appendChild(lb);
+    cel('reps', ex.isometria ? 'Segundos' : 'Repetições', ex.isometria ? ' s' : '');
+    cel('ciclos', 'Ciclos');
+    cel('descanso', 'Pausa entre ciclos', ' s');
+    box.appendChild(g);
+    const r = document.createElement('div'); r.className = 'atRitmo';
+    const lb = document.createElement('span'); lb.textContent = 'Velocidade'; r.appendChild(lb);
     const sg = document.createElement('div'); sg.className = 'seg'; sg.id = 'atRitmo';
-    for (const [v, nm] of RITMOS) { const o = botao(it.ritmo === v ? 'on' : '', nm, null, () => { it.ritmo = v; for (const x of sg.children) x.classList.toggle('on', x === o); }); sg.appendChild(o); }
-    r.appendChild(sg); f.appendChild(r);
-    linha('depois', 'Descanso até o próximo', 'depois deste exercício', ' s');
-    box.appendChild(f);
-    const bt = document.createElement('div'); bt.className = 'btnLinha';
-    bt.appendChild(botao('', 'Voltar', null, () => { AT.etapa = 'escolher'; renderAddTreino(); }));
-    bt.appendChild(botao('pri', IC_PRANCHETA_MAIS + '<span>Adicionar</span>', 'Adicionar ao treino', confirmarAddTreino));
-    box.appendChild(bt);
+    for (const [v, nm] of RITMOS) { const o = botao(it.ritmo === v ? 'on' : '', nm, null, () => { it.ritmo = v; for (const x of sg.children) x.classList.toggle('on', x === o); }); o.dataset.v = v; sg.appendChild(o); }
+    r.appendChild(sg); box.appendChild(r);
+    const tp = tipoPeso(ex);
+    if (tp) { const rg = reguaPeso(tp, it.peso, x => { it.peso = x; }); rg.id = 'atPeso'; box.appendChild(rg); }
+    sec('2. Toque no treino para adicionar', 'atSecLista');
+    if (!TREINOS.length) { const p = document.createElement('p'); p.className = 'nota'; p.style.margin = '0 0 8px'; p.textContent = 'Você ainda não tem treinos. Crie o primeiro:'; box.appendChild(p); }
+    for (const tr of TREINOS) {
+      const b = document.createElement('button'); b.className = 'atOp'; b.dataset.id = tr.id;
+      const ic = document.createElement('span'); ic.className = 'atIc'; ic.innerHTML = IC_PRANCHETA_MAIS; b.appendChild(ic);
+      const tx = document.createElement('div'); tx.className = 'trt';
+      const bb = document.createElement('b'); bb.textContent = tr.nome; tx.appendChild(bb);
+      const jaTem = tr.itens.filter(i => i.ex === AT.ex.id).length;
+      const sm = document.createElement('small'); sm.textContent = tr.itens.length + (tr.itens.length === 1 ? ' exercício' : ' exercícios') + (jaTem ? ' · já tem este' + (jaTem > 1 ? ' (' + jaTem + '×)' : '') : ''); tx.appendChild(sm);
+      b.appendChild(tx);
+      b.addEventListener('click', () => confirmarAddTreino(tr.id));
+      box.appendChild(b);
+    }
+    const nv = document.createElement('div'); nv.className = 'atNovo';
+    const inp = document.createElement('input'); inp.className = 'inp'; inp.id = 'atNovoNome'; inp.maxLength = 60; inp.placeholder = 'Nome do novo treino'; inp.value = AT.novoNome;
+    inp.addEventListener('input', () => { AT.novoNome = inp.value; });
+    const criar = () => { const n = inp.value.trim(); if (!n) { $('atMsg').textContent = 'Dê um nome ao novo treino.'; inp.focus(); return; } AT.novoNome = n; confirmarAddTreino(null); };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') criar(); });
+    nv.appendChild(inp);
+    nv.appendChild(botao('atCriar', IC_PRANCHETA_MAIS + '<span>Criar e adicionar</span>', 'Criar novo treino com este exercício', criar));
+    box.appendChild(nv);
   }
   let atAvisoTm = 0;
-  function confirmarAddTreino() {
+  function confirmarAddTreino(treinoId) {
     const item = limparItem(AT.item); if (!item) { renderAddTreino('Exercício inválido.'); return; }
     let lista, alvo;
-    if (AT.treinoId) {
-      lista = TREINOS.map(tr => tr.id !== AT.treinoId ? tr : Object.assign({}, tr, { alterado: Date.now(), itens: tr.itens.concat(item) }));
-      alvo = lista.find(tr => tr.id === AT.treinoId);
-      if (!alvo) { AT.etapa = 'escolher'; renderAddTreino('Esse treino não existe mais.'); return; }
+    if (treinoId) {
+      lista = TREINOS.map(tr => tr.id !== treinoId ? tr : Object.assign({}, tr, { alterado: Date.now(), itens: tr.itens.concat(item) }));
+      alvo = lista.find(tr => tr.id === treinoId);
+      if (!alvo) { renderAddTreino('Esse treino não existe mais.'); return; }
     } else {
       alvo = limparTreino({ id: 't' + Date.now().toString(36), nome: AT.novoNome, trilha: 'padrao', itens: [item] });
       lista = TREINOS.concat(alvo);
@@ -2709,13 +2797,12 @@
     clearTimeout(atAvisoTm); atAvisoTm = setTimeout(() => { $('exMsg').textContent = ''; $('exMsg').classList.remove('okMsg'); }, 3500);
   }
   $('bAtFechar').addEventListener('click', fecharAddTreino);
-  $('bAtVoltar').addEventListener('click', () => { if (AT) { AT.etapa = 'escolher'; renderAddTreino(); } });
   $('atSheet').addEventListener('click', e => { if (e.target.id === 'atSheet') fecharAddTreino(); });
 
   /* ---------- executar uma sequência ---------- */
   function aplicarItem() {
     const it = SEQ.t.itens[SEQ.idx];
-    tc = Object.assign({}, cfg, { reps: it.reps, ciclos: it.ciclos, descanso: it.descanso, ritmo: it.ritmo, pausaRep: it.pausaRep, depois: it.depois });
+    tc = Object.assign({}, cfg, { reps: it.reps, ciclos: it.ciclos, descanso: it.descanso, ritmo: it.ritmo, pausaRep: it.pausaRep, depois: it.depois, peso: it.peso });
     setExercise(it.ex, false, true);
   }
   function executarTreino(id) {
@@ -3044,7 +3131,7 @@
 
   /* ---------- Histórico de exercícios feitos (por perfil) ----------
    * { v:1, lista:[{ id, ex, nome, treino:{id,nome}|null, dia, inicio, fim, ativoSeg,
-   *                 ciclos, reps, iso, ritmo, ritmoNome, descanso, caneleira }] } */
+   *                 ciclos, reps, iso, ritmo, ritmoNome, descanso, peso, pesoTipo (antigos: caneleira) }] } */
   const HIST_BASE = 'anatomotion.historico.v1';
   function lerHistorico(pid) {
     try { const o = JSON.parse(localStorage.getItem(HIST_BASE + '@' + pid) || '{}') || {}; return Array.isArray(o.lista) ? o.lista.filter(r => r && r.dia && r.inicio) : []; }
@@ -3055,7 +3142,7 @@
   }
   const durTxt = seg => { seg = Math.round(seg || 0); if (seg < 60) return seg + ' s'; const h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60); return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min'; };
   const horaTxt = ms => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-  const regTxt = r => r.ciclos + '×' + r.reps + (r.iso ? ' s' : '') + ' · ' + (r.ritmoNome || '').toLowerCase() + (r.caneleira ? ' · ' + r.caneleira + ' kg' : '');
+  const regTxt = r => r.ciclos + '×' + r.reps + (r.iso ? ' s' : '') + ' · ' + (r.ritmoNome || '').toLowerCase() + ((r.peso || r.caneleira) ? ' · ' + kgTxt(r.peso || r.caneleira) + ' kg' : '');
 
   /* ---------- Pergunta no fim: "Você concluiu?" ---------- */
   let concPend = null, concCb = null; // concCb: o que fazer depois da resposta (treino montado segue)
@@ -3415,7 +3502,7 @@
           ['Séries', r.ciclos + (r.ciclos === 1 ? ' ciclo' : ' ciclos') + ' de ' + r.reps + (r.iso ? ' segundos' : ' repetições') + (r.lados === 2 ? ' de cada lado' : '')],
           ['Ritmo', r.ritmoNome || '—']
         ];
-        if (r.caneleira) linhas.push(['Caneleira', r.caneleira + ' kg']);
+        if (r.peso || r.caneleira) linhas.push(['Peso', (PESOS[r.pesoTipo] ? PESOS[r.pesoTipo].nome : 'Caneleira') + ' · ' + kgTxt(r.peso || r.caneleira) + ' kg']);
         if (r.treino) linhas.push(['Treino', r.treino.nome]);
         for (const [a, b] of linhas) { const l = document.createElement('div'); l.className = 'hdLin'; const x = document.createElement('span'); x.textContent = a; const y2 = document.createElement('b'); y2.textContent = b; l.appendChild(x); l.appendChild(y2); det.appendChild(l); }
         // excluir: sempre com confirmação
@@ -3638,7 +3725,7 @@
   function voltarUmaTela() {
     if (visivel('sairBox')) { $('sairBox').hidden = true; return true; }
     if (visivel('hdSheet')) { if (HD && HD.confirma) { HD.confirma = null; renderDiaHist(); } else fecharDiaHist(); return true; }
-    if (visivel('atSheet')) { if (AT && AT.etapa === 'ajustar') { AT.etapa = 'escolher'; renderAddTreino(); } else fecharAddTreino(); return true; }
+    if (visivel('atSheet')) { fecharAddTreino(); return true; }
     if (visivel('infoSheet')) { $('infoSheet').hidden = true; return true; }
     if (visivel('pvSheet')) { fecharPrevia(); return true; }
     if (visivel('exSheet')) { if (visivel('exGrupoMenu')) fecharGrupoMenu(); else fecharCatalogo(); return true; }
