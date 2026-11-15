@@ -1225,6 +1225,8 @@
     halter1.visible = tem('halter1'); anilha.visible = tem('anilha'); barra.visible = tem('barra'); barraW.visible = tem('barraW');
     for (const c of caneleiras) c.visible = tem('caneleira');
     for (const c of caneleirasPunho) c.visible = tem('caneleiraPunho');
+    // garrafas: o repouso esconde todos os acessórios; ao voltar ao exercício elas reaparecem no mesmo lugar
+    garrafas.forEach((g, i) => { g.visible = !!(cur.garrafas && cur.garrafas[i]); });
     if (!tem('halter1') && !tem('anilha') && !tem('barra') && !tem('barraW')) return;
     rig.updateMatrixWorld(true);
     CONTACT.hands[0].getWorldPosition(_m1); CONTACT.hands[2].getWorldPosition(_m2);

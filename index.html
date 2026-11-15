@@ -525,7 +525,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><div class="lb">Movimento do corpo<small>natural: respira e reage ao esforço, sem exagero</small></div><div class="seg" id="cMov"><button data-v="natural">Natural</button><button data-v="estatico">Estático</button></div></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.30.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.30.1</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -3364,6 +3364,8 @@ window.CORPO3D_EXERCICIOS = function (H) {
     halter1.visible = tem('halter1'); anilha.visible = tem('anilha'); barra.visible = tem('barra'); barraW.visible = tem('barraW');
     for (const c of caneleiras) c.visible = tem('caneleira');
     for (const c of caneleirasPunho) c.visible = tem('caneleiraPunho');
+    // garrafas: o repouso esconde todos os acessórios; ao voltar ao exercício elas reaparecem no mesmo lugar
+    garrafas.forEach((g, i) => { g.visible = !!(cur.garrafas && cur.garrafas[i]); });
     if (!tem('halter1') && !tem('anilha') && !tem('barra') && !tem('barraW')) return;
     rig.updateMatrixWorld(true);
     CONTACT.hands[0].getWorldPosition(_m1); CONTACT.hands[2].getWorldPosition(_m2);
@@ -5683,7 +5685,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.30.0';
+  const BK_VERSAO = '2.30.1';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;
