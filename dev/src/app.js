@@ -1858,6 +1858,20 @@
     if (!box.children.length) box.innerHTML = '<p class="empty">Nenhum músculo com esse nome.</p>';
   }
   $('bList').addEventListener('click', () => { $('sheet').hidden = false; $('q').value = ''; renderList(''); });
+  /* Teclado aberto: os painéis com busca (músculos e exercícios) ocupam só a área visível acima do teclado,
+   * para os resultados filtrados não ficarem escondidos embaixo dele. Navegadores que já encolhem a página
+   * (interactive-widget=resizes-content) não precisam disto; os outros usam o visualViewport. */
+  function ajustarTeclado() {
+    const vv = window.visualViewport;
+    const aberto = vv && vv.height < window.innerHeight - 80;
+    for (const id of ['sheet', 'exSheet']) {
+      const el = $(id); if (!el) continue;
+      if (aberto && !el.hidden) { el.style.top = vv.offsetTop + 'px'; el.style.height = vv.height + 'px'; el.style.bottom = 'auto'; }
+      else { el.style.top = el.style.height = el.style.bottom = ''; }
+    }
+  }
+  if (window.visualViewport) { window.visualViewport.addEventListener('resize', ajustarTeclado); window.visualViewport.addEventListener('scroll', ajustarTeclado); }
+  for (const id of ['q', 'exQ']) { $(id).addEventListener('focus', () => setTimeout(ajustarTeclado, 300)); $(id).addEventListener('blur', () => setTimeout(ajustarTeclado, 300)); }
   $('bSheetClose').addEventListener('click', () => { $('sheet').hidden = true; });
   $('q').addEventListener('input', e => renderList(e.target.value));
 
