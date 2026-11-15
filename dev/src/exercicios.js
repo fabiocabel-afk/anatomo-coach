@@ -60,6 +60,12 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const P_RECOLHIDAS = (lat) => ({ leftUpperLeg: [-136, 0, lat || 0], rightUpperLeg: [-136, 0, lat || 0], leftLowerLeg: [112, 0, 0], rightLowerLeg: [112, 0, 0], leftFoot: [25, 0, 0], rightFoot: [25, 0, 0] });
   // joelhos dobrados e juntos, levados para o lado (twist): fl = altura das coxas
   const J_TWIST = (fl, lat, ll) => ({ leftUpperLeg: [fl, 0, lat || 0], rightUpperLeg: [fl, 0, lat || 0], leftLowerLeg: [ll, 0, 0], rightLowerLeg: [ll, 0, 0], leftFoot: [25, 0, 0], rightFoot: [25, 0, 0] });
+  // pernas recolhidas (joelhos na altura do peito) viradas para um lado (az: + = esquerda) com os joelhos para cima:
+  // recolhida, a perna gira no eixo do quadril (y) — não abre para o lado (z), senão deita
+  const RECOLHE = (az) => ({ leftUpperLeg: [-132, 0.9 * az, 0], rightUpperLeg: [-132, 0.9 * az, 0], leftLowerLeg: [108, 0, 0], rightLowerLeg: [108, 0, 0], leftFoot: [5, 0, 0], rightFoot: [5, 0, 0] });
+  // pernas esticadas e juntas apontando para um lado (az), joelhos e pontas dos pés para cima
+  const ESTICA = (fl, az) => ({ leftUpperLeg: [fl, 0, az], rightUpperLeg: [fl, 0, az], leftLowerLeg: [2, 0, 0], rightLowerLeg: [2, 0, 0], leftFoot: [0, 0, 0], rightFoot: [0, 0, 0] });
+  const ESP = P => { const o = {}; for (const k in P) { const v = P[k], nk = k.startsWith('left') ? 'right' + k.slice(4) : k.startsWith('right') ? 'left' + k.slice(5) : k; o[nk] = [v[0], -v[1], -v[2]]; } return o; };
   const G_ABRE = (ll, ab) => ({ leftUpperLeg: [-95, 0, ab], rightUpperLeg: [-95, 0, -ab], leftLowerLeg: [ll, 0, 0], rightLowerLeg: [ll, 0, 0], leftFoot: [25, 0, 0], rightFoot: [25, 0, 0] });
   const CAM_CHAO = { th: 70, ph: 22, dist: 3.9, ty: 0.25 }, CAM_CHAO_FRENTE = { th: 20, ph: 25, dist: 3.0, ty: 0.3 };
   const BARRA_COSTAS = { frame: 'peito', A: { p: [0.26, 0.10, -0.11] }, B: { p: [0.26, 0.10, -0.11] }, polo: [0.6, -1, -0.3] };
@@ -967,41 +973,80 @@ window.CORPO3D_EXERCICIOS = function (H) {
      * Posição de todos: sentado, tronco um pouco inclinado para trás, mãos apoiadas atrás,
      * joelhos dobrados. Os pés passam baixos, perto do chão; sobem só para passar por cima da garrafa.
      */
-    { id: 'ziguezague_garrafas', arco: true, nome: 'Zigue-zague com 2 garrafas', equip: 'corpo', regiao: 'core', chao: true, alt: true,
-      desc: 'Pernas juntas no ar: recolha, contorne a garrafa pela frente e estique por fora dela; volte ao meio e repita do outro lado.',
+    /* Todos em etapas, com peso de verdade: as pernas descem com a gravidade e a pessoa freia perto do chão
+     * (quase encosta), segura um instante e volta com impulso, como um salto. ease: impulso | cai | suave. */
+    { id: 'ziguezague_garrafas', nome: 'Zigue-zague com 2 garrafas', equip: 'corpo', regiao: 'core', chao: true,
+      desc: 'Pernas juntas e esticadas por fora de uma garrafa: puxe ao peito, vire, estique no meio; puxe, vire e estique por fora da outra. Volte.',
       prim: ['obliquo_externo', 'reto_abdome'], sec: ['iliopsoas', 'reto_femoral', 'adutores'],
-      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0.27, 0.8], [-0.27, 0.8]], periodo: 2.4,
-      // A = pernas esticadas no meio das garrafas · M = recolhidas e já viradas para o lado (passam pela frente da garrafa)
-      // B = esticadas por fora da garrafa. O "arco" faz recolher antes de virar e só esticar depois de virar.
-      A: O(flat, P_RETAS(-82, 0, 0)), M: O(flat, P_RECOLHIDAS(72), TRONCO(-7, -3, 5)), B: O(flat, P_RETAS(-80, 0, 54), TRONCO(-12, -6, 1)),
+      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0.3, 0.86], [-0.3, 0.86]],
+      seq: [
+        { P: O(flat, ESTICA(-61, -50), TRONCO(-10, -3, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.6 },      // direita, por fora (quase no chão)
+        { P: O(flat, RECOLHE(-40), TRONCO(-6, -2, 5)), hold: 0.22, f: 0.7, ease: 'impulso', dur: 0.55 },   // puxa ao peito
+        { P: O(flat, RECOLHE(0), TRONCO(0, 0, 5)), hold: 0.06, f: 0.7, ease: 'suave', dur: 0.55 },          // vira para o meio
+        { P: O(flat, ESTICA(-60, 0), TRONCO(0, 0, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.6 },            // estica no meio
+        { P: O(flat, RECOLHE(0), TRONCO(0, 0, 5)), hold: 0.22, f: 0.7, ease: 'impulso', dur: 0.55 },
+        { P: O(flat, RECOLHE(40), TRONCO(6, 2, 5)), hold: 0.06, f: 0.7, ease: 'suave', dur: 0.55 },         // vira para a esquerda
+        { P: O(flat, ESTICA(-61, 50), TRONCO(10, 3, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.6 },          // esquerda, por fora
+        { P: O(flat, RECOLHE(40), TRONCO(6, 2, 5)), hold: 0.22, f: 0.7, ease: 'impulso', dur: 0.55 },
+        { P: O(flat, RECOLHE(0), TRONCO(0, 0, 5)), hold: 0.06, f: 0.7, ease: 'suave', dur: 0.55 },
+        { P: O(flat, ESTICA(-60, 0), TRONCO(0, 0, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.6 },
+        { P: O(flat, RECOLHE(0), TRONCO(0, 0, 5)), hold: 0.22, f: 0.7, ease: 'impulso', dur: 0.55 },
+        { P: O(flat, RECOLHE(-40), TRONCO(-6, -2, 5)), hold: 0.06, f: 0.7, ease: 'suave', dur: 0.55 }
+      ],
       bracos: MAOS_ATRAS,
-      info: { passos: ['Sentado, tronco levemente inclinado para trás, mãos apoiadas no chão atrás do quadril.', 'Uma garrafa em cada ponta, bem afastadas, à sua frente.', 'Pernas juntas e esticadas no ar, no meio das duas garrafas.', 'Recolha as pernas (joelhos perto do peito), vire para um lado passando pela frente da garrafa e estique as pernas por fora dela.', 'Recolha de novo, volte pela frente da garrafa e estique no meio.', 'Repita para o outro lado. Ida aos dois lados = 1 repetição.'],
-        dicas: ['Sugestão: 3 séries de 8 repetições.', 'Os pés nunca encostam no chão.', 'Quanto mais esticadas as pernas, mais difícil.'], erros: ['Passar as pernas por cima da garrafa em vez de contornar.', 'Encostar os pés no chão.', 'Usar os braços para empurrar o corpo.'], resp: 'Solte o ar ao esticar as pernas.' } },
-    { id: 'abre_fecha_garrafas', arco: true, nome: 'Abre e fecha com 2 garrafas', equip: 'corpo', regiao: 'core', chao: true,
-      desc: 'Pernas esticadas e juntas entre as garrafas: abra passando por cima delas e feche no centro, sem encostar os pés no chão.',
+      info: { passos: ['Sentado, tronco levemente inclinado para trás, mãos apoiadas no chão atrás do quadril.', 'Uma garrafa em cada ponta, bem afastadas, à sua frente.', 'Pernas juntas e esticadas por fora da garrafa da direita, joelhos e pontas dos pés para cima.', 'Puxe os joelhos até a altura do peito. Pausa curta.', 'Vire o tronco e as pernas recolhidas para o meio e estique as pernas entre as garrafas.', 'Puxe de novo, vire para o outro lado e estique por fora da outra garrafa.', 'Faça o caminho de volta. Ida e volta = 1 repetição.'],
+        dicas: ['Sugestão: 3 séries de 6 repetições.', 'São três tempos separados: puxa, vira, estica.', 'Ao esticar, deixe as pernas descerem até quase encostar no chão, segure e volte.'], erros: ['Puxar e virar ao mesmo tempo.', 'Deixar as pernas tombarem de lado: joelhos sempre para cima.', 'Encostar os pés no chão.'], resp: 'Solte o ar ao esticar, puxe o ar ao recolher.' } },
+    { id: 'abre_fecha_garrafas', nome: 'Abre e fecha com 2 garrafas', equip: 'corpo', regiao: 'core', chao: true,
+      desc: 'Pernas esticadas e juntas entre as garrafas: suba, abra por cima delas, desça até quase o chão por fora, suba e feche no centro.',
       prim: ['adutores', 'reto_abdome'], sec: ['gluteo_medio', 'iliopsoas', 'tensor_fascia_lata'],
-      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0.24, 0.72], [-0.24, 0.72]], periodo: 2.2,
-      A: O(flat, P_RETAS(-78, 0)), M: O(flat, P_RETAS(-104, 18), TRONCO(0, 0, 5)), B: O(flat, P_RETAS(-74, 38), TRONCO(0, 0, 2)),
+      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0.24, 0.85], [-0.24, 0.85]],
+      seq: [
+        { P: O(flat, P_RETAS(-62.5, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.55 },                            // fechadas, quase no chão
+        { P: O(flat, P_RETAS(-98, 2), TRONCO(0, 0, 5)), hold: 0, f: 0.7, ease: 'impulso', dur: 0.45 },       // sobe com impulso
+        { P: O(flat, P_RETAS(-98, 36), TRONCO(0, 0, 5)), hold: 0, f: 0.75, ease: 'suave', dur: 0.32 },       // abre lá em cima, por cima das garrafas
+        { P: O(flat, P_RETAS(-63, 38), TRONCO(0, 0, 1)), hold: 0.3, f: 1, ease: 'cai', dur: 0.55 },          // desce por fora, quase no chão
+        { P: O(flat, P_RETAS(-98, 36), TRONCO(0, 0, 5)), hold: 0, f: 0.7, ease: 'impulso', dur: 0.45 },
+        { P: O(flat, P_RETAS(-98, 2), TRONCO(0, 0, 5)), hold: 0, f: 0.75, ease: 'suave', dur: 0.32 }        // fecha lá em cima
+      ],
       bracos: MAOS_ATRAS,
-      info: { passos: ['Sentado, tronco levemente inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa de cada lado, à frente dos pés.', 'Pernas esticadas e juntas, suspensas no meio das garrafas.', 'Abra as pernas passando por cima das garrafas, formando um "V".', 'Feche de volta no centro, de novo por cima das garrafas.'],
-        dicas: ['Sugestão: 3 séries de 12 repetições.', 'Suba as pernas só o suficiente para passar as garrafas.'], erros: ['Encostar os pés no chão.', 'Dobrar os joelhos.', 'Derrubar as garrafas.'], resp: 'Solte o ar ao abrir.' } },
-    { id: 'passagem_garrafa', arco: true, nome: 'Twist com 1 garrafa', equip: 'corpo', regiao: 'core', chao: true,
-      desc: 'Joelhos dobrados e juntos, pés no ar: gire o quadril e passe os joelhos por cima da garrafa, de um lado para o outro.',
+      info: { passos: ['Sentado, tronco levemente inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa de cada lado, à frente dos pés.', 'Pernas esticadas e juntas, baixas, no meio das garrafas.', 'Com impulso, suba e abra as pernas passando por cima das garrafas.', 'Desça por fora até quase encostar no chão, segure um instante.', 'Suba de novo e feche no centro.'],
+        dicas: ['Sugestão: 3 séries de 12 repetições.', 'A descida é controlada: freie antes do chão.'], erros: ['Encostar os pés no chão.', 'Dobrar os joelhos.', 'Derrubar as garrafas.'], resp: 'Solte o ar ao subir.' } },
+    { id: 'passagem_garrafa', nome: 'Twist com 1 garrafa', equip: 'corpo', regiao: 'core', chao: true,
+      desc: 'Joelhos dobrados e juntos, pés no ar: gire o quadril e passe os pés por cima da garrafa, de um lado para o outro.',
       prim: ['obliquo_externo', 'reto_abdome'], sec: ['iliopsoas', 'adutores', 'gluteo_medio'],
-      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0, 0.5], null], periodo: 2.2,
-      A: O(flat, J_TWIST(-112, -40, 92), TRONCO(15, 7, 0)), M: O(flat, J_TWIST(-130, 0, 96), TRONCO(0, 0, 6)), B: O(flat, J_TWIST(-112, 40, 92), TRONCO(-15, -7, 0)),
+      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0, 0.71], null],
+      seq: [
+        { P: O(flat, J_TWIST(-110, -42, 84), TRONCO(15, 7, 0)), hold: 0.28, f: 1, ease: 'cai', dur: 0.45 },   // de um lado, pés quase no chão
+        { P: O(flat, J_TWIST(-132, -22, 92), TRONCO(8, 4, 4)), hold: 0, f: 0.75, ease: 'impulso', dur: 0.4 }, // impulso para cima
+        { P: O(flat, J_TWIST(-142, 0, 98), TRONCO(0, 0, 6)), hold: 0, f: 0.7, ease: 'suave', dur: 0.25 },     // pés passam por cima da garrafa
+        { P: O(flat, J_TWIST(-132, 22, 92), TRONCO(-8, -4, 4)), hold: 0, f: 0.75, ease: 'suave', dur: 0.25 },
+        { P: O(flat, J_TWIST(-110, 42, 84), TRONCO(-15, -7, 0)), hold: 0.28, f: 1, ease: 'cai', dur: 0.45 },
+        { P: O(flat, J_TWIST(-132, 22, 92), TRONCO(-8, -4, 4)), hold: 0, f: 0.75, ease: 'impulso', dur: 0.4 },
+        { P: O(flat, J_TWIST(-142, 0, 98), TRONCO(0, 0, 6)), hold: 0, f: 0.7, ease: 'suave', dur: 0.25 },
+        { P: O(flat, J_TWIST(-132, -22, 92), TRONCO(8, 4, 4)), hold: 0, f: 0.75, ease: 'suave', dur: 0.25 }
+      ],
       bracos: MAOS_ATRAS,
-      info: { passos: ['Sentado, tronco inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa no centro, à sua frente.', 'Joelhos dobrados e juntos, pés suspensos.', 'Gire o quadril e leve os dois joelhos para um lado.', 'Suba passando os pés por cima da garrafa e leve para o outro lado.'],
-        dicas: ['Sugestão: 3 séries de 12 repetições (cada ida e volta conta uma).', 'O giro vem do quadril, não só dos joelhos.'], erros: ['Apoiar os pés no chão.', 'Separar os joelhos.', 'Derrubar a garrafa.'], resp: 'Solte o ar a cada giro.' } },
-    { id: 'chutes_garrafa', arco: true, nome: 'Chutes alternados com 1 garrafa', equip: 'corpo', regiao: 'core', chao: true, alt: true,
-      desc: 'Pernas quase esticadas, uma de cada lado da garrafa: cruze uma perna por cima dela, como uma tesoura, e volte.',
+      info: { passos: ['Sentado, tronco inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa no centro, à frente dos pés.', 'Joelhos dobrados e juntos, pés suspensos de um lado da garrafa.', 'Com impulso, gire o quadril e passe os pés por cima da garrafa.', 'Desça do outro lado até quase encostar no chão, segure e volte.'],
+        dicas: ['Sugestão: 3 séries de 12 repetições (cada ida e volta conta uma).', 'O giro vem do quadril, não só dos joelhos.'], erros: ['Apoiar os pés no chão.', 'Separar os joelhos.', 'Derrubar a garrafa.'], resp: 'Solte o ar a cada passagem.' } },
+    { id: 'chutes_garrafa', nome: 'Chutes alternados com 1 garrafa', equip: 'corpo', regiao: 'core', chao: true,
+      desc: 'Pernas quase esticadas, uma de cada lado da garrafa: cruze uma perna por cima dela, como tesoura, volte e troque.',
       prim: ['reto_abdome', 'iliopsoas'], sec: ['adutores', 'reto_femoral', 'obliquo_externo'],
-      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0, 0.76], null], periodo: 1.6,
-      A: O(flat, P_RETAS(-74, 13)),
-      M: O(flat, P_RETAS(-74, 13), { leftUpperLeg: [-100, 0, 2] }, TRONCO(3, 1, 3)),
-      B: O(flat, P_RETAS(-74, 13), { leftUpperLeg: [-86, 0, -11] }, TRONCO(5, 2, 1)),
+      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0, 1.0], null],
+      seq: (() => {
+        const base = O(flat, P_RETAS(-62, 13)), sobeE = O(base, { leftUpperLeg: [-96, 0, 2] }, TRONCO(3, 1, 3)), cruzaE = O(base, { leftUpperLeg: [-73, 0, -21] }, TRONCO(5, 2, 1));
+        return [
+          { P: base, hold: 0.2, f: 0.9, ease: 'cai', dur: 0.5 },
+          { P: sobeE, hold: 0, f: 0.8, ease: 'impulso', dur: 0.42 },
+          { P: cruzaE, hold: 0.2, f: 1, ease: 'cai', dur: 0.45 },
+          { P: sobeE, hold: 0, f: 0.8, ease: 'impulso', dur: 0.42 },
+          { P: base, hold: 0.2, f: 0.9, ease: 'cai', dur: 0.5 },
+          { P: ESP(sobeE), hold: 0, f: 0.8, ease: 'impulso', dur: 0.42 },
+          { P: ESP(cruzaE), hold: 0.2, f: 1, ease: 'cai', dur: 0.45 },
+          { P: ESP(sobeE), hold: 0, f: 0.8, ease: 'impulso', dur: 0.42 }
+        ];
+      })(),
       bracos: MAOS_ATRAS,
-      info: { passos: ['Sentado, tronco inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa no centro, com uma perna de cada lado dela.', 'Pernas quase esticadas e suspensas.', 'Cruze uma perna por cima da garrafa e da outra perna, como uma tesoura, e volte.', 'Alterne. Uma perna e depois a outra = 1 repetição.'],
-        dicas: ['Sugestão: 3 séries de 12 repetições.'], erros: ['Encostar os pés no chão entre os chutes.', 'Dobrar muito os joelhos.'], resp: 'Respire de forma contínua.' } }
+      info: { passos: ['Sentado, tronco inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa no centro, com uma perna de cada lado dela.', 'Pernas quase esticadas, baixas, sem encostar no chão.', 'Com impulso, cruze uma perna por cima da garrafa e da outra perna; desça até quase o chão.', 'Volte e troque de perna. Uma perna e depois a outra = 1 repetição.'],
+        dicas: ['Sugestão: 3 séries de 10 repetições.'], erros: ['Encostar os pés no chão entre os chutes.', 'Dobrar muito os joelhos.'], resp: 'Respire de forma contínua.' } }
   ];
 };

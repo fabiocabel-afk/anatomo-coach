@@ -525,7 +525,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><div class="lb">Movimento do corpo<small>natural: respira e reage ao esforço, sem exagero</small></div><div class="seg" id="cMov"><button data-v="natural">Natural</button><button data-v="estatico">Estático</button></div></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.29.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.30.0</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -1146,6 +1146,12 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const P_RECOLHIDAS = (lat) => ({ leftUpperLeg: [-136, 0, lat || 0], rightUpperLeg: [-136, 0, lat || 0], leftLowerLeg: [112, 0, 0], rightLowerLeg: [112, 0, 0], leftFoot: [25, 0, 0], rightFoot: [25, 0, 0] });
   // joelhos dobrados e juntos, levados para o lado (twist): fl = altura das coxas
   const J_TWIST = (fl, lat, ll) => ({ leftUpperLeg: [fl, 0, lat || 0], rightUpperLeg: [fl, 0, lat || 0], leftLowerLeg: [ll, 0, 0], rightLowerLeg: [ll, 0, 0], leftFoot: [25, 0, 0], rightFoot: [25, 0, 0] });
+  // pernas recolhidas (joelhos na altura do peito) viradas para um lado (az: + = esquerda) com os joelhos para cima:
+  // recolhida, a perna gira no eixo do quadril (y) — não abre para o lado (z), senão deita
+  const RECOLHE = (az) => ({ leftUpperLeg: [-132, 0.9 * az, 0], rightUpperLeg: [-132, 0.9 * az, 0], leftLowerLeg: [108, 0, 0], rightLowerLeg: [108, 0, 0], leftFoot: [5, 0, 0], rightFoot: [5, 0, 0] });
+  // pernas esticadas e juntas apontando para um lado (az), joelhos e pontas dos pés para cima
+  const ESTICA = (fl, az) => ({ leftUpperLeg: [fl, 0, az], rightUpperLeg: [fl, 0, az], leftLowerLeg: [2, 0, 0], rightLowerLeg: [2, 0, 0], leftFoot: [0, 0, 0], rightFoot: [0, 0, 0] });
+  const ESP = P => { const o = {}; for (const k in P) { const v = P[k], nk = k.startsWith('left') ? 'right' + k.slice(4) : k.startsWith('right') ? 'left' + k.slice(5) : k; o[nk] = [v[0], -v[1], -v[2]]; } return o; };
   const G_ABRE = (ll, ab) => ({ leftUpperLeg: [-95, 0, ab], rightUpperLeg: [-95, 0, -ab], leftLowerLeg: [ll, 0, 0], rightLowerLeg: [ll, 0, 0], leftFoot: [25, 0, 0], rightFoot: [25, 0, 0] });
   const CAM_CHAO = { th: 70, ph: 22, dist: 3.9, ty: 0.25 }, CAM_CHAO_FRENTE = { th: 20, ph: 25, dist: 3.0, ty: 0.3 };
   const BARRA_COSTAS = { frame: 'peito', A: { p: [0.26, 0.10, -0.11] }, B: { p: [0.26, 0.10, -0.11] }, polo: [0.6, -1, -0.3] };
@@ -2053,42 +2059,81 @@ window.CORPO3D_EXERCICIOS = function (H) {
      * Posição de todos: sentado, tronco um pouco inclinado para trás, mãos apoiadas atrás,
      * joelhos dobrados. Os pés passam baixos, perto do chão; sobem só para passar por cima da garrafa.
      */
-    { id: 'ziguezague_garrafas', arco: true, nome: 'Zigue-zague com 2 garrafas', equip: 'corpo', regiao: 'core', chao: true, alt: true,
-      desc: 'Pernas juntas no ar: recolha, contorne a garrafa pela frente e estique por fora dela; volte ao meio e repita do outro lado.',
+    /* Todos em etapas, com peso de verdade: as pernas descem com a gravidade e a pessoa freia perto do chão
+     * (quase encosta), segura um instante e volta com impulso, como um salto. ease: impulso | cai | suave. */
+    { id: 'ziguezague_garrafas', nome: 'Zigue-zague com 2 garrafas', equip: 'corpo', regiao: 'core', chao: true,
+      desc: 'Pernas juntas e esticadas por fora de uma garrafa: puxe ao peito, vire, estique no meio; puxe, vire e estique por fora da outra. Volte.',
       prim: ['obliquo_externo', 'reto_abdome'], sec: ['iliopsoas', 'reto_femoral', 'adutores'],
-      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0.27, 0.8], [-0.27, 0.8]], periodo: 2.4,
-      // A = pernas esticadas no meio das garrafas · M = recolhidas e já viradas para o lado (passam pela frente da garrafa)
-      // B = esticadas por fora da garrafa. O "arco" faz recolher antes de virar e só esticar depois de virar.
-      A: O(flat, P_RETAS(-82, 0, 0)), M: O(flat, P_RECOLHIDAS(72), TRONCO(-7, -3, 5)), B: O(flat, P_RETAS(-80, 0, 54), TRONCO(-12, -6, 1)),
+      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0.3, 0.86], [-0.3, 0.86]],
+      seq: [
+        { P: O(flat, ESTICA(-61, -50), TRONCO(-10, -3, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.6 },      // direita, por fora (quase no chão)
+        { P: O(flat, RECOLHE(-40), TRONCO(-6, -2, 5)), hold: 0.22, f: 0.7, ease: 'impulso', dur: 0.55 },   // puxa ao peito
+        { P: O(flat, RECOLHE(0), TRONCO(0, 0, 5)), hold: 0.06, f: 0.7, ease: 'suave', dur: 0.55 },          // vira para o meio
+        { P: O(flat, ESTICA(-60, 0), TRONCO(0, 0, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.6 },            // estica no meio
+        { P: O(flat, RECOLHE(0), TRONCO(0, 0, 5)), hold: 0.22, f: 0.7, ease: 'impulso', dur: 0.55 },
+        { P: O(flat, RECOLHE(40), TRONCO(6, 2, 5)), hold: 0.06, f: 0.7, ease: 'suave', dur: 0.55 },         // vira para a esquerda
+        { P: O(flat, ESTICA(-61, 50), TRONCO(10, 3, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.6 },          // esquerda, por fora
+        { P: O(flat, RECOLHE(40), TRONCO(6, 2, 5)), hold: 0.22, f: 0.7, ease: 'impulso', dur: 0.55 },
+        { P: O(flat, RECOLHE(0), TRONCO(0, 0, 5)), hold: 0.06, f: 0.7, ease: 'suave', dur: 0.55 },
+        { P: O(flat, ESTICA(-60, 0), TRONCO(0, 0, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.6 },
+        { P: O(flat, RECOLHE(0), TRONCO(0, 0, 5)), hold: 0.22, f: 0.7, ease: 'impulso', dur: 0.55 },
+        { P: O(flat, RECOLHE(-40), TRONCO(-6, -2, 5)), hold: 0.06, f: 0.7, ease: 'suave', dur: 0.55 }
+      ],
       bracos: MAOS_ATRAS,
-      info: { passos: ['Sentado, tronco levemente inclinado para trás, mãos apoiadas no chão atrás do quadril.', 'Uma garrafa em cada ponta, bem afastadas, à sua frente.', 'Pernas juntas e esticadas no ar, no meio das duas garrafas.', 'Recolha as pernas (joelhos perto do peito), vire para um lado passando pela frente da garrafa e estique as pernas por fora dela.', 'Recolha de novo, volte pela frente da garrafa e estique no meio.', 'Repita para o outro lado. Ida aos dois lados = 1 repetição.'],
-        dicas: ['Sugestão: 3 séries de 8 repetições.', 'Os pés nunca encostam no chão.', 'Quanto mais esticadas as pernas, mais difícil.'], erros: ['Passar as pernas por cima da garrafa em vez de contornar.', 'Encostar os pés no chão.', 'Usar os braços para empurrar o corpo.'], resp: 'Solte o ar ao esticar as pernas.' } },
-    { id: 'abre_fecha_garrafas', arco: true, nome: 'Abre e fecha com 2 garrafas', equip: 'corpo', regiao: 'core', chao: true,
-      desc: 'Pernas esticadas e juntas entre as garrafas: abra passando por cima delas e feche no centro, sem encostar os pés no chão.',
+      info: { passos: ['Sentado, tronco levemente inclinado para trás, mãos apoiadas no chão atrás do quadril.', 'Uma garrafa em cada ponta, bem afastadas, à sua frente.', 'Pernas juntas e esticadas por fora da garrafa da direita, joelhos e pontas dos pés para cima.', 'Puxe os joelhos até a altura do peito. Pausa curta.', 'Vire o tronco e as pernas recolhidas para o meio e estique as pernas entre as garrafas.', 'Puxe de novo, vire para o outro lado e estique por fora da outra garrafa.', 'Faça o caminho de volta. Ida e volta = 1 repetição.'],
+        dicas: ['Sugestão: 3 séries de 6 repetições.', 'São três tempos separados: puxa, vira, estica.', 'Ao esticar, deixe as pernas descerem até quase encostar no chão, segure e volte.'], erros: ['Puxar e virar ao mesmo tempo.', 'Deixar as pernas tombarem de lado: joelhos sempre para cima.', 'Encostar os pés no chão.'], resp: 'Solte o ar ao esticar, puxe o ar ao recolher.' } },
+    { id: 'abre_fecha_garrafas', nome: 'Abre e fecha com 2 garrafas', equip: 'corpo', regiao: 'core', chao: true,
+      desc: 'Pernas esticadas e juntas entre as garrafas: suba, abra por cima delas, desça até quase o chão por fora, suba e feche no centro.',
       prim: ['adutores', 'reto_abdome'], sec: ['gluteo_medio', 'iliopsoas', 'tensor_fascia_lata'],
-      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0.24, 0.72], [-0.24, 0.72]], periodo: 2.2,
-      A: O(flat, P_RETAS(-78, 0)), M: O(flat, P_RETAS(-104, 18), TRONCO(0, 0, 5)), B: O(flat, P_RETAS(-74, 38), TRONCO(0, 0, 2)),
+      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0.24, 0.85], [-0.24, 0.85]],
+      seq: [
+        { P: O(flat, P_RETAS(-62.5, 0)), hold: 0.3, f: 1, ease: 'cai', dur: 0.55 },                            // fechadas, quase no chão
+        { P: O(flat, P_RETAS(-98, 2), TRONCO(0, 0, 5)), hold: 0, f: 0.7, ease: 'impulso', dur: 0.45 },       // sobe com impulso
+        { P: O(flat, P_RETAS(-98, 36), TRONCO(0, 0, 5)), hold: 0, f: 0.75, ease: 'suave', dur: 0.32 },       // abre lá em cima, por cima das garrafas
+        { P: O(flat, P_RETAS(-63, 38), TRONCO(0, 0, 1)), hold: 0.3, f: 1, ease: 'cai', dur: 0.55 },          // desce por fora, quase no chão
+        { P: O(flat, P_RETAS(-98, 36), TRONCO(0, 0, 5)), hold: 0, f: 0.7, ease: 'impulso', dur: 0.45 },
+        { P: O(flat, P_RETAS(-98, 2), TRONCO(0, 0, 5)), hold: 0, f: 0.75, ease: 'suave', dur: 0.32 }        // fecha lá em cima
+      ],
       bracos: MAOS_ATRAS,
-      info: { passos: ['Sentado, tronco levemente inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa de cada lado, à frente dos pés.', 'Pernas esticadas e juntas, suspensas no meio das garrafas.', 'Abra as pernas passando por cima das garrafas, formando um "V".', 'Feche de volta no centro, de novo por cima das garrafas.'],
-        dicas: ['Sugestão: 3 séries de 12 repetições.', 'Suba as pernas só o suficiente para passar as garrafas.'], erros: ['Encostar os pés no chão.', 'Dobrar os joelhos.', 'Derrubar as garrafas.'], resp: 'Solte o ar ao abrir.' } },
-    { id: 'passagem_garrafa', arco: true, nome: 'Twist com 1 garrafa', equip: 'corpo', regiao: 'core', chao: true,
-      desc: 'Joelhos dobrados e juntos, pés no ar: gire o quadril e passe os joelhos por cima da garrafa, de um lado para o outro.',
+      info: { passos: ['Sentado, tronco levemente inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa de cada lado, à frente dos pés.', 'Pernas esticadas e juntas, baixas, no meio das garrafas.', 'Com impulso, suba e abra as pernas passando por cima das garrafas.', 'Desça por fora até quase encostar no chão, segure um instante.', 'Suba de novo e feche no centro.'],
+        dicas: ['Sugestão: 3 séries de 12 repetições.', 'A descida é controlada: freie antes do chão.'], erros: ['Encostar os pés no chão.', 'Dobrar os joelhos.', 'Derrubar as garrafas.'], resp: 'Solte o ar ao subir.' } },
+    { id: 'passagem_garrafa', nome: 'Twist com 1 garrafa', equip: 'corpo', regiao: 'core', chao: true,
+      desc: 'Joelhos dobrados e juntos, pés no ar: gire o quadril e passe os pés por cima da garrafa, de um lado para o outro.',
       prim: ['obliquo_externo', 'reto_abdome'], sec: ['iliopsoas', 'adutores', 'gluteo_medio'],
-      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0, 0.5], null], periodo: 2.2,
-      A: O(flat, J_TWIST(-112, -40, 92), TRONCO(15, 7, 0)), M: O(flat, J_TWIST(-130, 0, 96), TRONCO(0, 0, 6)), B: O(flat, J_TWIST(-112, 40, 92), TRONCO(-15, -7, 0)),
+      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0, 0.71], null],
+      seq: [
+        { P: O(flat, J_TWIST(-110, -42, 84), TRONCO(15, 7, 0)), hold: 0.28, f: 1, ease: 'cai', dur: 0.45 },   // de um lado, pés quase no chão
+        { P: O(flat, J_TWIST(-132, -22, 92), TRONCO(8, 4, 4)), hold: 0, f: 0.75, ease: 'impulso', dur: 0.4 }, // impulso para cima
+        { P: O(flat, J_TWIST(-142, 0, 98), TRONCO(0, 0, 6)), hold: 0, f: 0.7, ease: 'suave', dur: 0.25 },     // pés passam por cima da garrafa
+        { P: O(flat, J_TWIST(-132, 22, 92), TRONCO(-8, -4, 4)), hold: 0, f: 0.75, ease: 'suave', dur: 0.25 },
+        { P: O(flat, J_TWIST(-110, 42, 84), TRONCO(-15, -7, 0)), hold: 0.28, f: 1, ease: 'cai', dur: 0.45 },
+        { P: O(flat, J_TWIST(-132, 22, 92), TRONCO(-8, -4, 4)), hold: 0, f: 0.75, ease: 'impulso', dur: 0.4 },
+        { P: O(flat, J_TWIST(-142, 0, 98), TRONCO(0, 0, 6)), hold: 0, f: 0.7, ease: 'suave', dur: 0.25 },
+        { P: O(flat, J_TWIST(-132, -22, 92), TRONCO(8, 4, 4)), hold: 0, f: 0.75, ease: 'suave', dur: 0.25 }
+      ],
       bracos: MAOS_ATRAS,
-      info: { passos: ['Sentado, tronco inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa no centro, à sua frente.', 'Joelhos dobrados e juntos, pés suspensos.', 'Gire o quadril e leve os dois joelhos para um lado.', 'Suba passando os pés por cima da garrafa e leve para o outro lado.'],
-        dicas: ['Sugestão: 3 séries de 12 repetições (cada ida e volta conta uma).', 'O giro vem do quadril, não só dos joelhos.'], erros: ['Apoiar os pés no chão.', 'Separar os joelhos.', 'Derrubar a garrafa.'], resp: 'Solte o ar a cada giro.' } },
-    { id: 'chutes_garrafa', arco: true, nome: 'Chutes alternados com 1 garrafa', equip: 'corpo', regiao: 'core', chao: true, alt: true,
-      desc: 'Pernas quase esticadas, uma de cada lado da garrafa: cruze uma perna por cima dela, como uma tesoura, e volte.',
+      info: { passos: ['Sentado, tronco inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa no centro, à frente dos pés.', 'Joelhos dobrados e juntos, pés suspensos de um lado da garrafa.', 'Com impulso, gire o quadril e passe os pés por cima da garrafa.', 'Desça do outro lado até quase encostar no chão, segure e volte.'],
+        dicas: ['Sugestão: 3 séries de 12 repetições (cada ida e volta conta uma).', 'O giro vem do quadril, não só dos joelhos.'], erros: ['Apoiar os pés no chão.', 'Separar os joelhos.', 'Derrubar a garrafa.'], resp: 'Solte o ar a cada passagem.' } },
+    { id: 'chutes_garrafa', nome: 'Chutes alternados com 1 garrafa', equip: 'corpo', regiao: 'core', chao: true,
+      desc: 'Pernas quase esticadas, uma de cada lado da garrafa: cruze uma perna por cima dela, como tesoura, volte e troque.',
       prim: ['reto_abdome', 'iliopsoas'], sec: ['adutores', 'reto_femoral', 'obliquo_externo'],
-      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0, 0.76], null], periodo: 1.6,
-      A: O(flat, P_RETAS(-74, 13)),
-      M: O(flat, P_RETAS(-74, 13), { leftUpperLeg: [-100, 0, 2] }, TRONCO(3, 1, 3)),
-      B: O(flat, P_RETAS(-74, 13), { leftUpperLeg: [-86, 0, -11] }, TRONCO(5, 2, 1)),
+      cam: CAM_GARRAFA, base: { A: SENTADO_G }, prop: 'garrafas', garrafas: [[0, 1.0], null],
+      seq: (() => {
+        const base = O(flat, P_RETAS(-62, 13)), sobeE = O(base, { leftUpperLeg: [-96, 0, 2] }, TRONCO(3, 1, 3)), cruzaE = O(base, { leftUpperLeg: [-73, 0, -21] }, TRONCO(5, 2, 1));
+        return [
+          { P: base, hold: 0.2, f: 0.9, ease: 'cai', dur: 0.5 },
+          { P: sobeE, hold: 0, f: 0.8, ease: 'impulso', dur: 0.42 },
+          { P: cruzaE, hold: 0.2, f: 1, ease: 'cai', dur: 0.45 },
+          { P: sobeE, hold: 0, f: 0.8, ease: 'impulso', dur: 0.42 },
+          { P: base, hold: 0.2, f: 0.9, ease: 'cai', dur: 0.5 },
+          { P: ESP(sobeE), hold: 0, f: 0.8, ease: 'impulso', dur: 0.42 },
+          { P: ESP(cruzaE), hold: 0.2, f: 1, ease: 'cai', dur: 0.45 },
+          { P: ESP(sobeE), hold: 0, f: 0.8, ease: 'impulso', dur: 0.42 }
+        ];
+      })(),
       bracos: MAOS_ATRAS,
-      info: { passos: ['Sentado, tronco inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa no centro, com uma perna de cada lado dela.', 'Pernas quase esticadas e suspensas.', 'Cruze uma perna por cima da garrafa e da outra perna, como uma tesoura, e volte.', 'Alterne. Uma perna e depois a outra = 1 repetição.'],
-        dicas: ['Sugestão: 3 séries de 12 repetições.'], erros: ['Encostar os pés no chão entre os chutes.', 'Dobrar muito os joelhos.'], resp: 'Respire de forma contínua.' } }
+      info: { passos: ['Sentado, tronco inclinado para trás, mãos apoiadas atrás.', 'Uma garrafa no centro, com uma perna de cada lado dela.', 'Pernas quase esticadas, baixas, sem encostar no chão.', 'Com impulso, cruze uma perna por cima da garrafa e da outra perna; desça até quase o chão.', 'Volte e troque de perna. Uma perna e depois a outra = 1 repetição.'],
+        dicas: ['Sugestão: 3 séries de 10 repetições.'], erros: ['Encostar os pés no chão entre os chutes.', 'Dobrar muito os joelhos.'], resp: 'Respire de forma contínua.' } }
   ];
 };
 </script>
@@ -2929,6 +2974,14 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const lados = S => (S && (S.left || S.right)) ? S : { left: S, right: S };
   const trocar = S => ({ left: S.right, right: S.left });
   for (const ex of EXERCICIOS) {
+    if (ex.seq) {
+      // movimento em etapas (garrafas): cada etapa tem a pose, o tempo para chegar nela, o jeito de chegar
+      // (impulso, cai com a gravidade, suave), a pausa parada nela e o esforço (brilho dos músculos)
+      ex._seq = ex.seq.map(k => ({ P: k.P, dur: k.dur || 0.5, ease: k.ease || 'suave', hold: k.hold || 0, f: k.f == null ? 0.6 : k.f }));
+      ex._seqTot = ex._seq.reduce((a, k) => a + k.dur + k.hold, 0);
+      ex.periodo = ex._seqTot;
+      ex.A = ex.B = ex._seq[0].P;
+    }
     ex._Bs = [ex.B, ex.alt ? espelharPose(ex.B) : ex.B];
     ex._As = [ex.A, ex.alt && ex.altA ? espelharPose(ex.A) : ex.A];
     if (ex.M) ex._Mmeio = [ex.M, ex.alt ? espelharPose(ex.M) : ex.M];
@@ -2954,6 +3007,29 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const REPOUSO = { id: 'repouso', nome: 'Modo repouso', desc: 'Toque num exercício para começar.', repouso: true, prim: [], sec: [],
     cam: { th: 28, ph: 10, dist: 2.9, ty: 0.55 }, A: {}, B: {}, _As: [{}, {}], _Bs: [{}, {}], periodo: 4 };
   let cur = EXERCICIOS[0], t = 0, phase = 0, lastCycle = 0, lado = 0;
+  let cicloU = 0, esfSeq = 0; // exercícios em etapas: posição dentro do ciclo (0–1) e esforço do momento
+  const EASE = {
+    suave: x => x * x * (3 - 2 * x),
+    impulso: x => 1 - Math.pow(1 - x, 2.2),                        // sai rápido (impulso) e desacelera chegando
+    cai: x => x < 0.7 ? 0.86 * Math.pow(x / 0.7, 1.5)              // a gravidade acelera a descida…
+      : 0.86 + 0.14 * (1 - Math.pow(1 - (x - 0.7) / 0.3, 2))       // …e no fim a pessoa freia para não encostar no chão
+  };
+  function poseSeq(ex, u) {
+    const ks = ex._seq, n = ks.length; let T = ((u % 1) + 1) % 1 * ex._seqTot;
+    for (let i = 0; i < n; i++) {
+      const k = ks[i], nx = ks[(i + 1) % n];
+      if (T <= k.hold) return { P: k.P, f: k.f };
+      T -= k.hold;
+      if (T <= nx.dur) {
+        const x = (EASE[nx.ease] || EASE.suave)(Math.min(1, T / nx.dur)), P = {};
+        const nomes = new Set([...Object.keys(k.P), ...Object.keys(nx.P)]);
+        for (const b of nomes) { const a = k.P[b] || ZERO, c = nx.P[b] || ZERO; P[b] = [a[0] + (c[0] - a[0]) * x, a[1] + (c[1] - a[1]) * x, a[2] + (c[2] - a[2]) * x]; }
+        return { P, f: k.f + (nx.f - k.f) * x };
+      }
+      T -= nx.dur;
+    }
+    return { P: ks[0].P, f: ks[0].f };
+  }
   let focusKey = null;
   const _w = new V3();
   const minY = l => { let m = Infinity; for (const o of l) { o.getWorldPosition(_w); if (_w.y < m) m = _w.y; } return m; };
@@ -2972,14 +3048,15 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (cur.ik === 'flexao' && !cur._calibrando) { applyFlexao(p); atualizarProps(); return; }
     const li = cur.alt ? lado : 0;
     let A = cur._As[li], B = cur._Bs[li], q = p;
-    if (cur._Mmeio) {
+    if (cur._seq) { const r = poseSeq(cur, cicloU); A = B = r.P; q = 0; esfSeq = r.f; }
+    else if (cur._Mmeio) {
       // pose do meio do caminho (ex.: pés passando por cima da garrafa)
       if (p < 0.5) { B = cur._Mmeio[li]; q = p * 2; } else { A = cur._Mmeio[li]; q = p * 2 - 1; }
     }
     // arco (garrafas): na subida as pernas levantam primeiro e só depois vão para o lado;
     // na descida vão para o lado primeiro e só no fim descem — o pé passa alto por cima da garrafa
     let qSobe = q, qLado = q;
-    if (cur.arco && cur._Mmeio) {
+    if (cur.arco && cur._Mmeio && !cur._seq) {
       const ss = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
       if (p < 0.5) { qSobe = ss(q / 0.55); qLado = ss((q - 0.3) / 0.7); }
       else { qLado = ss(q / 0.7); qSobe = ss((q - 0.45) / 0.55); }
@@ -4163,15 +4240,16 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (S.estado === 'preparo' || S.estado === 'concluindo' || S.estado === 'pergunta') {
       // parado na posição inicial; em pé, um balanço bem leve e lento de quem está pronto
       // (no chão, com mãos/pés apoiados, fica parado)
-      t += dt; phase = cur.chao || cur.pitch === 'auto' || !movNatural() ? 0 : 0.012 * (1 - Math.cos(2 * Math.PI * t / 6.5)) / 2; lado = 0;
+      t += dt; phase = cur.chao || cur.pitch === 'auto' || !movNatural() ? 0 : 0.012 * (1 - Math.cos(2 * Math.PI * t / 6.5)) / 2; lado = 0; cicloU = 0;
       conferirPreparo();
     } else if (S.estado === 'treino' && S.espera > 0) {
-      S.espera -= dt; phase = 0;
+      S.espera -= dt; phase = 0; cicloU = 0;
       if (S.espera <= 0) { S.espera = 0; painelTreino(); }
     } else if (S.estado === 'previa' || S.estado === 'treino') {
       t += dt;
       const per = cur.isometria ? 1 : cur.periodo * tc.ritmo;
       phase = (1 - Math.cos(2 * Math.PI * t / per)) / 2;
+      cicloU = (t / per) % 1;
       const cyc = Math.floor(t / per);
       // alternando os lados: uma repetição = um lado + o outro (conta só quando os dois foram feitos,
       // assim os dois lados terminam sempre com a mesma quantidade)
@@ -4846,10 +4924,10 @@ window.CORPO3D_EXERCICIOS = function (H) {
     function tamanho(px) { if (tamAtual !== px) { r2.setSize(px, px, false); tamAtual = px; } }
     // guarda o que é do exercício principal e que a pose de outro exercício altera
     function salvarPrincipal() {
-      return { cur, lado, focusKey, pivo: PIVO, garr: garrafas.map(g => [g.visible, g.position.clone()]), sombra: shadow.scale.clone(), sp: shadow.position.clone() };
+      return { cur, lado, focusKey, pivo: PIVO, cicloU, esfSeq, garr: garrafas.map(g => [g.visible, g.position.clone()]), sombra: shadow.scale.clone(), sp: shadow.position.clone() };
     }
     function restaurarPrincipal(sv) {
-      cur = sv.cur; lado = sv.lado; focusKey = sv.focusKey; PIVO = sv.pivo;
+      cur = sv.cur; lado = sv.lado; focusKey = sv.focusKey; PIVO = sv.pivo; cicloU = sv.cicloU; esfSeq = sv.esfSeq;
       garrafas.forEach((g, i) => { g.visible = sv.garr[i][0]; g.position.copy(sv.garr[i][1]); });
       shadow.scale.copy(sv.sombra); shadow.position.copy(sv.sp);
     }
@@ -4865,7 +4943,8 @@ window.CORPO3D_EXERCICIOS = function (H) {
       const per = ex.isometria ? 1 : ex.periodo;
       const ph = (1 - Math.cos(2 * Math.PI * tt / per)) / 2;
       lado = ex.alt ? Math.floor(tt / per) % 2 : 0;
-      applyPose(ph); applyMuscles(ph);
+      cicloU = (tt / per) % 1;
+      applyPose(ph); applyMuscles(ex._seq ? esfSeq : ph);
       const c = ex.cam, cp = Math.cos(rad(c.ph));
       camM.position.set((c.tx || 0) + c.dist * Math.sin(rad(c.th)) * cp, c.ty + c.dist * Math.sin(rad(c.ph)), (c.tz || 0) + c.dist * Math.cos(rad(c.th)) * cp);
       camM.lookAt(c.tx || 0, c.ty, c.tz || 0);
@@ -5604,7 +5683,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.29.0';
+  const BK_VERSAO = '2.30.0';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;
@@ -5866,7 +5945,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     // com a galeria ou a prévia cobrindo a tela, o corpo principal não precisa ser redesenhado
     const coberto = MINI.quadro(dt);
     if (!coberto) {
-      applyPose(phase); aplicarBlend(dt); applyMuscles(phase); placeCamera();
+      applyPose(phase); aplicarBlend(dt); applyMuscles(cur._seq ? esfSeq : phase); placeCamera();
       comEspelho(() => renderer.render(scene, camera));
     }
     requestAnimationFrame(loop);
@@ -5900,9 +5979,9 @@ window.CORPO3D_EXERCICIOS = function (H) {
     garrafasPos: () => garrafas.filter(g => g.visible).map(g => g.position.toArray()),
     pesPos: () => GR.pes.map(o => o.getWorldPosition(new V3()).toArray()),
     camera: c => aimCamera(c, true),
-    posar: (p, l) => { S.estado = 'congelado'; phase = p; lado = l || 0; blend = null; applyPose(p); },
+    posar: (p, l) => { S.estado = 'congelado'; phase = p; cicloU = p; lado = l || 0; blend = null; applyPose(p); },
     neutro: () => { cur = Object.assign({}, cur, { prim: [], sec: [] }); },
-    setPhase: (p, l) => { S.estado = 'congelado'; phase = p; lado = l || 0; },
+    setPhase: (p, l) => { S.estado = 'congelado'; phase = p; cicloU = p; lado = l || 0; },
     cfgAtual: () => Object.assign({}, cfg),
     treinos: () => JSON.parse(JSON.stringify(TREINOS)),
     seq: () => SEQ ? { id: SEQ.t.id, idx: SEQ.idx, troca: S.troca, espera: +S.espera.toFixed(2), tc: Object.assign({}, tc) } : null,
@@ -5942,6 +6021,19 @@ window.CORPO3D_EXERCICIOS = function (H) {
     tempoNatural: t => { tNatFixo = t; },
     perfilMov: id => { const e = EXERCICIOS.find(x => x.id === id); return e ? perfilEsforco(e) : null; },
     maos: () => { rig.updateMatrixWorld(true); return CONTACT.hands.map(o => o.getWorldPosition(new V3()).toArray()); },
+    // testes: aplica uma pose livre no exercício atual e mede para onde apontam joelho e ponta do pé
+    poseLivre: P => { cur._As = [P, P]; cur._Bs = [P, P]; cur._Mmeio = null; cur.seq = null; S.estado = 'congelado'; applyPose(0); },
+    joelhoCima: () => {
+      if (!window.__kv) { // eixos locais medidos em pé, parado: joelho e pé apontam para a frente (+z)
+        const sv = boneList.map(b => b.quaternion.clone()); const rp = rig.quaternion.clone();
+        boneList.forEach(b => b.rotation.set(0, 0, 0)); rig.rotation.set(0, 0, 0); rig.updateMatrixWorld(true);
+        window.__kv = {}; for (const l of ['left', 'right']) for (const o of ['LowerLeg', 'Foot']) { const q = bones[l + o].getWorldQuaternion(new THREE.Quaternion()).invert(); window.__kv[l + o] = new V3(0, 0, 1).applyQuaternion(q); }
+        boneList.forEach((b, i) => b.quaternion.copy(sv[i])); rig.quaternion.copy(rp); rig.updateMatrixWorld(true);
+      }
+      const o = {}; for (const k in window.__kv) { const q = bones[k].getWorldQuaternion(new THREE.Quaternion()); o[k] = window.__kv[k].clone().applyQuaternion(q).toArray().map(v => +v.toFixed(2)); }
+      for (const l of ['left', 'right']) { const a = bones[l + 'UpperLeg'].getWorldPosition(new V3()), b = bones[l + 'Foot'].getWorldPosition(new V3()); o[l + 'Dir'] = b.sub(a).normalize().toArray().map(v => +v.toFixed(2)); }
+      return o;
+    },
     rotOssos: () => { const o = {}; for (const b of boneList) o[b.name] = [b.rotation.x, b.rotation.y, b.rotation.z].map(v => v * 180 / Math.PI); return o; },
     movimento: v => { if (v) { CAMCFG.mov = v; gravarCamCfg(); } return CAMCFG.mov; },
     focarPorcao: reg => { const id = BYKEY.reto_abdome.find(i => INST[i].reg === reg && INST[i].side === 'left'); setFocus('reto_abdome', [id]); return { t: $('mTec').textContent, r: $('mRole').textContent }; },

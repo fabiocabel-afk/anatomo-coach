@@ -17,6 +17,16 @@ const r=await p.evaluate(IDS=>{const o={};for(const id of IDS){__corpo.setExerci
 for(const id of IDS){const v=r[id];ok(v.maos<1,id+': mãos fixas no chão ('+v.maos.toFixed(1)+' mm)');ok(v.tronco>1,id+': tronco acompanha ('+v.tronco.toFixed(1)+'°)');ok(v.inv<1,id+': pernas não atravessam a garrafa ('+v.inv.toFixed(0)+' mm)');}
 ok(!r.ziguezague_garrafas.porCima&&r.ziguezague_garrafas.ng===2,'zigue-zague contorna as 2 garrafas pela frente (não passa por cima)');
 ok(r.abre_fecha_garrafas.porCima&&r.passagem_garrafa.porCima&&r.chutes_garrafa.porCima,'abre e fecha, twist e chutes passam por cima da garrafa');
+// peso de verdade: pontos baixos perto do chão (sem encostar), com pausa; ao esticar, joelhos para cima
+const g=await p.evaluate(IDS=>{const o={};for(const id of IDS){__corpo.setExercise(id);const ex=__corpo.exAtual();const ks=ex._seq;let T=0,baixos=[],joelho=1,pausas=0;
+  for(let i=0;i<ks.length;i++){const u=(T+ks[i].hold/2)/ex._seqTot;__corpo.posar(u,0);const h=Math.min(...__corpo.pesPos().map(v=>v[1]));
+    if(ks[i].f>=1){baixos.push(h);if(ks[i].hold>=0.2)pausas++;const k=__corpo.joelhoCima();const reta=Math.abs(k.leftDir[1])<0.6;if(id!=='passagem_garrafa')joelho=Math.min(joelho,k.leftLowerLeg[1],k.rightLowerLeg[1]);}
+    T+=ks[i].hold+ks[(i+1)%ks.length].dur;}
+  let mn=9;for(let i=0;i<=300;i++){__corpo.posar(i/300,0);mn=Math.min(mn,...__corpo.pesPos().map(v=>v[1]));}
+  o[id]={baixos,mn,joelho,pausas,n:baixos.length};}return o;},IDS);
+for(const id of IDS){const v=g[id];ok(v.baixos.every(h=>h>0.004&&h<0.05),id+': nos pontos baixos os pés chegam perto do chão ('+v.baixos.map(h=>(h*100).toFixed(1)).join(', ')+' cm)');
+  ok(v.mn>0.003,id+': os pés nunca encostam no chão (mínimo '+(v.mn*100).toFixed(1)+' cm)');ok(v.pausas===v.n,id+': segura um instante embaixo antes de voltar ('+v.pausas+'/'+v.n+')');
+  if(id!=='passagem_garrafa')ok(v.joelho>0.8,id+': pernas esticadas com joelhos para cima ('+v.joelho.toFixed(2)+')');}
 const cat=await p.evaluate(()=>__corpo.catalogo().map(c=>c.id));
 ok(!['abre_fecha_ar','para_brisa_sentado','tesoura_sentado','twist_joelhos'].some(i=>cat.includes(i)),'exercícios parecidos saíram do catálogo');
 const mig=await p.evaluate(()=>({tr:JSON.parse(localStorage.getItem('corpo3d.treinos.v1@p1')).lista[0].itens.map(i=>i.ex).join(','),fav:__corpo.catalogo2().favs.join(','),h:JSON.stringify(__corpo.historico().map(r=>[r.ex,r.nome]))}));

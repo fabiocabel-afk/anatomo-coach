@@ -835,6 +835,14 @@
   const lados = S => (S && (S.left || S.right)) ? S : { left: S, right: S };
   const trocar = S => ({ left: S.right, right: S.left });
   for (const ex of EXERCICIOS) {
+    if (ex.seq) {
+      // movimento em etapas (garrafas): cada etapa tem a pose, o tempo para chegar nela, o jeito de chegar
+      // (impulso, cai com a gravidade, suave), a pausa parada nela e o esforço (brilho dos músculos)
+      ex._seq = ex.seq.map(k => ({ P: k.P, dur: k.dur || 0.5, ease: k.ease || 'suave', hold: k.hold || 0, f: k.f == null ? 0.6 : k.f }));
+      ex._seqTot = ex._seq.reduce((a, k) => a + k.dur + k.hold, 0);
+      ex.periodo = ex._seqTot;
+      ex.A = ex.B = ex._seq[0].P;
+    }
     ex._Bs = [ex.B, ex.alt ? espelharPose(ex.B) : ex.B];
     ex._As = [ex.A, ex.alt && ex.altA ? espelharPose(ex.A) : ex.A];
     if (ex.M) ex._Mmeio = [ex.M, ex.alt ? espelharPose(ex.M) : ex.M];
@@ -860,6 +868,29 @@
   const REPOUSO = { id: 'repouso', nome: 'Modo repouso', desc: 'Toque num exercício para começar.', repouso: true, prim: [], sec: [],
     cam: { th: 28, ph: 10, dist: 2.9, ty: 0.55 }, A: {}, B: {}, _As: [{}, {}], _Bs: [{}, {}], periodo: 4 };
   let cur = EXERCICIOS[0], t = 0, phase = 0, lastCycle = 0, lado = 0;
+  let cicloU = 0, esfSeq = 0; // exercícios em etapas: posição dentro do ciclo (0–1) e esforço do momento
+  const EASE = {
+    suave: x => x * x * (3 - 2 * x),
+    impulso: x => 1 - Math.pow(1 - x, 2.2),                        // sai rápido (impulso) e desacelera chegando
+    cai: x => x < 0.7 ? 0.86 * Math.pow(x / 0.7, 1.5)              // a gravidade acelera a descida…
+      : 0.86 + 0.14 * (1 - Math.pow(1 - (x - 0.7) / 0.3, 2))       // …e no fim a pessoa freia para não encostar no chão
+  };
+  function poseSeq(ex, u) {
+    const ks = ex._seq, n = ks.length; let T = ((u % 1) + 1) % 1 * ex._seqTot;
+    for (let i = 0; i < n; i++) {
+      const k = ks[i], nx = ks[(i + 1) % n];
+      if (T <= k.hold) return { P: k.P, f: k.f };
+      T -= k.hold;
+      if (T <= nx.dur) {
+        const x = (EASE[nx.ease] || EASE.suave)(Math.min(1, T / nx.dur)), P = {};
+        const nomes = new Set([...Object.keys(k.P), ...Object.keys(nx.P)]);
+        for (const b of nomes) { const a = k.P[b] || ZERO, c = nx.P[b] || ZERO; P[b] = [a[0] + (c[0] - a[0]) * x, a[1] + (c[1] - a[1]) * x, a[2] + (c[2] - a[2]) * x]; }
+        return { P, f: k.f + (nx.f - k.f) * x };
+      }
+      T -= nx.dur;
+    }
+    return { P: ks[0].P, f: ks[0].f };
+  }
   let focusKey = null;
   const _w = new V3();
   const minY = l => { let m = Infinity; for (const o of l) { o.getWorldPosition(_w); if (_w.y < m) m = _w.y; } return m; };
@@ -878,14 +909,15 @@
     if (cur.ik === 'flexao' && !cur._calibrando) { applyFlexao(p); atualizarProps(); return; }
     const li = cur.alt ? lado : 0;
     let A = cur._As[li], B = cur._Bs[li], q = p;
-    if (cur._Mmeio) {
+    if (cur._seq) { const r = poseSeq(cur, cicloU); A = B = r.P; q = 0; esfSeq = r.f; }
+    else if (cur._Mmeio) {
       // pose do meio do caminho (ex.: pés passando por cima da garrafa)
       if (p < 0.5) { B = cur._Mmeio[li]; q = p * 2; } else { A = cur._Mmeio[li]; q = p * 2 - 1; }
     }
     // arco (garrafas): na subida as pernas levantam primeiro e só depois vão para o lado;
     // na descida vão para o lado primeiro e só no fim descem — o pé passa alto por cima da garrafa
     let qSobe = q, qLado = q;
-    if (cur.arco && cur._Mmeio) {
+    if (cur.arco && cur._Mmeio && !cur._seq) {
       const ss = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
       if (p < 0.5) { qSobe = ss(q / 0.55); qLado = ss((q - 0.3) / 0.7); }
       else { qLado = ss(q / 0.7); qSobe = ss((q - 0.45) / 0.55); }
@@ -2069,15 +2101,16 @@
     if (S.estado === 'preparo' || S.estado === 'concluindo' || S.estado === 'pergunta') {
       // parado na posição inicial; em pé, um balanço bem leve e lento de quem está pronto
       // (no chão, com mãos/pés apoiados, fica parado)
-      t += dt; phase = cur.chao || cur.pitch === 'auto' || !movNatural() ? 0 : 0.012 * (1 - Math.cos(2 * Math.PI * t / 6.5)) / 2; lado = 0;
+      t += dt; phase = cur.chao || cur.pitch === 'auto' || !movNatural() ? 0 : 0.012 * (1 - Math.cos(2 * Math.PI * t / 6.5)) / 2; lado = 0; cicloU = 0;
       conferirPreparo();
     } else if (S.estado === 'treino' && S.espera > 0) {
-      S.espera -= dt; phase = 0;
+      S.espera -= dt; phase = 0; cicloU = 0;
       if (S.espera <= 0) { S.espera = 0; painelTreino(); }
     } else if (S.estado === 'previa' || S.estado === 'treino') {
       t += dt;
       const per = cur.isometria ? 1 : cur.periodo * tc.ritmo;
       phase = (1 - Math.cos(2 * Math.PI * t / per)) / 2;
+      cicloU = (t / per) % 1;
       const cyc = Math.floor(t / per);
       // alternando os lados: uma repetição = um lado + o outro (conta só quando os dois foram feitos,
       // assim os dois lados terminam sempre com a mesma quantidade)
@@ -2752,10 +2785,10 @@
     function tamanho(px) { if (tamAtual !== px) { r2.setSize(px, px, false); tamAtual = px; } }
     // guarda o que é do exercício principal e que a pose de outro exercício altera
     function salvarPrincipal() {
-      return { cur, lado, focusKey, pivo: PIVO, garr: garrafas.map(g => [g.visible, g.position.clone()]), sombra: shadow.scale.clone(), sp: shadow.position.clone() };
+      return { cur, lado, focusKey, pivo: PIVO, cicloU, esfSeq, garr: garrafas.map(g => [g.visible, g.position.clone()]), sombra: shadow.scale.clone(), sp: shadow.position.clone() };
     }
     function restaurarPrincipal(sv) {
-      cur = sv.cur; lado = sv.lado; focusKey = sv.focusKey; PIVO = sv.pivo;
+      cur = sv.cur; lado = sv.lado; focusKey = sv.focusKey; PIVO = sv.pivo; cicloU = sv.cicloU; esfSeq = sv.esfSeq;
       garrafas.forEach((g, i) => { g.visible = sv.garr[i][0]; g.position.copy(sv.garr[i][1]); });
       shadow.scale.copy(sv.sombra); shadow.position.copy(sv.sp);
     }
@@ -2771,7 +2804,8 @@
       const per = ex.isometria ? 1 : ex.periodo;
       const ph = (1 - Math.cos(2 * Math.PI * tt / per)) / 2;
       lado = ex.alt ? Math.floor(tt / per) % 2 : 0;
-      applyPose(ph); applyMuscles(ph);
+      cicloU = (tt / per) % 1;
+      applyPose(ph); applyMuscles(ex._seq ? esfSeq : ph);
       const c = ex.cam, cp = Math.cos(rad(c.ph));
       camM.position.set((c.tx || 0) + c.dist * Math.sin(rad(c.th)) * cp, c.ty + c.dist * Math.sin(rad(c.ph)), (c.tz || 0) + c.dist * Math.cos(rad(c.th)) * cp);
       camM.lookAt(c.tx || 0, c.ty, c.tz || 0);
@@ -3772,7 +3806,7 @@
     // com a galeria ou a prévia cobrindo a tela, o corpo principal não precisa ser redesenhado
     const coberto = MINI.quadro(dt);
     if (!coberto) {
-      applyPose(phase); aplicarBlend(dt); applyMuscles(phase); placeCamera();
+      applyPose(phase); aplicarBlend(dt); applyMuscles(cur._seq ? esfSeq : phase); placeCamera();
       comEspelho(() => renderer.render(scene, camera));
     }
     requestAnimationFrame(loop);
@@ -3806,9 +3840,9 @@
     garrafasPos: () => garrafas.filter(g => g.visible).map(g => g.position.toArray()),
     pesPos: () => GR.pes.map(o => o.getWorldPosition(new V3()).toArray()),
     camera: c => aimCamera(c, true),
-    posar: (p, l) => { S.estado = 'congelado'; phase = p; lado = l || 0; blend = null; applyPose(p); },
+    posar: (p, l) => { S.estado = 'congelado'; phase = p; cicloU = p; lado = l || 0; blend = null; applyPose(p); },
     neutro: () => { cur = Object.assign({}, cur, { prim: [], sec: [] }); },
-    setPhase: (p, l) => { S.estado = 'congelado'; phase = p; lado = l || 0; },
+    setPhase: (p, l) => { S.estado = 'congelado'; phase = p; cicloU = p; lado = l || 0; },
     cfgAtual: () => Object.assign({}, cfg),
     treinos: () => JSON.parse(JSON.stringify(TREINOS)),
     seq: () => SEQ ? { id: SEQ.t.id, idx: SEQ.idx, troca: S.troca, espera: +S.espera.toFixed(2), tc: Object.assign({}, tc) } : null,
@@ -3848,6 +3882,19 @@
     tempoNatural: t => { tNatFixo = t; },
     perfilMov: id => { const e = EXERCICIOS.find(x => x.id === id); return e ? perfilEsforco(e) : null; },
     maos: () => { rig.updateMatrixWorld(true); return CONTACT.hands.map(o => o.getWorldPosition(new V3()).toArray()); },
+    // testes: aplica uma pose livre no exercício atual e mede para onde apontam joelho e ponta do pé
+    poseLivre: P => { cur._As = [P, P]; cur._Bs = [P, P]; cur._Mmeio = null; cur.seq = null; S.estado = 'congelado'; applyPose(0); },
+    joelhoCima: () => {
+      if (!window.__kv) { // eixos locais medidos em pé, parado: joelho e pé apontam para a frente (+z)
+        const sv = boneList.map(b => b.quaternion.clone()); const rp = rig.quaternion.clone();
+        boneList.forEach(b => b.rotation.set(0, 0, 0)); rig.rotation.set(0, 0, 0); rig.updateMatrixWorld(true);
+        window.__kv = {}; for (const l of ['left', 'right']) for (const o of ['LowerLeg', 'Foot']) { const q = bones[l + o].getWorldQuaternion(new THREE.Quaternion()).invert(); window.__kv[l + o] = new V3(0, 0, 1).applyQuaternion(q); }
+        boneList.forEach((b, i) => b.quaternion.copy(sv[i])); rig.quaternion.copy(rp); rig.updateMatrixWorld(true);
+      }
+      const o = {}; for (const k in window.__kv) { const q = bones[k].getWorldQuaternion(new THREE.Quaternion()); o[k] = window.__kv[k].clone().applyQuaternion(q).toArray().map(v => +v.toFixed(2)); }
+      for (const l of ['left', 'right']) { const a = bones[l + 'UpperLeg'].getWorldPosition(new V3()), b = bones[l + 'Foot'].getWorldPosition(new V3()); o[l + 'Dir'] = b.sub(a).normalize().toArray().map(v => +v.toFixed(2)); }
+      return o;
+    },
     rotOssos: () => { const o = {}; for (const b of boneList) o[b.name] = [b.rotation.x, b.rotation.y, b.rotation.z].map(v => v * 180 / Math.PI); return o; },
     movimento: v => { if (v) { CAMCFG.mov = v; gravarCamCfg(); } return CAMCFG.mov; },
     focarPorcao: reg => { const id = BYKEY.reto_abdome.find(i => INST[i].reg === reg && INST[i].side === 'left'); setFocus('reto_abdome', [id]); return { t: $('mTec').textContent, r: $('mRole').textContent }; },
