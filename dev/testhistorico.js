@@ -69,7 +69,7 @@ await cl('#bPerfil');await p.evaluate(()=>document.querySelector('#pfList .pfr.c
 x=await p.evaluate(()=>document.getElementById('pfList').textContent);ok(/Exercícios feitos\s*3/.test(x),'ver perfil: resumo de exercícios '+x.slice(0,120));
 await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Exercícios feitos/.test(b.textContent)).click());await sleep(400);
 x=await p.evaluate(()=>({barras:document.querySelectorAll('#grafHist .gBarra').length,linhas:document.querySelectorAll('#pfList table.tab tbody tr').length,dia:document.querySelector('.histDia').textContent}));
-ok(x.barras===1&&x.linhas===3&&/^Hoje · 3 exercícios/.test(x.dia),'exercícios feitos: gráfico de barras e tabela '+JSON.stringify(x));
+ok(x.barras===1&&x.linhas===3&&/^Hoje, \d\d\/\d\d3 exercícios/.test(x.dia),'exercícios feitos: gráfico de barras e tabela '+JSON.stringify(x));
 await p.evaluate(()=>{const r=document.querySelectorAll('#grafHist .gToque');r[r.length-1].dispatchEvent(new PointerEvent('pointerdown'));});await sleep(200);
 x=await p.evaluate(()=>document.querySelector('#grafHist .gDica').textContent);ok(/3 exercícios/.test(x),'toque na barra mostra a dica: '+x);
 await p.screenshot({path:'shots/hist_tela.png'});

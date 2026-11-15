@@ -86,7 +86,8 @@
   try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
   catch (err) { view.innerHTML = '<p style="padding:24px;color:#ff8fa8">Este aparelho não conseguiu iniciar o 3D (WebGL).</p>'; return; }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setClearColor(0x131016, 1);
+  let corCena = 0x131016; // muda com o tema
+  renderer.setClearColor(corCena, 1);
   view.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(32, 1, 0.03, 60);
@@ -1761,7 +1762,7 @@
           it.appendChild(tx);
           if (!escolhaCb) it.appendChild(botaoAddTreino(ex));
           it.appendChild(botaoEstrela(ex, () => { if (CAT.soFav) renderCatalogo($('exQ').value); }));
-          if (ex.id === cur.id && !escolhaCb) it.style.background = 'rgba(100,42,144,.18)';
+          if (ex.id === cur.id && !escolhaCb) it.style.background = 'var(--marcaSel)';
         }
         it.dataset.id = ex.id;
         it.addEventListener('click', () => abrirPrevia(ex));
@@ -1902,7 +1903,29 @@
     } catch (e) { vozPt = null; }
   }
   if (VOZ_OK) { escolherVoz(); try { window.speechSynthesis.addEventListener('voiceschanged', escolherVoz); } catch (e) { /* navegador antigo */ } }
+  /* ---------- Legenda: tudo o que a voz fala aparece escrito embaixo (mesmo com a voz desligada) ---------- */
+  let legTimer = null, legTexto = '', legPos = null;
+  function legendaLigada() { try { return CAMCFG.legenda === true; } catch (e) { return false; } }
+  function posicionarLegenda() {
+    // logo acima dos controles: no modo imersivo o painel fica por cima da cena, então usa o contador de repetições
+    const el = $('legenda'), ref = $('cont').offsetParent ? $('cont') : $('panel');
+    el.style.bottom = Math.max(12, window.innerHeight - ref.getBoundingClientRect().top + 10) + 'px';
+  }
+  function mostrarLegenda(txt, comVoz) {
+    if (!legendaLigada()) return;
+    const el = $('legenda'); legTexto = txt; el.textContent = txt; posicionarLegenda(); el.hidden = false;
+    // o painel recolhe/aparece durante o treino: acompanha enquanto a legenda estiver na tela
+    if (!legPos) legPos = setInterval(() => { if ($('legenda').hidden) { clearInterval(legPos); legPos = null; } else posicionarLegenda(); }, 250);
+    clearTimeout(legTimer);
+    // com voz: some pouco depois de a fala terminar (garantia de 12 s); sem voz: tempo de leitura
+    const palavras = String(txt).split(/\s+/).length;
+    legTimer = setTimeout(esconderLegenda, comVoz ? 12000 : Math.max(1800, 900 + palavras * 380));
+  }
+  function esconderLegenda() { clearTimeout(legTimer); legTimer = null; $('legenda').hidden = true; legTexto = ''; }
+  window.addEventListener('resize', () => { if (!$('legenda').hidden) posicionarLegenda(); });
   function falar(txt, interromper, forcar, aoTerminar) {
+    const comVoz = (cfg.voz || forcar) && VOZ_OK;
+    mostrarLegenda(txt, comVoz);
     if ((!cfg.voz && !forcar) || !VOZ_OK) return false;
     try {
       // só cancela se houver algo falando: em alguns Androids cancelar e falar em seguida faz a fala nova "terminar" na hora
@@ -1915,11 +1938,12 @@
         setTimeout(() => { if (!solto && u.onstart) soltar(); }, 9000);
       }
       if (aoTerminar) u.addEventListener('end', () => aoTerminar());
+      u.addEventListener('end', () => { if (legTexto === txt) { clearTimeout(legTimer); legTimer = setTimeout(esconderLegenda, 900); } });
       window.speechSynthesis.speak(u);
       return true;
     } catch (e) { return false; /* sem voz: o contador na tela continua valendo */ }
   }
-  function calarVoz() { if (VOZ_OK) try { window.speechSynthesis.cancel(); } catch (e) { /* ignora */ } if (window.Musica) Musica.soltarAbaixar(); }
+  function calarVoz() { if (VOZ_OK) try { window.speechSynthesis.cancel(); } catch (e) { /* ignora */ } if (window.Musica) Musica.soltarAbaixar(); esconderLegenda(); }
 
   const S = { estado: 'previa', antes: 'treino', ciclo: 1, rep: 0, resto: 0, restoInt: 0, espera: 0, troca: false, prep: null, lado2: false, pausaEntreMs: 0, posFim: null };
   const ICON_RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>';
@@ -2213,7 +2237,7 @@
     for (const k of ['reps', 'ciclos', 'descanso', 'pausaRep', 'depois']) if (rascunho[k] !== undefined) $('v_' + k).textContent = String(rascunho[k]) + (k === 'reps' ? (cfgIso ? ' s' : '') : k === 'ciclos' ? '' : ' s');
     for (const o of $('cRitmo').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.ritmo);
     for (const o of $('cCan').children) o.classList.toggle('on', Number(o.dataset.v) === rascunho.caneleira);
-    try { movUI(); } catch (e) { /* ainda iniciando */ }
+    try { movUI(); aparenciaUI(); } catch (e) { /* ainda iniciando */ }
     $('cVoz').checked = rascunho.voz;
   }
   for (const btn of document.querySelectorAll('.stp button')) {
@@ -2226,6 +2250,22 @@
   for (const o of $('cCan').children) o.addEventListener('click', () => { rascunho.caneleira = Number(o.dataset.v); cfgUI(); });
   // movimento do corpo: vale na hora e para todos os exercícios (preferência do perfil)
   function movUI() { for (const o of $('cMov').children) o.classList.toggle('on', o.dataset.v === (movNatural() ? 'natural' : 'estatico')); }
+  // tema e legenda: valem na hora, para todos os exercícios deste perfil
+  function aparenciaUI() {
+    for (const o of $('cTema').children) o.classList.toggle('on', o.dataset.v === CAMCFG.tema);
+    for (const o of $('cLeg').children) o.classList.toggle('on', o.dataset.v === (CAMCFG.legenda ? 'sim' : 'nao'));
+  }
+  for (const o of $('cTema').children) o.addEventListener('click', () => {
+    const antes = CAMCFG.tema; CAMCFG.tema = o.dataset.v;
+    if (!gravarCamCfg()) { CAMCFG.tema = antes; $('cfgMsg').textContent = 'Atenção: não consegui salvar o tema neste aparelho.'; }
+    aplicarTema(); aparenciaUI();
+  });
+  for (const o of $('cLeg').children) o.addEventListener('click', () => {
+    const antes = CAMCFG.legenda; CAMCFG.legenda = o.dataset.v === 'sim';
+    if (!gravarCamCfg()) { CAMCFG.legenda = antes; $('cfgMsg').textContent = 'Atenção: não consegui salvar a legenda neste aparelho.'; }
+    if (!CAMCFG.legenda) esconderLegenda();
+    aparenciaUI();
+  });
   for (const o of $('cMov').children) o.addEventListener('click', () => {
     const antes = CAMCFG.mov; CAMCFG.mov = o.dataset.v;
     if (!gravarCamCfg()) { CAMCFG.mov = antes; $('cfgMsg').textContent = 'Atenção: não consegui salvar o movimento do corpo neste aparelho.'; }
@@ -2811,6 +2851,7 @@
       const c = ex.cam, cp = Math.cos(rad(c.ph));
       camM.position.set((c.tx || 0) + c.dist * Math.sin(rad(c.th)) * cp, c.ty + c.dist * Math.sin(rad(c.ph)), (c.tz || 0) + c.dist * Math.cos(rad(c.th)) * cp);
       camM.lookAt(c.tx || 0, c.ty, c.tz || 0);
+      r2.setClearColor(corCena, 1);
       r2.render(scene, camM);
     }
     function registrar(canvas, ex) {
@@ -3234,7 +3275,12 @@
     for (const k of chaves) {
       const d = porDia[k], h = document.createElement('div'); h.className = 'histDia';
       const dt = new Date(k + 'T12:00:00'), sem = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-      h.textContent = (k === hojeStr() ? 'Hoje' : sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dataBR(k)) + ' · ' + d.n + (d.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(d.seg) + (d.pausa ? ' + ' + durTxt(d.pausa) + ' de pausas' : '');
+      // data numa cápsula roxa, para separar bem um dia do outro; o resumo do dia vem ao lado
+      const cap = document.createElement('span'); cap.className = 'histData';
+      cap.textContent = k === hojeStr() ? 'Hoje, ' + dataBR(k).slice(0, 5) : sem.charAt(0).toUpperCase() + sem.slice(1) + ', ' + dataBR(k);
+      const inf = document.createElement('span'); inf.className = 'histInfo';
+      inf.textContent = d.n + (d.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(d.seg) + (d.pausa ? ' + ' + durTxt(d.pausa) + ' de pausas' : '');
+      h.appendChild(cap); h.appendChild(inf);
       box.appendChild(h);
       const tb = document.createElement('table'); tb.className = 'tab tabHist'; const tbody = document.createElement('tbody');
       for (const r of d.itens) {
@@ -3445,11 +3491,21 @@
   const CAMERA_KEY = chave('anatomotion.camera.v1');
   const VEL_GIRO = n => 2.5 * n; // graus por segundo: 1 = 2,5°/s … 10 = 25°/s (uma volta em ~14 s)
   const CAMCFG = (function () {
-    const c = { modo: 'fixa', giro: 180, vel: 3, mov: 'natural' };
-    try { const o = JSON.parse(localStorage.getItem(CAMERA_KEY) || '{}') || {}; if (o.modo === 'girar' || o.modo === 'fixa') c.modo = o.modo; if (o.mov === 'estatico') c.mov = 'estatico'; if ([30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360].includes(o.giro)) c.giro = o.giro; if (Number.isInteger(o.vel) && o.vel >= 1 && o.vel <= 10) c.vel = o.vel; } catch (e) { /* padrão */ }
+    const c = { modo: 'fixa', giro: 180, vel: 3, mov: 'natural', tema: 'escuro', legenda: false };
+    try { const o = JSON.parse(localStorage.getItem(CAMERA_KEY) || '{}') || {}; if (o.modo === 'girar' || o.modo === 'fixa') c.modo = o.modo; if (o.mov === 'estatico') c.mov = 'estatico'; if (o.tema === 'claro') c.tema = 'claro'; if (o.legenda === true) c.legenda = true; if ([30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360].includes(o.giro)) c.giro = o.giro; if (Number.isInteger(o.vel) && o.vel >= 1 && o.vel <= 10) c.vel = o.vel; } catch (e) { /* padrão */ }
     return c;
   })();
   function gravarCamCfg() { try { const tx = JSON.stringify(CAMCFG); localStorage.setItem(CAMERA_KEY, tx); return localStorage.getItem(CAMERA_KEY) === tx; } catch (e) { return false; } }
+  /* ---------- Aparência e acessibilidade: tema e legenda (por perfil; começa escuro e sem legenda) ---------- */
+  function aplicarTema() {
+    const claro = CAMCFG.tema === 'claro';
+    document.body.classList.toggle('claro', claro);
+    corCena = claro ? 0xECE7F1 : 0x131016;
+    renderer.setClearColor(corCena, 1);
+    floor.material.color.set(claro ? 0xDDD5E5 : 0x1d1922);
+    const m = $('metaTema'); if (m) m.setAttribute('content', claro ? '#F4F1F7' : '#131016');
+  }
+  aplicarTema();
   let giroFase = 0, giroGrau = 0;
   function girarCamera(dt) {
     // só durante o exercício (anúncio, execução e aviso de fim); no descanso e fora do treino fica parada
@@ -3898,6 +3954,8 @@
       return o;
     },
     rotOssos: () => { const o = {}; for (const b of boneList) o[b.name] = [b.rotation.x, b.rotation.y, b.rotation.z].map(v => v * 180 / Math.PI); return o; },
+    tema: v => { if (v) { CAMCFG.tema = v; gravarCamCfg(); aplicarTema(); } return CAMCFG.tema; },
+    legenda: v => { if (v != null) { CAMCFG.legenda = !!v; gravarCamCfg(); } return CAMCFG.legenda; },
     movimento: v => { if (v) { CAMCFG.mov = v; gravarCamCfg(); } return CAMCFG.mov; },
     focarPorcao: reg => { const id = BYKEY.reto_abdome.find(i => INST[i].reg === reg && INST[i].side === 'left'); setFocus('reto_abdome', [id]); return { t: $('mTec').textContent, r: $('mRole').textContent }; },
     espelhado: () => espelhado(), lado2: () => S.lado2, doisLados: () => EXERCICIOS.filter(e => e.doisLados).map(e => e.id),
