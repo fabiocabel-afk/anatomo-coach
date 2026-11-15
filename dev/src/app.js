@@ -810,9 +810,8 @@
   const ABD_FOCO = {
     abdominal: 'sup', toque_pes: 'sup', abdominal_completo: 'supmed',
     elevacao_pernas: 'inf', tesoura: 'inf', dead_bug: 'inf', escalador: 'inf', joelho_peito_4apoios: 'inf',
-    ziguezague_garrafas: 'inf', abre_fecha_garrafas: 'inf', passagem_garrafa: 'inf', chutes_garrafa: 'inf',
+    ziguezague_garrafas: 'inf', abre_fecha_garrafas: 'inf', passagem_garrafa: 'med', chutes_garrafa: 'inf',
     marcha_joelho: 'inf', elevacao_perna_frontal: 'inf', elevacao_perna_deitado: 'inf',
-    abre_fecha_ar: 'inf', para_brisa_sentado: 'inf', tesoura_sentado: 'inf', twist_joelhos: 'med',
     bicicleta: 'med', canivete: 'med', canoa: 'med', rotacao_russa: 'med', prancha: 'med', toque_ombro: 'med',
     urso: 'med', perdigueiro_toque: 'med', rolamento_ajoelhado: 'med'
   };
@@ -1592,6 +1591,27 @@
     const on = chips.querySelector('.chip.on'); if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) { /* ok */ }
   }
   /* ---------- Catálogo: grupo (lista suspensa própria), lista ou miniaturas, e prévia ---------- */
+  /* ---------- Exercícios que foram juntados com outros: os ids antigos passam para o que ficou ----------
+   * Vale para treinos montados, favoritos e histórico de todos os perfis. Só grava se mudou, e confere. */
+  const SUBSTITUIDOS = { abre_fecha_ar: 'abre_fecha_garrafas', para_brisa_sentado: 'ziguezague_garrafas', tesoura_sentado: 'chutes_garrafa', twist_joelhos: 'passagem_garrafa' };
+  (function migrarIds() {
+    const novoId = id => SUBSTITUIDOS[id] || id, nomeDe = id => { const e = EXERCICIOS.find(x => x.id === id); return e ? e.nome : null; };
+    const gravar = (k, o) => { const t = JSON.stringify(o); localStorage.setItem(k, t); if (localStorage.getItem(k) !== t) throw new Error(k); };
+    for (const pf of PERFIS.lista) {
+      try {
+        const kt = 'corpo3d.treinos.v1@' + pf.id, t = JSON.parse(localStorage.getItem(kt) || 'null');
+        if (t && Array.isArray(t.lista)) { let m = false; for (const tr of t.lista) for (const it of (tr.itens || [])) if (SUBSTITUIDOS[it.ex]) { it.ex = novoId(it.ex); m = true; } if (m) gravar(kt, t); }
+      } catch (e) { /* mantém como está */ }
+      try {
+        const kc = 'corpo3d.catalogo.v1@' + pf.id, c = JSON.parse(localStorage.getItem(kc) || 'null');
+        if (c && Array.isArray(c.favs) && c.favs.some(f => SUBSTITUIDOS[f])) { c.favs = [...new Set(c.favs.map(novoId))]; gravar(kc, c); }
+      } catch (e) { /* ok */ }
+      try {
+        const kh = 'anatomotion.historico.v1@' + pf.id, h = JSON.parse(localStorage.getItem(kh) || 'null');
+        if (h && Array.isArray(h.lista) && h.lista.some(r => SUBSTITUIDOS[r.ex])) { for (const r of h.lista) if (SUBSTITUIDOS[r.ex]) { r.ex = novoId(r.ex); r.nome = nomeDe(r.ex) || r.nome; } gravar(kh, h); }
+      } catch (e) { /* ok */ }
+    }
+  })();
   const CAT_KEY = chave('corpo3d.catalogo.v1');
   const GRUPOS = [];
   for (const eq in EQUIP) for (const rg in REGIAO) { const n = EXERCICIOS.filter(e => e.equip === eq && e.regiao === rg).length; if (n) GRUPOS.push({ k: eq + '|' + rg, eq, rg, nome: EQUIP[eq] + ' · ' + REGIAO[rg], n }); }
@@ -3764,6 +3784,25 @@
     setExercise: id => setExercise(id, true),
     atual: () => cur.id, repouso: () => repousoAtivo(), posFim: () => S.posFim,
     exAtual: () => cur,
+    // pernas × garrafas: pontos ao longo da coxa, canela e pé; devolve a pior invasão (m) e se passou por cima
+    pernasGarrafas: () => {
+      rig.updateMatrixWorld(true);
+      const gs = garrafas.filter(g => g.visible).map(g => g.position);
+      let inv = 0, porCima = false, minH = 9;
+      for (const l of ['left', 'right']) {
+        const pts = [bones[l + 'UpperLeg'], bones[l + 'LowerLeg'], bones[l + 'Foot'], bones[l + 'Toes']].map(b => b.getWorldPosition(new V3()));
+        const am = [];
+        for (let k = 0; k < 3; k++) for (let t = 0; t <= 12; t++) am.push([pts[k].clone().lerp(pts[k + 1], t / 12), k === 0 ? 0.07 : k === 1 ? 0.05 : 0.045]);
+        for (const [q, r] of am) {
+          minH = Math.min(minH, q.y - r);
+          for (const g of gs) {
+            const d = Math.hypot(q.x - g.x, q.z - g.z);
+            if (d < 0.04 + r) { if (q.y - r < 0.225) inv = Math.max(inv, Math.min(0.04 + r - d, 0.225 - (q.y - r))); else if (q.y < 0.7) porCima = true; }
+          }
+        }
+      }
+      return { inv, porCima, minH };
+    },
     garrafasPos: () => garrafas.filter(g => g.visible).map(g => g.position.toArray()),
     pesPos: () => GR.pes.map(o => o.getWorldPosition(new V3()).toArray()),
     camera: c => aimCamera(c, true),
