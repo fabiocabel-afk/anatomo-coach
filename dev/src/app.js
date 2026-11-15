@@ -812,6 +812,7 @@
     elevacao_pernas: 'inf', tesoura: 'inf', dead_bug: 'inf', escalador: 'inf', joelho_peito_4apoios: 'inf',
     ziguezague_garrafas: 'inf', abre_fecha_garrafas: 'inf', passagem_garrafa: 'inf', chutes_garrafa: 'inf',
     marcha_joelho: 'inf', elevacao_perna_frontal: 'inf', elevacao_perna_deitado: 'inf',
+    abre_fecha_ar: 'inf', para_brisa_sentado: 'inf', tesoura_sentado: 'inf', twist_joelhos: 'med',
     bicicleta: 'med', canivete: 'med', canoa: 'med', rotacao_russa: 'med', prancha: 'med', toque_ombro: 'med',
     urso: 'med', perdigueiro_toque: 'med', rolamento_ajoelhado: 'med'
   };
@@ -1167,7 +1168,21 @@
       const pl = Bc.polo || [0.3, -1, -0.3];
       const polo = new V3(s * pl[0], pl[1], pl[2]).applyQuaternion(rot);
       ik2(bones[pn + 'UpperArm'], bones[pn + 'LowerArm'], bones[pn + 'Hand'], W, polo, L_BRACO, L_ANTEBRACO);
+      if (frame === 'apoio') travarMao(pn, p);
     }
+  }
+  // mão apoiada no chão: a palma não gira junto com o antebraço (senão escorrega).
+  // Guarda a orientação da mão no início do movimento e mantém igual; só o punho dobra.
+  const _qh = new THREE.Quaternion(), _qpm = new THREE.Quaternion();
+  function travarMao(pn, p) {
+    const h = bones[pn + 'Hand'];
+    h.parent.updateMatrixWorld(true);
+    const ref = cur._maoQ || (cur._maoQ = {});
+    if (!ref[pn]) { h.updateMatrixWorld(true); ref[pn] = h.getWorldQuaternion(new THREE.Quaternion()); return; }
+    h.parent.getWorldQuaternion(_qpm);
+    // a referência foi tirada com o corpo na mesma posição no chão; corrige pela rotação atual do corpo
+    h.quaternion.copy(_qpm.invert().multiply(_qh.copy(ref[pn])));
+    h.updateMatrixWorld(true);
   }
 
   /* ---------- Acessórios a cada quadro ---------- */
@@ -3793,6 +3808,7 @@
     mirarEm: (k, th, ph, dist) => { const ids = BYKEY[k], c = new V3(); ids.forEach(i => c.add(centroid(i))); c.divideScalar(ids.length); tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: c.x, ty: c.y, tz: c.z }); },
     tempoNatural: t => { tNatFixo = t; },
     perfilMov: id => { const e = EXERCICIOS.find(x => x.id === id); return e ? perfilEsforco(e) : null; },
+    maos: () => { rig.updateMatrixWorld(true); return CONTACT.hands.map(o => o.getWorldPosition(new V3()).toArray()); },
     rotOssos: () => { const o = {}; for (const b of boneList) o[b.name] = [b.rotation.x, b.rotation.y, b.rotation.z].map(v => v * 180 / Math.PI); return o; },
     movimento: v => { if (v) { CAMCFG.mov = v; gravarCamCfg(); } return CAMCFG.mov; },
     focarPorcao: reg => { const id = BYKEY.reto_abdome.find(i => INST[i].reg === reg && INST[i].side === 'left'); setFocus('reto_abdome', [id]); return { t: $('mTec').textContent, r: $('mRole').textContent }; },
