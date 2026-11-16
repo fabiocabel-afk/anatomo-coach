@@ -170,7 +170,9 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .gPonto{fill:var(--card);stroke:#9D5FE0;stroke-width:2}
 .gLinha2{fill:none;stroke:#CC7414;stroke-width:2;stroke-dasharray:5 4;stroke-linejoin:round;stroke-linecap:round}
 .gPonto2{fill:var(--card);stroke:#CC7414;stroke-width:2}
-.gPonto.gSelP{fill:#9D5FE0}.gPonto2.gSelP{fill:#CC7414}.gFixo{stroke:var(--grade2);visibility:visible}
+.gPonto.gSelP{fill:#9D5FE0}.gPonto2.gSelP{fill:#CC7414}
+.gPonto.gAtivo{fill:#9D5FE0;stroke-width:3}.gPonto2.gAtivo{fill:#CC7414;stroke-width:3}
+.tab tr.marcada td{background:var(--marcaSel)}.tab tr.marcada td:first-child{box-shadow:inset 3px 0 0 var(--roxo-f);font-weight:600}.gFixo{stroke:var(--grade2);visibility:visible}
 .fitaDataSel{align-self:flex-start;display:inline-block;background:var(--roxo-f);color:#fff;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;margin:0 0 10px}
 .fitaGraf{background:var(--card2);border:1px solid var(--bd);border-radius:14px;padding:10px 10px 4px;margin-bottom:10px}
 .fitaGrafCab{display:flex;align-items:center;gap:8px;margin-bottom:2px}.fitaGrafCab b{flex:1;font-size:15px}
@@ -194,7 +196,7 @@ body.claro .fmCorpo{fill:#D9C6A8;stroke:#D9C6A8}
 .fitaLista{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px}
 .fitaLin{display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:8px 10px;color:var(--tx);cursor:pointer;font:inherit}
 .fitaLin .trt,.medLin .trt,.fitaCab .trt{flex:1;min-width:0;display:flex;flex-direction:column}
-.fitaLin small,.medLin small,.fitaCab small{font-size:11px;color:var(--tx2);line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip}
+.fitaLin .trt small,.medLin .trt small,.fitaCab .trt small{font-size:11px;color:var(--tx2);line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip}
 .fitaN{flex:none;width:22px;height:22px;border-radius:50%;background:var(--roxo-f);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .fitaVal{display:flex;flex-direction:column;align-items:flex-end;font-size:13px;font-weight:600;white-space:nowrap}
 .fitaVal em{font-style:normal;font-weight:400;font-size:11px;color:var(--tx2)}

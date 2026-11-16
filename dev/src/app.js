@@ -3203,6 +3203,15 @@
     }
     return d;
   }
+  // liga um gráfico de linha à tabela abaixo dele: tocar num ponto destaca a linha da tabela; tocar na linha marca o ponto
+  function ligarGrafTabela(gw, tbody, datas) {
+    const destacar = d => { for (const tr of tbody.rows) tr.classList.toggle('marcada', tr.dataset.d === d); };
+    gw._aoMarcar = i => destacar(datas[i]);
+    for (const tr of tbody.rows) {
+      tr.classList.add('clic');
+      tr.addEventListener('click', e => { if (e.target.closest('button')) return; destacar(tr.dataset.d); if (gw.marcar) gw.marcar(datas.indexOf(tr.dataset.d)); });
+    }
+  }
   function grafico(alvo, tipo, dados, fmtEixo, opc) {
     // dados: [{ rot, v, dica, partes? }] · tipo 'pilha': barras empilhadas (partes = [base, topo])
     // opc: { sel: índice selecionado, aoTocar: i => … }
@@ -3227,7 +3236,7 @@
     const n = dados.length, bw = iw / n, xc = i => ml + bw * (i + 0.5);
     const cada = Math.max(1, Math.ceil(n / 7)); // no máximo ~7 rótulos de data
     dados.forEach((d, i) => { if ((n - 1 - i) % cada === 0) { const t = elSvg('text', { x: xc(i), y: H - 8, class: 'gEixo', 'text-anchor': 'middle' }); t.textContent = d.rot; svg.appendChild(t); } });
-    const marcas = [];
+    const marcas = [], pontosDe = [];
     if (tipo === 'barra') {
       const larg = Math.max(3, Math.min(22, bw - 4));
       // pedaço de barra: arredondado só em cima quando é o topo da pilha
@@ -3254,8 +3263,10 @@
       if (dados.some(d => d.v != null)) svg.appendChild(elSvg('path', { class: 'gLinha', d: curvaSuave(pts('v')) }));
       if (duas) svg.appendChild(elSvg('path', { class: 'gLinha2', d: curvaSuave(pts('v2')) }));
       dados.forEach((d, i) => { // marcadores ocos, da cor da linha
-        if (d.v != null) svg.appendChild(elSvg('circle', { class: 'gPonto' + (opc.sel === i ? ' gSelP' : ''), cx: xc(i), cy: y(d.v), r: 4 }));
-        if (duas && d.v2 != null) svg.appendChild(elSvg('rect', { class: 'gPonto2' + (opc.sel === i ? ' gSelP' : ''), x: xc(i) - 3.6, y: y(d.v2) - 3.6, width: 7.2, height: 7.2, rx: 1.5 }));
+        const mk = [];
+        if (d.v != null) mk.push(svg.appendChild(elSvg('circle', { class: 'gPonto' + (opc.sel === i ? ' gSelP' : ''), cx: xc(i), cy: y(d.v), r: 4 })));
+        if (duas && d.v2 != null) mk.push(svg.appendChild(elSvg('rect', { class: 'gPonto2' + (opc.sel === i ? ' gSelP' : ''), x: xc(i) - 3.6, y: y(d.v2) - 3.6, width: 7.2, height: 7.2, rx: 1.5 })));
+        pontosDe[i] = mk;
         const vy = d.v != null ? d.v : d.v2; marcas.push({ i, x: xc(i), y: y(vy), d });
       });
     }
@@ -3263,7 +3274,12 @@
     const dica = document.createElement('div'); dica.className = 'gDica'; dica.hidden = true;
     const realce = elSvg('line', { class: 'gRealce', y1: mt, y2: mt + ih, x1: 0, x2: 0, visibility: 'hidden' });
     svg.insertBefore(realce, svg.firstChild);
-    const mostrar = m => {
+    let ativos = [];
+    const mostrar = (m, deFora) => {
+      // marcador da data fica cheio; quem estiver ligado ao gráfico (tabela) é avisado
+      for (const e of ativos) e.classList.remove('gAtivo');
+      ativos = pontosDe[m.i] || []; for (const e of ativos) e.classList.add('gAtivo');
+      if (!deFora && alvo._aoMarcar) alvo._aoMarcar(m.i);
       realce.setAttribute('x1', m.x); realce.setAttribute('x2', m.x); realce.setAttribute('visibility', 'visible');
       dica.innerHTML = ''; const b = document.createElement('b'); b.textContent = m.d.dica; dica.appendChild(b);
       if (m.d.dica2) { const sm = document.createElement('small'); sm.textContent = m.d.dica2; dica.appendChild(sm); }
@@ -3283,6 +3299,7 @@
     if (fixa) { const r2 = elSvg('line', { class: 'gRealce gFixo', y1: mt, y2: mt + ih, x1: fixa.x, x2: fixa.x }); svg.insertBefore(r2, svg.firstChild); }
     svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { dica.hidden = true; realce.setAttribute('visibility', 'hidden'); } });
     alvo.appendChild(svg); alvo.appendChild(dica);
+    alvo.marcar = i => { const m = marcas.find(x => x.i === i); if (m) mostrar(m, true); else { dica.hidden = true; realce.setAttribute('visibility', 'hidden'); for (const e of ativos) e.classList.remove('gAtivo'); ativos = []; } };
     if (opc.legenda) { // legenda sempre que há duas séries
       const lg = document.createElement('div'); lg.className = 'gLeg';
       opc.legenda.forEach((nm, j) => { const sp = document.createElement('span'); sp.innerHTML = '<svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" class="' + (j ? 'gLinha2' : 'gLinha') + '"/>' + (j ? '<rect x="7.4" y="1.4" width="7.2" height="7.2" rx="1.5" class="gPonto2"/>' : '<circle cx="11" cy="5" r="3.6" class="gPonto"/>') + '</svg>'; sp.appendChild(document.createTextNode(nm)); lg.appendChild(sp); });
@@ -3413,7 +3430,7 @@
     const tb = document.createElement('table'); tb.className = 'tab'; tb.innerHTML = '<thead><tr><th>Data</th><th>Peso</th><th>Dif.</th><th></th></tr></thead>';
     const tbody = document.createElement('tbody'); const inv = ps.slice().reverse();
     inv.forEach((r, i) => {
-      const ant = inv[i + 1], tr = document.createElement('tr');
+      const ant = inv[i + 1], tr = document.createElement('tr'); tr.dataset.d = r.d;
       const td = (t, cl) => { const x = document.createElement('td'); x.textContent = t; if (cl) x.className = cl; tr.appendChild(x); };
       td(r.d === hojeStr() ? 'Hoje' : dataBR(r.d)); td(numBR(r.v) + ' kg');
       if (ant) { const x = Math.round((r.v - ant.v) * 10) / 10; td(x === 0 ? '=' : (x > 0 ? '+' : '−') + numBR(Math.abs(x)), x > 0 ? 'sobe' : x < 0 ? 'desce' : ''); } else td('');
@@ -3424,6 +3441,7 @@
       tbody.appendChild(tr);
     });
     tb.appendChild(tbody); box.appendChild(tb);
+    ligarGrafTabela(gw, tbody, ultimos.map(r => r.d));
   }
   /* ---------- Medidas com a fita (circunferências, em cm) ----------
      x/y/m = posição da faixa na figura (pixels da imagem 710×1720; lado direito da pessoa = esquerda de quem olha) */
@@ -3630,7 +3648,7 @@
     tb.innerHTML = '<thead><tr><th>Data</th>' + ch.map(([, rot]) => '<th>' + (rot || 'Medida') + '</th>').join('') + '<th></th></tr></thead>';
     const tbody = document.createElement('tbody');
     dias.slice().reverse().forEach(dia => {
-      const tr = document.createElement('tr');
+      const tr = document.createElement('tr'); tr.dataset.d = dia;
       const td = t => { const x = document.createElement('td'); x.textContent = t; tr.appendChild(x); return x; };
       td(dia === hojeStr() ? 'Hoje' : dataBR(dia));
       ch.forEach((_, j) => { const v = valor(j, dia); td(v == null ? '—' : numBR(v)); });
@@ -3641,6 +3659,7 @@
       tbody.appendChild(tr);
     });
     tb.appendChild(tbody); box.appendChild(tb);
+    ligarGrafTabela(gw, tbody, ult);
   }
   // tempos de um registro: exercício e pausas programadas (registros antigos não têm as pausas separadas)
   const pausasSeg = r => (r.descansoSeg || 0) + (r.pausaAntesSeg || 0);
