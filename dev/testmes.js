@@ -21,7 +21,7 @@ await p.evaluate(()=>{
 });
 await p.reload();await carregar();
 await cl('#bPerfil');await p.evaluate(()=>document.querySelectorAll('#pfList .pfr.clic')[0].click());await sleep(250);
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Exercícios feitos/.test(b.textContent)).click());await sleep(300);
+await p.evaluate(()=>document.getElementById('bPfExercicios').click());await sleep(300);
 const mesStr=k=>{const h=new Date();const d=new Date(h.getFullYear(),h.getMonth()-k,1);return String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();};
 let s=await p.evaluate(()=>({ops:[...document.querySelectorAll('#histMes option')].map(o=>o.textContent),val:document.getElementById('histMes').value,on:document.querySelector('#histDias .on')?.dataset.v,
   barras:document.querySelectorAll('#grafHist .gGrupo').length,eixo:document.querySelectorAll('#grafHist rect.gToque').length,dias:[...document.querySelectorAll('.histDia .histData')].length}));
@@ -48,7 +48,7 @@ s=await p.evaluate(()=>({filtro:document.getElementById('histFiltro')?.textConte
 ok(/12\//.test(s.filtro||'')&&s.dias===1&&s.mes!=='','tocar na barra do dia 12 filtra aquele dia, mantendo o mês');
 // gráfico de linha: curva suave e marcadores ocos
 await cl('#bPfVoltar');
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Ver medidas/.test(b.textContent)).click());await sleep(300);
+await p.evaluate(()=>document.getElementById('bPfMedidas').click());await sleep(300);
 s=await p.evaluate(()=>{const l=document.querySelector('#grafPeso path.gLinha');const c=document.querySelector('#grafPeso circle.gPonto');const cs=getComputedStyle(c);return {d:l&&l.getAttribute('d'),pts:document.querySelectorAll('#grafPeso circle.gPonto').length,fill:cs.fill,stroke:cs.stroke,card:getComputedStyle(document.body).getPropertyValue('--card').trim()};});
 ok(s.d&&/C/.test(s.d)&&s.pts===4,'linha do peso é curva (C) com 4 marcadores');
 ok(s.stroke==='rgb(157, 95, 224)'&&s.fill!==s.stroke,'marcador oco: borda da cor da linha, miolo da cor do fundo '+s.fill+' / '+s.stroke);

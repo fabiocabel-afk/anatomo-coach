@@ -12,7 +12,7 @@ await p.evaluate(()=>{localStorage.clear();localStorage.setItem('anatomotion.cor
   braco_d:[{d:'2026-10-01',v:35,t:1},{d:'2026-10-15',v:35.6,t:1},{d:'2026-11-01',v:36.2,t:1}],braco_e:[{d:'2026-10-01',v:34.6,t:1},{d:'2026-11-01',v:35.5,t:1}]}}));});
 await p.reload();await carregar();
 await cl('#bPerfil');await p.evaluate(()=>document.querySelectorAll('#pfList .pfr.clic')[0].click());await sleep(250);
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Ver medidas/.test(b.textContent)).click());await sleep(300);
+await p.evaluate(()=>document.getElementById('bPfMedidas').click());await sleep(300);
 await cl('#pfMedAba button[data-v=fita]');
 let s=await p.evaluate(()=>{const im=document.querySelector('.figMed image');const r=document.querySelector('.figMed').getBoundingClientRect();return {img:!!im&&/^data:image\/webp;base64,/.test(im.getAttribute('href')),w:r.width,h:r.height,marcas:document.querySelectorAll('.figMed .fmMarca').length,bt:!!document.getElementById('bFitaGraf')};});
 ok(s.img&&s.marcas===18&&s.bt&&s.w>200&&s.h>s.w*2,'figura nova (imagem embutida), 18 pontos, botão de gráficos '+JSON.stringify(s));

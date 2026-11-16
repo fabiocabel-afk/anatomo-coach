@@ -10,7 +10,7 @@ await p.evaluate(()=>{localStorage.clear();localStorage.setItem('anatomotion.cor
   braco_d:[{d:'2026-10-01',v:35,t:1},{d:'2026-10-15',v:35.6,t:1},{d:'2026-11-01',v:36.2,t:1}],braco_e:[{d:'2026-10-01',v:34.6,t:1},{d:'2026-11-01',v:35.5,t:1}]}}));});
 await p.reload();await carregar();
 await cl('#bPerfil');await p.evaluate(()=>document.querySelectorAll('#pfList .pfr.clic')[0].click());await sleep(250);
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Ver medidas/.test(b.textContent)).click());await sleep(300);
+await p.evaluate(()=>document.getElementById('bPfMedidas').click());await sleep(300);
 const estado=g=>p.evaluate(g=>({linha:[...document.querySelectorAll('table.tab tbody tr.marcada')].map(t=>t.dataset.d).join(),realce:document.querySelector(g+' .gRealce:not(.gFixo)').getAttribute('visibility'),
   dica:document.querySelector(g+' .gDica').hidden?'':document.querySelector(g+' .gDica').textContent,ativos:document.querySelectorAll(g+' .gAtivo').length}),g);
 // peso: toca no 2º ponto

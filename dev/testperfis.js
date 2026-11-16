@@ -74,7 +74,7 @@ await p.type('#pfIdade','41');await p.type('#pfAltura','1,78');await p.type('#pf
 await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Salvar').click());await sleep(300);
 let c=await p.evaluate(()=>__corpo.corpo());
 ok(c.sexo==='M'&&c.idade===41&&c.altura===178&&c.medidas.peso.length===1&&c.medidas.peso[0].v===84.6,'salvou sexo, idade, altura (1,78 → 178 cm) e peso '+JSON.stringify(c));
-const res=await p.evaluate(()=>document.querySelector('.pfDados').textContent);ok(/Masculino/.test(res)&&/41 anos/.test(res)&&/1,78 m/.test(res)&&/84,6 kg/.test(res),'ver perfil mostra os dados: '+res);
+const res=await p.evaluate(()=>document.querySelector('.pfTopo').textContent+' '+document.querySelector('.pfDados').textContent);ok(/Masculino/.test(res)&&/41 anos/.test(res)&&/1,78 m/.test(res)&&/84,6 kg/.test(res),'ver perfil mostra os dados: '+res);
 // mesmo dia: vale o último
 await cl('#bPfEditar');
 await p.$eval('#pfPeso',e=>{e.value='';});await p.type('#pfPeso','84,1');
@@ -82,7 +82,7 @@ await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.
 c=await p.evaluate(()=>__corpo.corpo());ok(c.medidas.peso.length===1&&c.medidas.peso[0].v===84.1,'mesmo dia: só um registro, vale o último (84,1)');
 // dias anteriores (simulados) aparecem no histórico com a diferença
 await p.evaluate(()=>{const k='anatomotion.corpo.v1@'+__corpo.perfis().atual;const o=JSON.parse(localStorage.getItem(k));o.medidas.peso.unshift({d:'2026-11-01',v:86,t:1},{d:'2026-11-05',v:85.2,t:2});localStorage.setItem(k,JSON.stringify(o));});
-await btTxt('Ver medidas');await sleep(300);
+await cl('#bPfMedidas');await sleep(300);
 const h=await p.evaluate(()=>[...document.querySelectorAll('#pfList table.tab tbody tr')].map(l=>[...l.children].slice(0,3).map(x=>x.textContent).join(' ')));
 ok(await p.evaluate(()=>document.querySelectorAll('#grafPeso .gPonto').length===3),'gráfico do peso com 3 pontos');
 ok(h.length===3&&/^Hoje 84,1 kg −1,1/.test(h[0])&&/05\/11\/2026 85,2 kg −0,8/.test(h[1])&&/01\/11\/2026 86 kg/.test(h[2]),'histórico do peso: '+JSON.stringify(h));
@@ -97,7 +97,7 @@ await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.
 const m=await p.evaluate(()=>document.getElementById('pfMsg').textContent);ok(/Altura/.test(m)&&(await p.evaluate(()=>__corpo.corpo().altura))===178,'valor inválido avisa e não grava: '+m);
 await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>b.textContent==='Cancelar').click());await sleep(200);
 // adicionar medida pelo +
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Ver medidas/.test(b.textContent)).click());await sleep(300);
+await p.evaluate(()=>document.getElementById('bPfMedidas').click());await sleep(300);
 ok(await p.evaluate(()=>!document.getElementById('bPfAdd').hidden),'medidas: botão + no topo');
 await cl('#bPfAdd');
 let nv=await p.evaluate(()=>({form:!!document.getElementById('pfNova'),tipos:[...document.querySelectorAll('#pfNovaTipo button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(),dia:document.getElementById('pfNovaDia').value}));

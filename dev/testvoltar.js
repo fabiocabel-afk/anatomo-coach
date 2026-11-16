@@ -18,7 +18,7 @@ await cl('#exGrupoBtn');await voltar();ok(!(await vis('exGrupoMenu'))&&(await vi
 await voltar();ok(!(await vis('exSheet'))&&!(await vis('sairBox')),'voltar fecha o catálogo');
 // perfil com subtelas
 await cl('#bPerfil');await p.evaluate(()=>document.querySelector('#pfList .pfr.clic').click());await sleep(300);
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Ver medidas/.test(b.textContent)).click());await sleep(300);
+await p.evaluate(()=>document.getElementById('bPfMedidas').click());await sleep(300);
 await voltar();let t=await p.evaluate(()=>document.getElementById('pfTitulo').textContent);ok(t==='Perfil','voltar: medidas → perfil');
 await voltar();t=await p.evaluate(()=>document.getElementById('pfTitulo').textContent);ok(t==='Perfis','voltar: perfil → lista');
 await voltar();ok(!(await vis('pfSheet')),'voltar fecha os perfis');

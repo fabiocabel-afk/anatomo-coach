@@ -18,7 +18,7 @@ await p.goto('file://'+path.resolve('dist/corpo3d.html'));await p.waitForFunctio
 const ok=(c,m)=>{console.log((c?'OK  ':'FALHA ')+m);if(!c)process.exitCode=1;};
 const cl=async s=>{await p.evaluate(s=>document.querySelector(s).click(),s);await sleep(300);};
 await cl('#bPerfil');await p.evaluate(()=>document.querySelector('#pfList .pfr.clic').click());await sleep(300);
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Exercícios feitos/.test(b.textContent)).click());await sleep(400);
+await p.evaluate(()=>document.getElementById('bPfExercicios').click());await sleep(400);
 let x=await p.evaluate(()=>({a:document.querySelectorAll('#grafHist .gBarra').length,b:document.querySelectorAll('#grafHist .gBarra2').length,leg:document.querySelector('.gLeg').innerText,
   dados:[...document.querySelectorAll('#pfList .pfDados > div')].map(d=>d.innerText.replace(/\n/g,' ')).join(' | '),x:document.querySelectorAll('#pfList table .ic').length,linhas:document.querySelectorAll('#pfList table tbody tr').length}));
 ok(x.a===3&&x.b===2,'barras empilhadas: exercício (3 dias) + pausas (2 dias com pausa registrada) '+x.a+'/'+x.b);

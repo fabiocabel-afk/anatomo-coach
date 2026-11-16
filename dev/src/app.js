@@ -3231,7 +3231,7 @@
     const svg = elSvg('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'graf', role: 'img' });
     for (let v = lo; v <= hi + 1e-9; v += passo) {
       svg.appendChild(elSvg('line', { x1: ml, x2: W - mr, y1: y(v), y2: y(v), class: 'gGrade' }));
-      const t = elSvg('text', { x: ml - 6, y: y(v) + 3.5, class: 'gEixo', 'text-anchor': 'end' }); t.textContent = fmtEixo ? fmtEixo(v) : numBR(v); svg.appendChild(t);
+      const t = elSvg('text', { x: ml - 6, y: y(v) + 3.5, class: 'gEixo', 'text-anchor': 'end' }); t.textContent = passo < 1 ? numBR(Math.round(v * 100) / 100, passo < 0.1 ? 2 : 1) : fmtEixo ? fmtEixo(v) : numBR(v); svg.appendChild(t); // passo fracionado: mostra casas decimais (sem rótulos repetidos)
     }
     const n = dados.length, bw = iw / n, xc = i => ml + bw * (i + 0.5);
     const cada = Math.max(1, Math.ceil(n / 7)); // no máximo ~7 rótulos de data
@@ -3317,7 +3317,15 @@
     if (m !== 'lista' && m !== 'backup' && !p && !(m === 'editar' && pfEdit && !pfEdit.id)) { pfTela.modo = 'lista'; return renderPerfis(msg); }
     $('bPfVoltar').hidden = m === 'lista';
     $('pfNota').hidden = m !== 'lista';
-    $('pfTitulo').textContent = m === 'lista' ? 'Perfis' : m === 'editar' ? (pfEdit && !pfEdit.id ? 'Novo perfil' : 'Editar perfil') : m === 'medidas' ? 'Medidas · ' + p.nome : m === 'historico' ? 'Exercícios feitos · ' + p.nome : m === 'backup' ? 'Backup dos dados' : 'Perfil';
+    const tit = $('pfTitulo'); tit.classList.toggle('comAv', m === 'medidas' || m === 'historico');
+    if (m === 'medidas' || m === 'historico') { // avatar do perfil, nome em cima e a tela embaixo (não quebra linha)
+      tit.innerHTML = '';
+      const av = document.createElement('span'); av.className = 'avatar mini'; av.textContent = inicial(p.nome); av.style.background = p.cor; tit.appendChild(av);
+      const tx = document.createElement('span'); tx.className = 'trt';
+      const b = document.createElement('b'); b.textContent = p.nome; tx.appendChild(b);
+      const sm = document.createElement('small'); sm.textContent = m === 'medidas' ? 'Medidas' : 'Exercícios feitos'; tx.appendChild(sm);
+      tit.appendChild(tx);
+    } else tit.textContent = m === 'lista' ? 'Perfis' : m === 'editar' ? (pfEdit && !pfEdit.id ? 'Novo perfil' : 'Editar perfil') : m === 'backup' ? 'Backup dos dados' : 'Perfil';
     $('bPfNovo').hidden = m !== 'lista' || PERFIS.lista.length >= 8;
     $('bPfEditar').hidden = m !== 'ver';
     $('bPfAdd').hidden = m !== 'medidas';
@@ -3346,6 +3354,8 @@
       box.appendChild(r);
     }
   }
+  // faixas do IMC para adultos (OMS)
+  const faixaImc = v => v < 18.5 ? 'abaixo do peso' : v < 25 ? 'peso normal' : v < 30 ? 'sobrepeso' : v < 35 ? 'obesidade grau I' : v < 40 ? 'obesidade grau II' : 'obesidade grau III';
   function telaVer(box, p) {
     const c = lerCorpo(p.id), hist = lerHistorico(p.id);
     const top = document.createElement('div'); top.className = 'pfTopo';
@@ -3354,17 +3364,25 @@
     const b = document.createElement('b'); b.textContent = p.nome; nm.appendChild(b);
     const sm = document.createElement('small'); sm.textContent = p.id === PERFIS.atual ? 'em uso agora' : 'outro perfil'; nm.appendChild(sm);
     top.appendChild(nm); box.appendChild(top);
-    // dados do corpo: só o que foi preenchido
-    const itens = [];
-    if (c.sexo) itens.push(['Sexo', c.sexo === 'M' ? 'Masculino' : 'Feminino']);
-    const id = idadeAtual(c); if (id !== null) itens.push(['Idade', id + ' anos']);
+    // sexo e idade não mudam (ou mudam devagar): vão em texto, junto do nome
+    const id = idadeAtual(c), info = [];
+    if (c.sexo) info.push(c.sexo === 'M' ? 'Masculino' : 'Feminino');
+    if (id !== null) info.push(id + ' anos');
+    info.push(p.id === PERFIS.atual ? 'em uso agora' : 'outro perfil');
+    sm.textContent = info.join(' · ');
+    // altura, peso e IMC em cartões
+    const itens = [], ps = c.medidas.peso, pesoAt = ps.length ? ps[ps.length - 1] : null;
     if (c.altura) itens.push(['Altura', numBR(c.altura / 100, 2) + ' m']);
-    const ps = c.medidas.peso; if (ps.length) itens.push(['Peso', numBR(ps[ps.length - 1].v) + ' kg', ps[ps.length - 1].d === hojeStr() ? 'hoje' : 'em ' + dataBR(ps[ps.length - 1].d)]);
+    if (pesoAt) itens.push(['Peso', numBR(pesoAt.v) + ' kg', pesoAt.d === hojeStr() ? 'hoje' : 'em ' + dataBR(pesoAt.d)]);
+    const imc = c.altura && pesoAt ? pesoAt.v / Math.pow(c.altura / 100, 2) : null;
+    if (imc) itens.push(['IMC', numBR(imc, 1), faixaImc(imc)]);
     if (itens.length) {
-      const g = document.createElement('div'); g.className = 'pfDados';
-      for (const [k, v, sub] of itens) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); if (sub) { const s3 = document.createElement('small'); s3.textContent = sub; d.appendChild(s3); } g.appendChild(d); }
+      const g = document.createElement('div'); g.className = 'pfDados'; g.id = 'pfCorpoCards';
+      for (const [k, v, sub] of itens) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); if (sub) { const s3 = document.createElement('small'); s3.textContent = sub; d.appendChild(s3); } if (k === 'IMC') d.id = 'pfImc'; g.appendChild(d); }
       box.appendChild(g);
-    } else { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Sem dados do corpo. Use Editar para informar sexo, idade, altura e peso (tudo opcional).'; box.appendChild(e); }
+      if (imc) { const n = document.createElement('p'); n.className = 'nota'; n.style.margin = '-4px 0 12px'; n.textContent = 'IMC = peso ÷ altura². Ele não separa músculo de gordura: veja junto com as medidas do corpo.'; box.appendChild(n); }
+    } else if (!c.sexo && id === null) { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Sem dados do corpo. Use Editar para informar sexo, idade, altura e peso (tudo opcional).'; box.appendChild(e); }
+    else if (!c.altura || !pesoAt) { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Informe altura e peso em Editar para ver o IMC.'; box.appendChild(e); }
     // resumo dos treinos
     if (hist.length) {
       const dias = new Set(hist.map(r => r.dia)).size, tot = hist.reduce((a, r) => a + (r.ativoSeg || 0), 0);
@@ -3374,9 +3392,12 @@
     }
     const acoes = document.createElement('div'); acoes.className = 'pfAcoes';
     if (p.id !== PERFIS.atual) acoes.appendChild(botao('pri', 'Entrar neste perfil', null, () => trocarPerfil(p.id)));
-    acoes.appendChild(botao('', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19l5-6 4 3 7-9"/><path d="M4 4v15h16"/></svg><span>Ver medidas</span>', 'Ver medidas e histórico do peso', () => irPf('medidas', p.id)));
-    acoes.appendChild(botao('', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><span>Exercícios feitos</span>', 'Ver exercícios feitos', () => irPf('historico', p.id)));
     box.appendChild(acoes);
+    // medidas e exercícios: lado a lado, em roxo (são botões)
+    const dois = document.createElement('div'); dois.className = 'pfAcoes duas';
+    const bm = botao('pri', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19l5-6 4 3 7-9"/><path d="M4 4v15h16"/></svg><span>Medidas</span>', 'Ver medidas: peso e medidas do corpo', () => irPf('medidas', p.id)); bm.id = 'bPfMedidas';
+    const be = botao('pri', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg><span>Exercícios</span>', 'Ver exercícios feitos', () => irPf('historico', p.id)); be.id = 'bPfExercicios';
+    dois.appendChild(bm); dois.appendChild(be); box.appendChild(dois);
   }
   // tipos de medida: por enquanto só o peso; outras entram nesta lista depois
   const TIPOS_MEDIDA = [{ k: 'peso', nome: 'Peso', un: 'kg', min: 20, max: 350, ex: '72,5' }];
@@ -3621,8 +3642,11 @@
     const ch = chavesMed(m, c.lado);
     const hd = document.createElement('div'); hd.className = 'fitaCab';
     const nb = document.createElement('span'); nb.className = 'fitaN'; nb.textContent = m.n; hd.appendChild(nb);
-    const tx = document.createElement('div'); tx.className = 'trt'; const b = document.createElement('b'); b.textContent = m.nome + (m.lado ? ' · ' + LADOS[c.lado].toLowerCase() : ''); tx.appendChild(b);
-    const sm = document.createElement('small'); sm.textContent = 'Onde medir: ' + m.dica; tx.appendChild(sm); hd.appendChild(tx); box.appendChild(hd);
+    const b = document.createElement('b'); b.className = 'fitaCabNome'; b.textContent = m.nome; hd.appendChild(b);
+    if (m.lado) { const ld = document.createElement('span'); ld.className = 'fitaCabLado'; ld.textContent = LADOS[c.lado]; hd.appendChild(ld); }
+    const bv = botao('ic figModo', IC_CORPO, 'Voltar para o corpo', () => { pfTela.med = null; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; });
+    bv.id = 'bFitaVoltaCorpo'; hd.appendChild(bv); box.appendChild(hd);
+    const sm = document.createElement('p'); sm.className = 'fitaCabDica'; sm.textContent = 'Onde medir: ' + m.dica; box.appendChild(sm);
     const listas = ch.map(([k]) => c.medidas[k] || []);
     if (!listas.some(l => l.length)) { const e = document.createElement('p'); e.className = 'nota'; e.id = 'fitaVazio'; e.textContent = 'Nenhuma medida registrada ainda. Toque no + acima ou em "Registrar medidas".'; box.appendChild(e); return; }
     const g = document.createElement('div'); g.className = 'pfDados' + (ch.length > 1 ? ' duas' : '');

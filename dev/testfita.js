@@ -11,7 +11,7 @@ await p.evaluate(()=>{localStorage.clear();localStorage.setItem('anatomotion.cor
 await p.reload();await carregar();
 // abre Perfil → ver → Ver medidas → aba Medidas do corpo
 await cl('#bPerfil');await p.evaluate(()=>document.querySelectorAll('#pfList .pfr.clic')[0].click());await sleep(250);
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Ver medidas/.test(b.textContent)).click());await sleep(300);
+await p.evaluate(()=>document.getElementById('bPfMedidas').click());await sleep(300);
 let s=await p.evaluate(()=>({abas:[...document.querySelectorAll('#pfMedAba button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join(),graf:!!document.getElementById('grafPeso')}));
 ok(s.abas==='Peso*,Medidas do corpo'&&s.graf,'abas Peso / Medidas do corpo; o peso continua igual '+s.abas);
 await cl('#pfMedAba button[data-v=fita]');
@@ -58,7 +58,7 @@ await p.evaluate(()=>[...document.querySelectorAll('#pfMedir button')].find(b=>b
 await p.screenshot({path:'shots/fita_lista.png',fullPage:false});
 // detalhe do braço pelo desenho
 await p.evaluate(()=>[...document.querySelectorAll('.figMed .fmMarca')].find(g=>g.dataset.k==='braco').dispatchEvent(new MouseEvent('click',{bubbles:true})));await sleep(300);
-s=await p.evaluate(()=>({cab:document.querySelector('.fitaCab b').textContent,dados:[...document.querySelectorAll('.pfDados>div')].map(d=>d.textContent),
+s=await p.evaluate(()=>({cab:document.querySelector('.fitaCab b').textContent+' · '+(document.querySelector('.fitaCabLado')?.textContent||'').toLowerCase(),dados:[...document.querySelectorAll('.pfDados>div')].map(d=>d.textContent),
   linhas:document.querySelectorAll('#grafFita svg.graf path.gLinha').length,linhas2:document.querySelectorAll('#grafFita svg.graf path.gLinha2').length,leg:document.querySelector('#grafFita .gLeg')?.textContent,
   th:[...document.querySelectorAll('#fitaTab th')].map(t=>t.textContent).join(),rows:document.querySelectorAll('#fitaTab tbody tr').length}));
 ok(/Braço · os dois/.test(s.cab)&&s.linhas===1&&s.linhas2===1&&s.leg==='DireitoEsquerdo'&&s.th==='Data,Direito,Esquerdo,'&&s.rows===2,'detalhe: gráfico com 2 linhas + legenda e tabela D/E '+JSON.stringify(s));

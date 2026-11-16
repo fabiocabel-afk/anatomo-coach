@@ -45,7 +45,7 @@ await p.evaluate(()=>__corpo.setPhase(0));await sleep(6500);ok(await p.evaluate(
 await p.screenshot({path:'shots/legenda_claro.png'});
 // cápsula da data no histórico
 await p.evaluate(()=>{document.getElementById('bPerfil').click();});await sleep(300);await p.evaluate(()=>document.querySelector('#pfList .pfr.clic').click());await sleep(300);
-await p.evaluate(()=>[...document.querySelectorAll('#pfList button')].find(b=>/Exercícios feitos/.test(b.textContent)).click());await sleep(400);
+await p.evaluate(()=>document.getElementById('bPfExercicios').click());await sleep(400);
 x=await p.evaluate(()=>{const c=document.querySelector('.histDia .histData');const st=c&&getComputedStyle(c);return c&&{t:c.textContent,bg:st.backgroundColor,cor:st.color,info:document.querySelector('.histDia .histInfo').textContent};});
 ok(x&&/^Hoje, \d\d\/\d\d$/.test(x.t)&&x.bg==='rgb(100, 42, 144)'&&x.cor==='rgb(255, 255, 255)','data em cápsula roxa com texto branco ('+(x&&x.t)+')');
 ok(x&&/1 exercício · 5 min \+ 1 min de pausas/.test(x.info),'resumo do dia ao lado da cápsula');
