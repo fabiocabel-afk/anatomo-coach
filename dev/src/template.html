@@ -168,6 +168,32 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .gBarra{fill:#9D5FE0}
 .gLinha{fill:none;stroke:#9D5FE0;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .gPonto{fill:#9D5FE0;stroke:var(--card);stroke-width:2}
+.gLinha2{fill:none;stroke:#CC7414;stroke-width:2;stroke-dasharray:5 4;stroke-linejoin:round;stroke-linecap:round}
+.gPonto2{fill:#CC7414;stroke:var(--card);stroke-width:2}
+.pfAbas{margin:0 0 12px;align-self:stretch;display:flex}.pfAbas button{flex:1}
+.pfLado{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.pfLado>span{font-size:13px;color:var(--tx2)}
+.figMed{display:block;width:min(230px,66%);margin:6px auto 4px;overflow:visible}
+.fmCorpo{fill:#C9B293;stroke:#C9B293;stroke-linecap:round}
+body.claro .fmCorpo{fill:#D9C6A8;stroke:#D9C6A8}
+.fmFaixa{stroke:var(--roxo);stroke-width:3;stroke-linecap:round}
+.fmBola{fill:var(--roxo-f);stroke:var(--card);stroke-width:1.5}
+.fmNum{fill:#fff;font-size:9px;font-weight:700;pointer-events:none}
+.fmMarca{cursor:pointer;outline:none}.fmMarca:focus-visible .fmBola,.fmMarca:hover .fmBola{stroke:#fff;stroke-width:2}
+.fitaLista{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px}
+.fitaLin{display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:8px 10px;color:var(--tx);cursor:pointer;font:inherit}
+.fitaLin .trt,.medLin .trt,.fitaCab .trt{flex:1;min-width:0;display:flex;flex-direction:column}
+.fitaLin small,.medLin small,.fitaCab small{font-size:11px;color:var(--tx2);line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip}
+.fitaN{flex:none;width:22px;height:22px;border-radius:50%;background:var(--roxo-f);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.fitaVal{display:flex;flex-direction:column;align-items:flex-end;font-size:13px;font-weight:600;white-space:nowrap}
+.fitaVal em{font-style:normal;font-weight:400;font-size:11px;color:var(--tx2)}
+.fitaVal em.sobe,.fitaVal em.desce{color:var(--tx2)}
+.medLin{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--bd)}
+.medCampos{display:flex;gap:6px;flex:none}
+.medCampo{display:flex;align-items:center;gap:3px}
+.medCampo span{font-size:11px;color:var(--tx2);font-weight:700}
+.medCampo .inp{width:66px;text-align:center;padding:8px 4px}
+.fitaCab{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .gRealce{stroke:var(--grade3);stroke-width:1;stroke-dasharray:3 3}
 .gToque{fill:transparent;cursor:pointer}
 .gDica{position:absolute;transform:translate(-50%,-100%);background:var(--dica);border:1px solid var(--roxo-f);border-radius:8px;padding:5px 9px;font-size:12px;white-space:nowrap;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.4)}

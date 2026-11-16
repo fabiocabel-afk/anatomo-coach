@@ -3083,17 +3083,20 @@
   }
   /* ---------- Dados do corpo de cada perfil (opcionais) ----------
    * { v:1, sexo:'M'|'F'|'', altura:cm, idade, idadeEm:'AAAA-MM-DD',
-   *   medidas: { peso: [{ d:'AAAA-MM-DD', v:kg, t:ms }] } }
+   *   lado:'D'|'E'|'A' (lado medido com a fita: direito, esquerdo ou os dois; padrão direito),
+   *   medidas: { peso: [{ d:'AAAA-MM-DD', v:kg, t:ms }], cintura: [...], braco_d: [...], braco_e: [...] } }
+   * Circunferências em cm; braço, antebraço, punho, coxa, panturrilha e tornozelo têm um histórico por lado.
    * Um registro por dia em cada medida (o último do dia vale). "medidas" já
    * comporta outras (braço, coxa, peitoral...) no futuro, cada uma com seu histórico. */
   const CORPO_BASE = 'anatomotion.corpo.v1';
   const hojeStr = (d = new Date()) => { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   function lerCorpo(pid) {
-    const c = { v: 1, sexo: '', altura: null, idade: null, idadeEm: null, medidas: { peso: [] } };
+    const c = { v: 1, sexo: '', altura: null, idade: null, idadeEm: null, lado: 'D', medidas: { peso: [] } };
     try {
       const o = JSON.parse(localStorage.getItem(CORPO_BASE + '@' + pid) || '{}') || {};
       if (o.sexo === 'M' || o.sexo === 'F') c.sexo = o.sexo;
       if (Number.isFinite(o.altura)) c.altura = o.altura;
+      if (o.lado === 'D' || o.lado === 'E' || o.lado === 'A') c.lado = o.lado;
       if (Number.isFinite(o.idade)) { c.idade = o.idade; c.idadeEm = o.idadeEm || hojeStr(); }
       if (o.medidas && typeof o.medidas === 'object') for (const k in o.medidas) if (Array.isArray(o.medidas[k])) c.medidas[k] = o.medidas[k].filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.d) && Number.isFinite(r.v)).sort((a, b) => a.d < b.d ? -1 : 1);
     } catch (e) { /* sem dados */ }
@@ -3193,7 +3196,8 @@
     alvo.innerHTML = '';
     if (!dados.length) return;
     const W = 340, H = 170, ml = 34, mr = 10, mt = 14, mb = 26, iw = W - ml - mr, ih = H - mt - mb;
-    const vs = dados.map(d => d.v);
+    const duas = tipo === 'linha' && dados.some(d => d.v2 != null);
+    const vs = []; for (const d of dados) { if (d.v != null) vs.push(d.v); if (duas && d.v2 != null) vs.push(d.v2); }
     let lo = tipo === 'barra' ? 0 : Math.min(...vs), hi = Math.max(...vs);
     if (tipo !== 'barra') { const pad = Math.max(0.5, (hi - lo) * 0.15); lo = Math.floor(lo - pad); hi = Math.ceil(hi + pad); }
     if (hi === lo) hi = lo + 1;
@@ -3230,8 +3234,15 @@
       });
       svg.appendChild(elSvg('line', { x1: ml, x2: W - mr, y1: y(lo), y2: y(lo), class: 'gBase' }));
     } else {
-      svg.appendChild(elSvg('polyline', { class: 'gLinha', points: dados.map((d, i) => xc(i) + ',' + y(d.v)).join(' ') }));
-      dados.forEach((d, i) => { svg.appendChild(elSvg('circle', { class: 'gPonto', cx: xc(i), cy: y(d.v), r: 4.5 })); marcas.push({ i, x: xc(i), y: y(d.v), d }); });
+      // série 1 (linha cheia, bolinhas) e, se houver, série 2 (tracejada, quadradinhos): nunca só a cor diferencia
+      const pts = k => dados.map((d, i) => d[k] != null ? xc(i) + ',' + y(d[k]) : null).filter(Boolean).join(' ');
+      if (dados.some(d => d.v != null)) svg.appendChild(elSvg('polyline', { class: 'gLinha', points: pts('v') }));
+      if (duas) svg.appendChild(elSvg('polyline', { class: 'gLinha2', points: pts('v2') }));
+      dados.forEach((d, i) => {
+        if (d.v != null) svg.appendChild(elSvg('circle', { class: 'gPonto', cx: xc(i), cy: y(d.v), r: 4.5 }));
+        if (duas && d.v2 != null) svg.appendChild(elSvg('rect', { class: 'gPonto2', x: xc(i) - 4, y: y(d.v2) - 4, width: 8, height: 8, rx: 1.5 }));
+        const vy = d.v != null ? d.v : d.v2; marcas.push({ i, x: xc(i), y: y(vy), d });
+      });
     }
     // toque/hover: área de toque mais larga que a marca + dica
     const dica = document.createElement('div'); dica.className = 'gDica'; dica.hidden = true;
@@ -3254,12 +3265,17 @@
     });
     svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { dica.hidden = true; realce.setAttribute('visibility', 'hidden'); } });
     alvo.appendChild(svg); alvo.appendChild(dica);
+    if (opc.legenda) { // legenda sempre que há duas séries
+      const lg = document.createElement('div'); lg.className = 'gLeg';
+      opc.legenda.forEach((nm, j) => { const sp = document.createElement('span'); sp.innerHTML = '<svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" class="' + (j ? 'gLinha2' : 'gLinha') + '"/>' + (j ? '<rect x="7" y="1" width="8" height="8" rx="1.5" class="gPonto2"/>' : '<circle cx="11" cy="5" r="4" class="gPonto"/>') + '</svg>'; sp.appendChild(document.createTextNode(nm)); lg.appendChild(sp); });
+      alvo.appendChild(lg);
+    }
   }
 
   /* ---------- Telas do perfil: lista → ver → editar / medidas / exercícios feitos ---------- */
   let pfEdit = null; // { id|null (novo), nome, cor, corpo }
   let pfTela = { modo: 'lista', id: null, dias: 14 };
-  function irPf(modo, id) { if (modo !== 'historico') pfTela.diaSel = null; pfTela.modo = modo; if (id !== undefined) pfTela.id = id; if (modo !== 'editar') pfEdit = null; if (modo !== 'medidas') pfNova = null; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }
+  function irPf(modo, id) { if (modo !== 'historico') pfTela.diaSel = null; pfTela.modo = modo; if (id !== undefined) pfTela.id = id; if (modo !== 'editar') pfEdit = null; if (modo !== 'medidas') { pfNova = null; pfMedir = null; pfTela.med = null; } renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }
   function renderPerfis(msg) {
     $('pfMsg').textContent = msg || perfisErro || '';
     const m = pfTela.modo, p = PERFIS.lista.find(x => x.id === pfTela.id);
@@ -3359,6 +3375,10 @@
     setTimeout(() => { const i = $('pfNovaValor'); if (i) i.focus(); }, 50);
   }
   function telaMedidas(box, p) {
+    const ab = document.createElement('div'); ab.className = 'seg pfAbas'; ab.id = 'pfMedAba';
+    for (const [k, nm] of [['peso', 'Peso'], ['fita', 'Medidas do corpo']]) { const b = botao((pfTela.aba || 'peso') === k ? 'on' : '', nm, null, () => { pfTela.aba = k; pfTela.med = null; pfMedir = null; pfNova = null; renderPerfis(); }); b.dataset.v = k; ab.appendChild(b); }
+    box.appendChild(ab);
+    if (pfTela.aba === 'fita') return telaFita(box, p);
     if (pfNova) formNovaMedida(box, p);
     const c = lerCorpo(p.id), ps = c.medidas.peso;
     const tt = document.createElement('div'); tt.className = 'ttl2'; tt.innerHTML = '<span>Peso</span>'; box.appendChild(tt);
@@ -3381,6 +3401,194 @@
       if (ant) { const x = Math.round((r.v - ant.v) * 10) / 10; td(x === 0 ? '=' : (x > 0 ? '+' : '−') + numBR(Math.abs(x)), x > 0 ? 'sobe' : x < 0 ? 'desce' : ''); } else td('');
       const tdb = document.createElement('td'); tdb.appendChild(botao('ic sm', IC.x, 'Apagar o peso de ' + dataBR(r.d), bt => confirmar(bt, 'Apagar?', () => {
         const c2 = lerCorpo(p.id); c2.medidas.peso = c2.medidas.peso.filter(x => x.d !== r.d);
+        renderPerfis(gravarCorpo(p.id, c2) ? 'Registro apagado.' : 'Atenção: não consegui gravar neste aparelho.');
+      }))); tr.appendChild(tdb);
+      tbody.appendChild(tr);
+    });
+    tb.appendChild(tbody); box.appendChild(tb);
+  }
+  /* ---------- Medidas com a fita (circunferências, em cm) ----------
+     x/y/m = posição da faixa no desenho (lado direito da pessoa = esquerda de quem olha) */
+  const MED_FITA = [
+    { k: 'pescoco', nome: 'Pescoço', dica: 'logo abaixo do pomo de Adão', min: 20, max: 80, x: 100, y: 55, m: 9 },
+    { k: 'ombros', nome: 'Ombros', dica: 'na parte mais larga, passando pelos dois ombros', min: 60, max: 200, x: 100, y: 72, m: 50 },
+    { k: 'peito', nome: 'Peito', dica: 'na linha dos mamilos, ao soltar o ar', min: 50, max: 200, x: 100, y: 96, m: 33 },
+    { k: 'braco', nome: 'Braço', dica: 'no meio do braço, relaxado ao lado do corpo', min: 15, max: 70, x: 54, y: 104, m: 10, lado: true },
+    { k: 'antebraco', nome: 'Antebraço', dica: 'na parte mais grossa, perto do cotovelo', min: 12, max: 60, x: 47, y: 152, m: 9, lado: true },
+    { k: 'punho', nome: 'Punho', dica: 'logo acima do ossinho do punho', min: 10, max: 30, x: 42, y: 188, m: 8, lado: true },
+    { k: 'cintura', nome: 'Cintura', dica: 'na parte mais fina da barriga, sem encolher', min: 40, max: 200, x: 100, y: 140, m: 25 },
+    { k: 'abdomen', nome: 'Abdômen', dica: 'na altura do umbigo, ao soltar o ar', min: 40, max: 220, x: 100, y: 160, m: 26 },
+    { k: 'quadril', nome: 'Quadril', dica: 'no maior volume do bumbum, pés juntos', min: 50, max: 220, x: 100, y: 182, m: 30 },
+    { k: 'coxa', nome: 'Coxa', dica: 'no meio, entre a virilha e o joelho', min: 25, max: 110, x: 85, y: 232, m: 14, lado: true },
+    { k: 'panturrilha', nome: 'Panturrilha', dica: 'na parte mais grossa da batata da perna', min: 20, max: 70, x: 84, y: 292, m: 11, lado: true },
+    { k: 'tornozelo', nome: 'Tornozelo', dica: 'logo acima do ossinho do tornozelo', min: 12, max: 45, x: 84, y: 336, m: 8, lado: true }
+  ];
+  MED_FITA.forEach((m, i) => { m.n = i + 1; });
+  const LADOS = { D: 'Direito', E: 'Esquerdo', A: 'Os dois' };
+  // chaves gravadas de uma medida para o lado escolhido: [[chave, rótulo do lado]]
+  const chavesMed = (m, lado) => !m.lado ? [[m.k, '']] : lado === 'A' ? [[m.k + '_d', 'Direito'], [m.k + '_e', 'Esquerdo']] : lado === 'E' ? [[m.k + '_e', 'Esquerdo']] : [[m.k + '_d', 'Direito']];
+  const cmTxt = v => numBR(v) + ' cm';
+  const difTxt = x => (x > 0 ? '+' : x < 0 ? '−' : '') + numBR(Math.abs(x));
+  let pfMedir = null; // { dia, v:{ chave: texto } } enquanto o formulário da fita está aberto
+
+  // desenho simples do corpo (tipo placa), com as faixas onde passar a fita
+  function figuraFita(lado, aoTocar) {
+    const svg = elSvg('svg', { viewBox: '0 0 200 362', class: 'figMed', role: 'img', 'aria-label': 'Onde medir com a fita' });
+    const corpo = elSvg('g', { class: 'fmCorpo' });
+    const membro = (x1, y1, x2, y2, w) => corpo.appendChild(elSvg('line', { x1, y1, x2, y2, 'stroke-width': w }));
+    for (const s of [1, -1]) {
+      const X = x => s > 0 ? x : 200 - x;
+      membro(X(60), 72, X(50), 132, 17); membro(X(50), 132, X(42), 194, 14);           // braço e antebraço
+      corpo.appendChild(elSvg('circle', { cx: X(41), cy: 205, r: 8 }));               // mão
+      membro(X(85), 192, X(84), 268, 27); membro(X(84), 268, X(84), 336, 19);          // coxa e perna
+      corpo.appendChild(elSvg('ellipse', { cx: X(80), cy: 348, rx: 12, ry: 6 }));     // pé
+    }
+    corpo.appendChild(elSvg('path', { d: 'M66 66 L134 66 L130 112 L124 150 L129 188 L71 188 L76 150 L70 112 Z', 'stroke-width': 8, 'stroke-linejoin': 'round' }));
+    corpo.appendChild(elSvg('rect', { x: 92, y: 44, width: 16, height: 20, rx: 4 }));
+    corpo.appendChild(elSvg('circle', { cx: 100, cy: 27, r: 19 }));
+    svg.appendChild(corpo);
+    const marca = (m, x, rot) => {
+      const g = elSvg('g', { class: 'fmMarca', tabindex: 0, role: 'button', 'aria-label': m.nome + (rot ? ' ' + rot.toLowerCase() : '') });
+      g.dataset.k = m.k;
+      g.appendChild(elSvg('line', { x1: x - m.m, y1: m.y, x2: x + m.m, y2: m.y, class: 'fmFaixa' }));
+      const bx = m.k === 'ombros' ? x + 40 : x; // o número dos ombros vai para o lado, longe do pescoço
+      g.appendChild(elSvg('circle', { cx: bx, cy: m.y, r: 7.5, class: 'fmBola' }));
+      const t = elSvg('text', { x: bx, y: m.y + 3.2, class: 'fmNum', 'text-anchor': 'middle' }); t.textContent = m.n; g.appendChild(t);
+      g.addEventListener('click', () => aoTocar(m.k));
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); aoTocar(m.k); } });
+      svg.appendChild(g);
+    };
+    for (const m of MED_FITA) {
+      if (!m.lado) marca(m, m.x, '');
+      else { if (lado !== 'E') marca(m, m.x, 'direito'); if (lado !== 'D') marca(m, 200 - m.x, 'esquerdo'); }
+    }
+    return svg;
+  }
+  function telaFita(box, p) {
+    const c = lerCorpo(p.id);
+    if (pfTela.med) return telaMedidaFita(box, p, c, MED_FITA.find(m => m.k === pfTela.med));
+    if (pfMedir) return formMedir(box, p, c);
+    // lado medido (vale para o perfil)
+    const ll = document.createElement('div'); ll.className = 'pfLado';
+    const lt = document.createElement('span'); lt.textContent = 'Braços e pernas:'; ll.appendChild(lt);
+    const sg = document.createElement('div'); sg.className = 'seg'; sg.id = 'pfLado';
+    for (const k of ['D', 'E', 'A']) { const b = botao(c.lado === k ? 'on' : '', LADOS[k], 'Medir ' + (k === 'A' ? 'os dois lados' : 'o lado ' + LADOS[k].toLowerCase()), () => {
+      const c2 = lerCorpo(p.id); c2.lado = k;
+      renderPerfis(gravarCorpo(p.id, c2) ? 'Lado das medidas: ' + LADOS[k].toLowerCase() + '.' : 'Atenção: não consegui gravar neste aparelho.');
+    }); b.dataset.v = k; sg.appendChild(b); }
+    ll.appendChild(sg); box.appendChild(ll);
+    box.appendChild(figuraFita(c.lado, k => { pfTela.med = k; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }));
+    const bl = document.createElement('div'); bl.className = 'btnLinha';
+    bl.appendChild(botao('pri', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Registrar medidas</span>', 'Registrar medidas com a fita', () => { pfMedir = { dia: hojeStr(), v: {} }; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; }));
+    bl.firstChild.id = 'bFitaMedir'; box.appendChild(bl);
+    const ls = document.createElement('div'); ls.className = 'fitaLista'; ls.id = 'fitaLista';
+    for (const m of MED_FITA) {
+      const r = document.createElement('button'); r.className = 'fitaLin'; r.dataset.k = m.k;
+      const nb = document.createElement('span'); nb.className = 'fitaN'; nb.textContent = m.n; r.appendChild(nb);
+      const tx = document.createElement('div'); tx.className = 'trt';
+      const b = document.createElement('b'); b.textContent = m.nome; tx.appendChild(b);
+      const sm = document.createElement('small'); sm.textContent = m.dica; tx.appendChild(sm); r.appendChild(tx);
+      const vv = document.createElement('div'); vv.className = 'fitaVal';
+      for (const [ch, rot] of chavesMed(m, c.lado)) {
+        const l = c.medidas[ch] || [], ult = l[l.length - 1], ln = document.createElement('span');
+        if (!ult) ln.textContent = (rot ? rot[0] + ' ' : '') + '—';
+        else { ln.textContent = (rot ? rot[0] + ' ' : '') + cmTxt(ult.v); if (l.length > 1) { const d = Math.round((ult.v - l[0].v) * 10) / 10; const e = document.createElement('em'); e.textContent = ' ' + difTxt(d); e.className = d > 0 ? 'sobe' : d < 0 ? 'desce' : ''; ln.appendChild(e); } }
+        vv.appendChild(ln);
+      }
+      r.appendChild(vv);
+      r.addEventListener('click', () => { pfTela.med = m.k; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; });
+      ls.appendChild(r);
+    }
+    box.appendChild(ls);
+    const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'Dica: meça de manhã, antes de treinar, com a fita reta e justa, sem apertar. A cada 2 a 4 semanas já mostra a evolução.'; box.appendChild(n);
+  }
+  function formMedir(box, p, c) {
+    const f = document.createElement('div'); f.className = 'pfNova'; f.id = 'pfMedir';
+    const tt = document.createElement('div'); tt.className = 'ttl2'; tt.style.margin = '0'; tt.innerHTML = '<span>Registrar medidas (cm)</span>'; f.appendChild(tt);
+    const wd = document.createElement('label'); wd.className = 'pfCampo'; wd.innerHTML = '<span>Data</span>';
+    const di = document.createElement('input'); di.type = 'date'; di.className = 'inp'; di.id = 'pfMedirDia'; di.max = hojeStr(); di.value = pfMedir.dia; di.addEventListener('change', () => { pfMedir.dia = di.value; });
+    wd.appendChild(di); f.appendChild(wd);
+    const n0 = document.createElement('p'); n0.className = 'nota'; n0.style.margin = '0'; n0.textContent = 'Preencha só o que mediu. Lado: ' + LADOS[c.lado].toLowerCase() + (c.lado === 'A' ? ' (D = direito, E = esquerdo).' : '.'); f.appendChild(n0);
+    for (const m of MED_FITA) {
+      const r = document.createElement('div'); r.className = 'medLin';
+      const nb = document.createElement('span'); nb.className = 'fitaN'; nb.textContent = m.n; r.appendChild(nb);
+      const tx = document.createElement('div'); tx.className = 'trt';
+      const b = document.createElement('b'); b.textContent = m.nome; tx.appendChild(b);
+      const sm = document.createElement('small'); sm.textContent = m.dica; tx.appendChild(sm); r.appendChild(tx);
+      const cx = document.createElement('div'); cx.className = 'medCampos';
+      for (const [ch, rot] of chavesMed(m, c.lado)) {
+        const w = document.createElement('label'); w.className = 'medCampo';
+        if (c.lado === 'A' && rot) { const s1 = document.createElement('span'); s1.textContent = rot[0]; w.appendChild(s1); }
+        const inp = document.createElement('input'); inp.className = 'inp'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.autocomplete = 'off'; inp.id = 'md_' + ch;
+        inp.setAttribute('aria-label', m.nome + (rot ? ' ' + rot.toLowerCase() : '') + ' em centímetros');
+        const ult = (c.medidas[ch] || []).slice(-1)[0]; if (ult) inp.placeholder = numBR(ult.v);
+        inp.value = pfMedir.v[ch] || ''; inp.addEventListener('input', () => { pfMedir.v[ch] = inp.value; });
+        w.appendChild(inp); cx.appendChild(w);
+      }
+      r.appendChild(cx); f.appendChild(r);
+    }
+    const bt = document.createElement('div'); bt.className = 'btnLinha'; bt.style.margin = '0';
+    bt.appendChild(botao('', 'Cancelar', null, () => { pfMedir = null; renderPerfis(); }));
+    bt.appendChild(botao('pri', 'Salvar medidas', null, () => {
+      const dia = $('pfMedirDia').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || dia > hojeStr()) { $('pfMsg').textContent = 'Escolha uma data até hoje.'; return; }
+      const novos = [];
+      for (const m of MED_FITA) for (const [ch, rot] of chavesMed(m, c.lado)) {
+        const txt = (pfMedir.v[ch] || '').trim(); if (!txt) continue;
+        const v = lerNum(txt);
+        if (v === null || v < m.min || v > m.max) {
+          $('pfMsg').textContent = 'Confira ' + m.nome.toLowerCase() + (rot ? ' (' + rot.toLowerCase() + ')' : '') + ': em cm, entre ' + m.min + ' e ' + m.max + '.';
+          const i = $('md_' + ch); if (i) i.focus(); return;
+        }
+        novos.push([ch, Math.round(v * 10) / 10]);
+      }
+      if (!novos.length) { $('pfMsg').textContent = 'Preencha pelo menos uma medida.'; return; }
+      const c2 = lerCorpo(p.id); for (const [ch, v] of novos) registrarMedida(c2, ch, v, dia);
+      if (!gravarCorpo(p.id, c2)) { $('pfMsg').textContent = 'Atenção: não consegui gravar neste aparelho. Nada foi alterado.'; return; }
+      pfMedir = null; renderPerfis(novos.length === 1 ? '1 medida registrada.' : novos.length + ' medidas registradas.');
+    }));
+    f.appendChild(bt);
+    const n = document.createElement('p'); n.className = 'nota'; n.style.margin = '0'; n.textContent = 'Um registro por dia em cada medida: registrar de novo na mesma data substitui o anterior.'; f.appendChild(n);
+    box.appendChild(f);
+  }
+  function telaMedidaFita(box, p, c, m) {
+    if (!m) { pfTela.med = null; return telaFita(box, p); }
+    const ch = chavesMed(m, c.lado);
+    const hd = document.createElement('div'); hd.className = 'fitaCab';
+    const nb = document.createElement('span'); nb.className = 'fitaN'; nb.textContent = m.n; hd.appendChild(nb);
+    const tx = document.createElement('div'); tx.className = 'trt'; const b = document.createElement('b'); b.textContent = m.nome + (m.lado ? ' · ' + LADOS[c.lado].toLowerCase() : ''); tx.appendChild(b);
+    const sm = document.createElement('small'); sm.textContent = 'Onde medir: ' + m.dica; tx.appendChild(sm); hd.appendChild(tx); box.appendChild(hd);
+    const listas = ch.map(([k]) => c.medidas[k] || []);
+    if (!listas.some(l => l.length)) { const e = document.createElement('p'); e.className = 'nota'; e.id = 'fitaVazio'; e.textContent = 'Nenhuma medida registrada ainda. Toque no + acima ou em "Registrar medidas".'; box.appendChild(e); return; }
+    const g = document.createElement('div'); g.className = 'pfDados' + (ch.length > 1 ? ' duas' : '');
+    ch.forEach(([k, rot], j) => {
+      const l = listas[j], d = document.createElement('div');
+      const s1 = document.createElement('span'); s1.textContent = rot ? rot : 'Atual'; d.appendChild(s1);
+      const s2 = document.createElement('b'); s2.textContent = l.length ? cmTxt(l[l.length - 1].v) : '—'; d.appendChild(s2);
+      if (l.length > 1) { const s3 = document.createElement('small'); s3.textContent = difTxt(Math.round((l[l.length - 1].v - l[0].v) * 10) / 10) + ' cm desde ' + dataBR(l[0].d); d.appendChild(s3); }
+      g.appendChild(d);
+    });
+    box.appendChild(g);
+    // datas com pelo menos um lado medido
+    const dias = [...new Set(listas.flat().map(r => r.d))].sort();
+    const valor = (j, dia) => { const r = listas[j] && listas[j].find(x => x.d === dia); return r ? r.v : null; };
+    const gw = document.createElement('div'); gw.className = 'gWrap'; gw.id = 'grafFita'; box.appendChild(gw);
+    const ult = dias.slice(-30);
+    grafico(gw, 'linha', ult.map(dia => {
+      const a = valor(0, dia), b2 = ch.length > 1 ? valor(1, dia) : null;
+      const partes = ch.map(([, rot], j) => { const v = j ? b2 : a; return v == null ? null : (rot ? rot + ' ' : '') + cmTxt(v); }).filter(Boolean);
+      return { rot: dia.slice(8, 10) + '/' + dia.slice(5, 7), v: a, v2: b2, dica: dataBR(dia) + ': ' + partes.join(' · ') };
+    }), v => numBR(v, 0), ch.length > 1 ? { legenda: ['Direito', 'Esquerdo'] } : null);
+    const tb = document.createElement('table'); tb.className = 'tab'; tb.id = 'fitaTab';
+    tb.innerHTML = '<thead><tr><th>Data</th>' + ch.map(([, rot]) => '<th>' + (rot || 'Medida') + '</th>').join('') + '<th></th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    dias.slice().reverse().forEach(dia => {
+      const tr = document.createElement('tr');
+      const td = t => { const x = document.createElement('td'); x.textContent = t; tr.appendChild(x); return x; };
+      td(dia === hojeStr() ? 'Hoje' : dataBR(dia));
+      ch.forEach((_, j) => { const v = valor(j, dia); td(v == null ? '—' : numBR(v)); });
+      const tdb = document.createElement('td'); tdb.appendChild(botao('ic sm', IC.x, 'Apagar ' + m.nome.toLowerCase() + ' de ' + dataBR(dia), bt => confirmar(bt, 'Apagar?', () => {
+        const c2 = lerCorpo(p.id); for (const [k] of ch) if (c2.medidas[k]) c2.medidas[k] = c2.medidas[k].filter(x => x.d !== dia);
         renderPerfis(gravarCorpo(p.id, c2) ? 'Registro apagado.' : 'Atenção: não consegui gravar neste aparelho.');
       }))); tr.appendChild(tdb);
       tbody.appendChild(tr);
@@ -3642,8 +3850,11 @@
   }
   $('bPerfil').addEventListener('click', () => { pfEdit = null; pfTela.modo = 'lista'; renderPerfis(); $('pfSheet').hidden = false; });
   $('bPfEditar').addEventListener('click', () => { const p = PERFIS.lista.find(x => x.id === pfTela.id); if (!p) return; pfEdit = { id: p.id, nome: p.nome, cor: p.cor, corpo: lerCorpo(p.id) }; irPf('editar', p.id); });
-  $('bPfAdd').addEventListener('click', () => { pfNova = pfNova ? null : { tipo: 'peso', dia: hojeStr(), valor: null }; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; });
-  $('bPfVoltar').addEventListener('click', () => { const m = pfTela.modo; if (m === 'editar' && pfEdit && !pfEdit.id) { pfEdit = null; irPf('lista'); } else irPf(m === 'ver' || m === 'backup' ? 'lista' : 'ver'); });
+  $('bPfAdd').addEventListener('click', () => {
+    if (pfTela.aba === 'fita') { pfTela.med = null; pfMedir = pfMedir ? null : { dia: hojeStr(), v: {} }; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; return; }
+    pfNova = pfNova ? null : { tipo: 'peso', dia: hojeStr(), valor: null }; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; });
+  $('bPfVoltar').addEventListener('click', () => { const m = pfTela.modo;
+    if (m === 'medidas' && (pfTela.med || pfMedir)) { pfTela.med = null; pfMedir = null; renderPerfis(); $('pfSheet').querySelector('.box').scrollTop = 0; return; } if (m === 'editar' && pfEdit && !pfEdit.id) { pfEdit = null; irPf('lista'); } else irPf(m === 'ver' || m === 'backup' ? 'lista' : 'ver'); });
   $('bPfClose').addEventListener('click', () => { pfEdit = null; $('pfSheet').hidden = true; });
   $('pfSheet').addEventListener('click', e => { if (e.target.id === 'pfSheet') { pfEdit = null; $('pfSheet').hidden = true; } });
   $('bPfNovo').addEventListener('click', () => { pfEdit = { id: null, nome: '', cor: CORES_PERFIL[PERFIS.lista.length % CORES_PERFIL.length], corpo: lerCorpo('__novo__') }; irPf('editar', null); });
