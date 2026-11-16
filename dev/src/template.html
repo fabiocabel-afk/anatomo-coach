@@ -167,9 +167,12 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .gEixo{fill:var(--eixo);font-size:10px;font-family:inherit}
 .gBarra{fill:#9D5FE0}
 .gLinha{fill:none;stroke:#9D5FE0;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-.gPonto{fill:#9D5FE0;stroke:var(--card);stroke-width:2}
+.gPonto{fill:var(--card);stroke:#9D5FE0;stroke-width:2}
 .gLinha2{fill:none;stroke:#CC7414;stroke-width:2;stroke-dasharray:5 4;stroke-linejoin:round;stroke-linecap:round}
-.gPonto2{fill:#CC7414;stroke:var(--card);stroke-width:2}
+.gPonto2{fill:var(--card);stroke:#CC7414;stroke-width:2}
+.histPer{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.histPer .seg{margin:0}
+.selMes{appearance:none;-webkit-appearance:none;background:var(--card2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A79FB0' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:8px 30px 8px 12px;font:inherit;font-size:14px;cursor:pointer}
+.selMes.on{background-color:var(--roxo-f);border-color:var(--roxo-f);color:#fff}
 .pfAbas{margin:0 0 12px;align-self:stretch;display:flex}.pfAbas button{flex:1}
 .pfLado{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .pfLado>span{font-size:13px;color:var(--tx2)}
@@ -209,7 +212,7 @@ body.claro .fmCorpo{fill:#D9C6A8;stroke:#D9C6A8}
 .histDia:first-of-type{margin-top:12px}
 .histData{background:#642A90;color:#fff;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;letter-spacing:.01em;white-space:nowrap}
 .pfDados.duas{grid-template-columns:1fr 1fr}
-#histDias{margin-bottom:10px}
+#histDias{margin-bottom:10px}.histPer #histDias{margin:0}
 #pausaBox{position:absolute;inset:0;display:grid;place-items:center;z-index:6;background:rgba(10,8,14,.35)}
 #pausaBox .rc{background:var(--sobre);border:1px solid var(--roxo-f);border-radius:20px;padding:18px 20px;text-align:center;width:min(300px,86%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
 #pausaBox .rc span{display:block;font-size:13px;color:var(--lilas);text-transform:uppercase;letter-spacing:.08em}

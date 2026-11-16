@@ -3188,6 +3188,21 @@
   /* ---------- Gráficos simples em SVG (uma série, roxo do app) ---------- */
   const SVGNS = 'http://www.w3.org/2000/svg';
   function elSvg(tag, at) { const e = document.createElementNS(SVGNS, tag); for (const k in at) e.setAttribute(k, at[k]); return e; }
+  // linha suave que passa por todos os pontos sem inventar picos (curva monótona de Fritsch–Carlson)
+  function curvaSuave(P) {
+    if (!P.length) return '';
+    if (P.length < 3) return 'M' + P.map(p => p[0] + ',' + p[1]).join('L');
+    const n = P.length, dx = [], m = [], t = [];
+    for (let i = 0; i < n - 1; i++) { dx[i] = P[i + 1][0] - P[i][0]; m[i] = (P[i + 1][1] - P[i][1]) / (dx[i] || 1); }
+    t[0] = m[0]; t[n - 1] = m[n - 2];
+    for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : 3 * (dx[i - 1] + dx[i]) / ((2 * dx[i] + dx[i - 1]) / m[i - 1] + (dx[i] + 2 * dx[i - 1]) / m[i]);
+    let d = 'M' + P[0][0] + ',' + P[0][1];
+    for (let i = 0; i < n - 1; i++) {
+      const h = dx[i] / 3;
+      d += 'C' + (P[i][0] + h) + ',' + (P[i][1] + t[i] * h) + ' ' + (P[i + 1][0] - h) + ',' + (P[i + 1][1] - t[i + 1] * h) + ' ' + P[i + 1][0] + ',' + P[i + 1][1];
+    }
+    return d;
+  }
   function grafico(alvo, tipo, dados, fmtEixo, opc) {
     // dados: [{ rot, v, dica, partes? }] · tipo 'pilha': barras empilhadas (partes = [base, topo])
     // opc: { sel: índice selecionado, aoTocar: i => … }
@@ -3235,12 +3250,12 @@
       svg.appendChild(elSvg('line', { x1: ml, x2: W - mr, y1: y(lo), y2: y(lo), class: 'gBase' }));
     } else {
       // série 1 (linha cheia, bolinhas) e, se houver, série 2 (tracejada, quadradinhos): nunca só a cor diferencia
-      const pts = k => dados.map((d, i) => d[k] != null ? xc(i) + ',' + y(d[k]) : null).filter(Boolean).join(' ');
-      if (dados.some(d => d.v != null)) svg.appendChild(elSvg('polyline', { class: 'gLinha', points: pts('v') }));
-      if (duas) svg.appendChild(elSvg('polyline', { class: 'gLinha2', points: pts('v2') }));
-      dados.forEach((d, i) => {
-        if (d.v != null) svg.appendChild(elSvg('circle', { class: 'gPonto', cx: xc(i), cy: y(d.v), r: 4.5 }));
-        if (duas && d.v2 != null) svg.appendChild(elSvg('rect', { class: 'gPonto2', x: xc(i) - 4, y: y(d.v2) - 4, width: 8, height: 8, rx: 1.5 }));
+      const pts = k => dados.map((d, i) => d[k] != null ? [xc(i), y(d[k])] : null).filter(Boolean);
+      if (dados.some(d => d.v != null)) svg.appendChild(elSvg('path', { class: 'gLinha', d: curvaSuave(pts('v')) }));
+      if (duas) svg.appendChild(elSvg('path', { class: 'gLinha2', d: curvaSuave(pts('v2')) }));
+      dados.forEach((d, i) => { // marcadores ocos, da cor da linha
+        if (d.v != null) svg.appendChild(elSvg('circle', { class: 'gPonto', cx: xc(i), cy: y(d.v), r: 4 }));
+        if (duas && d.v2 != null) svg.appendChild(elSvg('rect', { class: 'gPonto2', x: xc(i) - 3.6, y: y(d.v2) - 3.6, width: 7.2, height: 7.2, rx: 1.5 }));
         const vy = d.v != null ? d.v : d.v2; marcas.push({ i, x: xc(i), y: y(vy), d });
       });
     }
@@ -3267,7 +3282,7 @@
     alvo.appendChild(svg); alvo.appendChild(dica);
     if (opc.legenda) { // legenda sempre que há duas séries
       const lg = document.createElement('div'); lg.className = 'gLeg';
-      opc.legenda.forEach((nm, j) => { const sp = document.createElement('span'); sp.innerHTML = '<svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" class="' + (j ? 'gLinha2' : 'gLinha') + '"/>' + (j ? '<rect x="7" y="1" width="8" height="8" rx="1.5" class="gPonto2"/>' : '<circle cx="11" cy="5" r="4" class="gPonto"/>') + '</svg>'; sp.appendChild(document.createTextNode(nm)); lg.appendChild(sp); });
+      opc.legenda.forEach((nm, j) => { const sp = document.createElement('span'); sp.innerHTML = '<svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" class="' + (j ? 'gLinha2' : 'gLinha') + '"/>' + (j ? '<rect x="7.4" y="1.4" width="7.2" height="7.2" rx="1.5" class="gPonto2"/>' : '<circle cx="11" cy="5" r="3.6" class="gPonto"/>') + '</svg>'; sp.appendChild(document.createTextNode(nm)); lg.appendChild(sp); });
       alvo.appendChild(lg);
     }
   }
@@ -3602,15 +3617,27 @@
   function telaHistorico(box, p) {
     const hist = lerHistorico(p.id).sort((a, b) => b.inicio - a.inicio);
     if (!hist.length) { const e = document.createElement('p'); e.className = 'nota'; e.textContent = 'Nenhum exercício registrado ainda. No fim de cada exercício, responda "Sim, concluí" para ele entrar aqui.'; box.appendChild(e); return; }
-    const sg = document.createElement('div'); sg.className = 'seg'; sg.id = 'histDias';
-    for (const [n, nm] of [[7, '7 dias'], [14, '14 dias'], [30, '30 dias']]) { const b = botao(pfTela.dias === n ? 'on' : '', nm, null, () => { pfTela.dias = n; pfTela.diaSel = null; renderPerfis(); }); b.dataset.v = n; sg.appendChild(b); }
-    box.appendChild(sg);
-    // por dia (últimos N dias, incluindo dias sem treino)
     const porDia = {};
     for (const r of hist) { const d = porDia[r.dia] || (porDia[r.dia] = { n: 0, seg: 0, pausa: 0, itens: [] }); d.n++; d.seg += r.ativoSeg || 0; d.pausa += pausasSeg(r); d.itens.push(r); }
+    // período: últimos 7/14/30 dias, ou um mês/ano escolhido (só aparecem os meses que têm registro)
+    const meses = [...new Set(Object.keys(porDia).map(k => k.slice(0, 7)))].sort().reverse();
+    if (pfTela.mes && !meses.includes(pfTela.mes)) pfTela.mes = null;
+    const per = document.createElement('div'); per.className = 'histPer';
+    const sg = document.createElement('div'); sg.className = 'seg'; sg.id = 'histDias';
+    for (const [n, nm] of [[7, '7 dias'], [14, '14 dias'], [30, '30 dias']]) { const b = botao(!pfTela.mes && pfTela.dias === n ? 'on' : '', nm, null, () => { pfTela.dias = n; pfTela.mes = null; pfTela.diaSel = null; renderPerfis(); }); b.dataset.v = n; sg.appendChild(b); }
+    per.appendChild(sg);
+    const sel = document.createElement('select'); sel.id = 'histMes'; sel.className = 'selMes' + (pfTela.mes ? ' on' : ''); sel.setAttribute('aria-label', 'Ver um mês');
+    const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Mês'; sel.appendChild(o0);
+    for (const m of meses) { const o = document.createElement('option'); o.value = m; o.textContent = m.slice(5, 7) + '/' + m.slice(0, 4); sel.appendChild(o); }
+    sel.value = pfTela.mes || '';
+    sel.addEventListener('change', () => { pfTela.mes = sel.value || null; pfTela.diaSel = null; renderPerfis(); });
+    per.appendChild(sel); box.appendChild(per);
     const serie = [], dias = []; const hj = new Date();
-    for (let i = pfTela.dias - 1; i >= 0; i--) {
-      const d = new Date(hj.getFullYear(), hj.getMonth(), hj.getDate() - i), k = hojeStr(d), x = porDia[k]; dias.push(k);
+    const lista = [];
+    if (pfTela.mes) { const [ay, am] = pfTela.mes.split('-').map(Number), ult = new Date(ay, am, 0).getDate(); for (let d = 1; d <= ult; d++) lista.push(new Date(ay, am - 1, d)); }
+    else for (let i = pfTela.dias - 1; i >= 0; i--) lista.push(new Date(hj.getFullYear(), hj.getMonth(), hj.getDate() - i));
+    for (const dd of lista) {
+      const k = hojeStr(dd), x = porDia[k]; dias.push(k);
       serie.push({ rot: k.slice(8, 10) + '/' + k.slice(5, 7), v: x ? minutos(x.seg + x.pausa) : 0, partes: x ? [minutos(x.seg), minutos(x.pausa)] : [0, 0],
         dica: dataBR(k) + ': ' + (x ? x.n + (x.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(x.seg + x.pausa) : 'sem treino'),
         dica2: x ? 'exercício ' + durTxt(x.seg) + ' · pausas ' + durTxt(x.pausa) : '' });
@@ -3645,7 +3672,9 @@
       box.appendChild(f);
     }
     // tabela por dia (toque na linha: detalhes do dia, com a opção de excluir)
-    const chaves = Object.keys(porDia).sort().reverse().filter(k => !pfTela.diaSel || k === pfTela.diaSel);
+    // a lista segue o período escolhido (para não ficar comprida); meses anteriores pelo seletor de mês
+    const chaves = Object.keys(porDia).sort().reverse().filter(k => dias.includes(k) && (!pfTela.diaSel || k === pfTela.diaSel));
+    if (!chaves.length) { const e = document.createElement('p'); e.className = 'nota'; e.id = 'histVazio'; e.textContent = 'Nenhum exercício neste período. Escolha um período maior ou um mês no seletor acima.'; box.appendChild(e); }
     for (const k of chaves) {
       const d = porDia[k], h = document.createElement('div'); h.className = 'histDia';
       const dt = new Date(k + 'T12:00:00'), sem = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
