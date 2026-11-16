@@ -170,19 +170,27 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 .gPonto{fill:var(--card);stroke:#9D5FE0;stroke-width:2}
 .gLinha2{fill:none;stroke:#CC7414;stroke-width:2;stroke-dasharray:5 4;stroke-linejoin:round;stroke-linecap:round}
 .gPonto2{fill:var(--card);stroke:#CC7414;stroke-width:2}
+.gPonto.gSelP{fill:#9D5FE0}.gPonto2.gSelP{fill:#CC7414}.gFixo{stroke:var(--grade2);visibility:visible}
+.fitaDataSel{align-self:flex-start;display:inline-block;background:var(--roxo-f);color:#fff;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;margin:0 0 10px}
+.fitaGraf{background:var(--card2);border:1px solid var(--bd);border-radius:14px;padding:10px 10px 4px;margin-bottom:10px}
+.fitaGrafCab{display:flex;align-items:center;gap:8px;margin-bottom:2px}.fitaGrafCab b{flex:1;font-size:15px}
+.fitaGrafVal{font-size:14px;font-weight:600;white-space:nowrap}
+.fitaGraf .gLeg{margin:-2px 0 6px}
 .histPer{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.histPer .seg{margin:0}
 .selMes{appearance:none;-webkit-appearance:none;background:var(--card2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A79FB0' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:8px 30px 8px 12px;font:inherit;font-size:14px;cursor:pointer}
 .selMes.on{background-color:var(--roxo-f);border-color:var(--roxo-f);color:#fff}
 .pfAbas{margin:0 0 12px;align-self:stretch;display:flex}.pfAbas button{flex:1}
 .pfLado{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .pfLado>span{font-size:13px;color:var(--tx2)}
-.figMed{display:block;width:min(230px,66%);margin:6px auto 4px;overflow:visible}
+.figWrap{position:relative}.figWrap .figModo{position:absolute;top:0;right:0;z-index:1}
+.figWrap.graf{display:flex;justify-content:flex-end;margin:-2px 0 4px}.figWrap.graf .figModo{position:static}
+.figMed{display:block;width:min(270px,74%);margin:4px auto 4px;overflow:visible}
 .fmCorpo{fill:#C9B293;stroke:#C9B293;stroke-linecap:round}
 body.claro .fmCorpo{fill:#D9C6A8;stroke:#D9C6A8}
-.fmFaixa{stroke:var(--roxo);stroke-width:3;stroke-linecap:round}
-.fmBola{fill:var(--roxo-f);stroke:var(--card);stroke-width:1.5}
-.fmNum{fill:#fff;font-size:9px;font-weight:700;pointer-events:none}
-.fmMarca{cursor:pointer;outline:none}.fmMarca:focus-visible .fmBola,.fmMarca:hover .fmBola{stroke:#fff;stroke-width:2}
+.fmFaixa{stroke:var(--roxo);stroke-width:9;stroke-linecap:round}
+.fmBola{fill:var(--roxo-f);stroke:var(--card);stroke-width:4}
+.fmNum{fill:#fff;font-size:30px;font-weight:700;pointer-events:none}
+.fmMarca{cursor:pointer;outline:none}.fmMarca:focus-visible .fmBola,.fmMarca:hover .fmBola{stroke:#fff;stroke-width:6}
 .fitaLista{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px}
 .fitaLin{display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:8px 10px;color:var(--tx);cursor:pointer;font:inherit}
 .fitaLin .trt,.medLin .trt,.fitaCab .trt{flex:1;min-width:0;display:flex;flex-direction:column}

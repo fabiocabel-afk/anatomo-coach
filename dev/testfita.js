@@ -22,7 +22,7 @@ ok(s.lado==='Direito*,Esquerdo,Os dois','padrão: lado direito '+s.lado);
 ok(s.marcas.length===12&&s.lista===12&&s.braco.join()==='Braço direito','desenho com 12 pontos (só o lado direito) e lista com 12 medidas');
 // o lado direito da pessoa fica à esquerda de quem olha
 s=await p.evaluate(()=>{const g=[...document.querySelectorAll('.figMed .fmMarca')].find(g=>g.dataset.k==='coxa');return Number(g.querySelector('circle').getAttribute('cx'));});
-ok(s<100,'marca da coxa direita à esquerda do desenho (de frente) cx='+s);
+ok(s<354,'marca da coxa direita à esquerda do desenho (de frente) cx='+s);
 await p.screenshot({path:'shots/fita_tela.png',fullPage:false});
 // registrar: só direito
 await cl('#bFitaMedir');
@@ -76,7 +76,7 @@ ok(c.medidas.cintura.length===1&&c.medidas.cintura[0].d==='2026-11-02','apagar (
 // esquerdo apenas
 await cl('#bPfVoltar');await cl('#pfLado button[data-v=E]');
 s=await p.evaluate(()=>({k:[...document.querySelectorAll('.figMed .fmMarca')].filter(g=>g.dataset.k==='braco').map(g=>g.getAttribute('aria-label')).join(),cx:Number([...document.querySelectorAll('.figMed .fmMarca')].find(g=>g.dataset.k==='coxa').querySelector('circle').getAttribute('cx')),br:document.querySelector('#fitaLista [data-k=braco] .fitaVal').textContent}));
-ok(s.k==='Braço esquerdo'&&s.cx>100&&/E 35,9/.test(s.br),'só esquerdo: marcas do outro lado e valores do esquerdo '+JSON.stringify(s));
+ok(s.k==='Braço esquerdo'&&s.cx>354&&/E 35,9/.test(s.br),'só esquerdo: marcas do outro lado e valores do esquerdo '+JSON.stringify(s));
 // botão + abre o formulário da fita na aba fita
 await cl('#bPfAdd');ok(await p.evaluate(()=>!!document.getElementById('pfMedir')),'+ abre o registro da fita');
 await cl('#bPfAdd');

@@ -1,11 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const VERSION = 'corpo3d-v2.36.0';
+const VERSION = 'corpo3d-v2.37.0';
 const three = fs.readFileSync(require.resolve('three/build/three.min.js'), 'utf8');
 const app = fs.readFileSync(path.join(__dirname, 'src/app.js'), 'utf8');
 const exs = fs.readFileSync(path.join(__dirname, 'src/exercicios.js'), 'utf8');
 const mus = fs.readFileSync(path.join(__dirname, 'src/musica.js'), 'utf8');
 const tpl = fs.readFileSync(path.join(__dirname, 'src/template.html'), 'utf8');
+// figura do corpo das medidas (fita), embutida para funcionar sem internet
+const FIG_FITA = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'assets/figura-fita.webp')).toString('base64');
 
 function fill(head, sw) {
   return tpl
@@ -15,7 +17,7 @@ function fill(head, sw) {
     .split('/*THREE*/').join(three.replace(/<\/script/gi, '<\\/script'))
     .split('/*MUS*/').join(mus)
     .split('/*EXS*/').join(exs)
-    .split('/*APP*/').join(app.split('/*VER*/').join(VERSION.replace('corpo3d-v', '')));
+    .split('/*APP*/').join(app.split('/*FIG_FITA*/').join(FIG_FITA).split('/*VER*/').join(VERSION.replace('corpo3d-v', '')));
 }
 fs.mkdirSync('dist/pwa', { recursive: true });
 // endereço público do app (GitHub Pages). As redes (WhatsApp, Teams...) exigem endereço completo da imagem.
