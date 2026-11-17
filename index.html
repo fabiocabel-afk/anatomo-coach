@@ -631,7 +631,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.39.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.40.0</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -3852,15 +3852,23 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const EQUIP = { halteres: 'Halteres', barra: 'Barra', anilha: 'Anilha', caneleira: 'Caneleira', corpo: 'Peso do corpo' };
   const REGIAO = { superior: 'Superior', inferior: 'Inferior', core: 'Abdômen e core', total: 'Corpo inteiro' };
   const ICON_LISTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>';
-  let grupo = null;
+  /* Cápsulas de acesso rápido: a 1ª mostra o grupo escolhido na lista suspensa do catálogo
+     (todos, um equipamento, equipamento · região ou favoritos) e as seguintes, os exercícios dele. */
+  let grupoChip = null; // 'todos' | 'eq:halteres' | 'halteres|superior' | 'fav'
   const popNome = (k, ex) => INFO[k][1].replace(/ \(.*\)$/, '') + (k === 'reto_abdome' && ex && ex.abd ? ' (' + focoAbdTxt(ex) + ')' : '');
   const musculosTxt = ex => [...new Set(ex.prim.map(k => popNome(k, ex)))].join(' · ');
+  const noGrupo = (e, k) => k === 'todos' || (k === 'fav' ? ehFav(e.id) : k.startsWith('eq:') ? e.equip === k.slice(3) : e.equip + '|' + e.regiao === k);
+  const exsDoChip = k => EXERCICIOS.filter(e => noGrupo(e, k));
+  const nomeChip = k => k === 'todos' ? 'Todos os grupos' : k === 'fav' ? 'Favoritos' : k.startsWith('eq:') ? EQUIP[k.slice(3)] : EQUIP[k.split('|')[0]] + ' · ' + REGIAO[k.split('|')[1]];
+  function grupoDoCatalogo() { return CAT.soFav && CAT.favs.length ? 'fav' : CAT.grupo; }
   function renderChips() {
+    if (!grupoChip || !exsDoChip(grupoChip).length) grupoChip = grupoDoCatalogo();
+    if (!exsDoChip(grupoChip).length) grupoChip = 'todos';
     chips.innerHTML = '';
     const g = document.createElement('button'); g.className = 'chip grp'; g.id = 'bGrupo';
-    g.innerHTML = ICON_LISTA + '<span></span>'; g.lastChild.textContent = EQUIP[grupo.equip] + ' · ' + REGIAO[grupo.regiao];
-    g.setAttribute('aria-label', 'Escolher exercício deste grupo'); g.addEventListener('click', () => abrirCatalogo(null, grupo.equip + '|' + grupo.regiao)); chips.appendChild(g);
-    for (const ex of EXERCICIOS.filter(e => e.equip === grupo.equip && e.regiao === grupo.regiao)) {
+    g.innerHTML = ICON_LISTA + '<span></span>'; g.lastChild.textContent = nomeChip(grupoChip);
+    g.setAttribute('aria-label', 'Escolher grupo ou exercício: ' + nomeChip(grupoChip)); g.addEventListener('click', () => abrirCatalogo(null, grupoChip)); chips.appendChild(g);
+    for (const ex of exsDoChip(grupoChip)) {
       const b = document.createElement('button'); b.className = 'chip'; b.dataset.id = ex.id; b.textContent = ex.nome;
       b.classList.toggle('on', ex.id === cur.id);
       b.addEventListener('click', () => {
@@ -3870,13 +3878,14 @@ window.CORPO3D_EXERCICIOS = function (H) {
       chips.appendChild(b);
     }
   }
+  // o grupo escolhido na lista suspensa do catálogo passa para as cápsulas
+  function chipsDoCatalogo() { const k = grupoDoCatalogo(); if (k !== grupoChip) { grupoChip = k; renderChips(); sincronizarGrupo(); } }
   function sincronizarGrupo() {
-    if (cur.repouso) {
-      if (!grupo) { grupo = { equip: 'halteres', regiao: 'superior' }; renderChips(); }
-      for (const el of chips.children) el.classList.remove('on');
-      return;
-    }
-    if (!grupo || grupo.equip !== cur.equip || grupo.regiao !== cur.regiao) { grupo = { equip: cur.equip, regiao: cur.regiao }; renderChips(); }
+    if (!grupoChip) renderChips();
+    if (cur.repouso) { for (const el of chips.children) el.classList.remove('on'); return; }
+    // exercício fora do grupo das cápsulas (ex.: veio de um treino): mostra o grupo dele, sem mudar a escolha do catálogo
+    if (!noGrupo(cur, grupoChip)) { grupoChip = cur.equip + '|' + cur.regiao; renderChips(); }
+    for (const el of chips.children) el.classList.toggle('on', el.dataset.id === cur.id);
     const on = chips.querySelector('.chip.on'); if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) { /* ok */ }
   }
   /* ---------- Catálogo: grupo (lista suspensa própria), lista ou miniaturas, e prévia ---------- */
@@ -3940,7 +3949,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     b.setAttribute('aria-pressed', String(CAT.soFav)); b.title = CAT.soFav ? 'Mostrando só favoritos (toque para ver todos)' : 'Mostrar só favoritos';
     $('exGrupo').classList.toggle('desligado', CAT.soFav);
   }
-  $('bSoFav').addEventListener('click', () => { CAT.soFav = !CAT.soFav; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; });
+  $('bSoFav').addEventListener('click', () => { CAT.soFav = !CAT.soFav; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; chipsDoCatalogo(); });
   const grupoNome = k => k === 'todos' ? 'Todos os grupos (' + EXERCICIOS.length + ')' : k.startsWith('eq:') ? EQUIP[k.slice(3)] + ' · todos (' + totalEq(k.slice(3)) + ')' : (g => g.nome + ' (' + g.n + ')')(GRUPOS.find(g => g.k === k));
   // lista em árvore: Todos → equipamento → região, com as linhas em "L" ligando os níveis
   function renderGrupoMenu() {
@@ -3951,7 +3960,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
       for (const g of guias) { const sp = document.createElement('span'); sp.className = 'gv ' + g; sp.setAttribute('aria-hidden', 'true'); b.appendChild(sp); }
       const tx = document.createElement('span'); tx.className = 'ddTx'; tx.textContent = nome; b.appendChild(tx);
       const em = document.createElement('em'); em.textContent = String(n); b.appendChild(em);
-      b.addEventListener('click', () => { CAT.grupo = k; CAT.soFav = false; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; });
+      b.addEventListener('click', () => { CAT.grupo = k; CAT.soFav = false; gravarCat(); fecharGrupoMenu(); renderCatalogo($('exQ').value); $('exList').scrollTop = 0; chipsDoCatalogo(); });
       m.appendChild(b);
     };
     op('todos', 'Todos os grupos', EXERCICIOS.length, []);
@@ -6338,7 +6347,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.39.0';
+  const BK_VERSAO = '2.40.0';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;
