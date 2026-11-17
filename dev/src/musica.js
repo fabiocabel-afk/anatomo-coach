@@ -450,13 +450,21 @@ window.Musica = (function () {
     st.tocando = false; st.pausado = false; st.tipo = null;
     pararSynth(); pararFaixa(); st.fonte = null; st.nome = '';
   }
-  let duckN = 0;
-  function abaixar(on) {
-    duckN = Math.max(0, duckN + (on ? 1 : -1));
+  // contagem: abaixa um pouco só se a pessoa ligou a opção; avisos (troca de lado, pausa, fim...) sempre abaixam bem,
+  // para a fala ficar nítida por cima da música
+  let duckN = 0, duckF = 0;
+  const NIVEL_CONTAGEM = 0.3, NIVEL_FALA = 0.12;
+  function aplicarAbaixar(subindo) {
     if (!duckG) return;
-    rampa(duckG, duckN > 0 && conf.abaixar ? 0.3 : 1, duckN > 0 ? 0.12 : 0.5);
+    const alvo = duckF > 0 ? NIVEL_FALA : duckN > 0 && conf.abaixar ? NIVEL_CONTAGEM : 1;
+    rampa(duckG, alvo, subindo ? 0.5 : 0.12);
   }
-  function soltarAbaixar() { duckN = 0; if (duckG) rampa(duckG, 1, 0.4); }
+  function abaixar(on, forte) {
+    if (forte) duckF = Math.max(0, duckF + (on ? 1 : -1)); else duckN = Math.max(0, duckN + (on ? 1 : -1));
+    aplicarAbaixar(!on);
+  }
+  function soltarAbaixar() { duckN = 0; duckF = 0; if (duckG) rampa(duckG, 1, 0.4); }
+  const nivelAbaixar = () => duckF > 0 ? NIVEL_FALA : duckN > 0 && conf.abaixar ? NIVEL_CONTAGEM : 1;
   function configurar(c) {
     if (c.modo && ['app', 'minhas', 'off'].includes(c.modo)) conf.modo = c.modo;
     if (Number.isFinite(c.vol)) { conf.vol = Math.min(1, Math.max(0, c.vol)); if (master) rampa(master, conf.vol, 0.1); if (el && !elFonte) el.volume = conf.vol; }
@@ -483,7 +491,7 @@ window.Musica = (function () {
     fichas, restaurarFichas, reencontrar, faltando,
     estilos: tipo => ESTILOS[tipo].map(e => e.nome),
     conf: () => Object.assign({}, conf),
-    estado: () => ({ aviso: st.aviso || '', tocando: st.tocando, pausado: st.pausado, tipo: st.tipo, fonte: st.fonte, nome: st.nome, erro: st.erro, ctx: ctx ? ctx.state : 'sem', duck: duckG ? +duckG.gain.value.toFixed(2) : 1, rodada: { treino: st.rotTreino, pausa: st.rotPausa }, elTocando: !!(el && !el.paused) }),
+    estado: () => ({ aviso: st.aviso || '', tocando: st.tocando, pausado: st.pausado, tipo: st.tipo, fonte: st.fonte, nome: st.nome, erro: st.erro, ctx: ctx ? ctx.state : 'sem', duck: duckG ? +duckG.gain.value.toFixed(2) : 1, nivel: nivelAbaixar(), rodada: { treino: st.rotTreino, pausa: st.rotPausa }, elTocando: !!(el && !el.paused) }),
     suportado: !!AC
   };
 })();

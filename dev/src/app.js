@@ -2025,7 +2025,8 @@
   }
   function esconderLegenda() { clearTimeout(legTimer); legTimer = null; $('legenda').hidden = true; legTexto = ''; }
   window.addEventListener('resize', () => { if (!$('legenda').hidden) posicionarLegenda(); });
-  function falar(txt, interromper, forcar, aoTerminar) {
+  // contagem = só o número (ou "N. Mais uma!"): abaixa a música só se a opção estiver ligada; o resto das falas sempre abaixa bem
+  function falar(txt, interromper, forcar, aoTerminar, contagem) {
     const comVoz = (cfg.voz || forcar) && VOZ_OK;
     mostrarLegenda(txt, comVoz);
     if ((!cfg.voz && !forcar) || !VOZ_OK) return false;
@@ -2035,8 +2036,9 @@
       const u = new SpeechSynthesisUtterance(txt);
       u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.08;
       if (window.Musica) {
-        let solto = false; const soltar = () => { if (!solto) { solto = true; Musica.abaixar(false); } };
-        u.onstart = () => Musica.abaixar(true); u.onend = soltar; u.onerror = soltar;
+        const forte = !contagem;
+        let solto = false; const soltar = () => { if (!solto) { solto = true; Musica.abaixar(false, forte); } };
+        u.onstart = () => Musica.abaixar(true, forte); u.onend = soltar; u.onerror = soltar;
         setTimeout(() => { if (!solto && u.onstart) soltar(); }, 9000);
       }
       if (aoTerminar) u.addEventListener('end', () => aoTerminar());
@@ -2220,8 +2222,8 @@
         return;
       }
     } else {
-      if (!cur.isometria && tc.reps >= 4 && S.rep === tc.reps - 1) falar(S.rep + '. Mais uma!', true);
-      else falar(String(S.rep), true);
+      if (!cur.isometria && tc.reps >= 4 && S.rep === tc.reps - 1) falar(S.rep + '. Mais uma!', true, false, null, true);
+      else falar(String(S.rep), true, false, null, true);
       if (tc.pausaRep > 0 && !cur.isometria) S.espera = tc.pausaRep;
     }
     painelTreino();
@@ -2251,7 +2253,7 @@
       const n = Math.ceil(S.resto);
       if (n !== S.restoInt) {
         S.restoInt = n;
-        if (n >= 1 && n <= 3) falar(String(n), true);
+        if (n >= 1 && n <= 3) falar(String(n), true, false, null, true);
         else if (n === 10 && tc.descanso > 15) falar('Dez segundos.', true);
         painelTreino();
       }
@@ -2880,6 +2882,7 @@
     const modo = SEQ ? SEQ.t.trilha : 'padrao';
     if (cur.repouso && S.estado === 'previa') { Musica.parar(true); return; }
     if (S.estado === 'treino') { Musica.tocar('treino', { modo, nova: musicaNova, ritmo: tc.ritmo }); musicaNova = false; }
+    else if (S.estado === 'preparo' && S.lado2) { /* troca de lado: a música continua, bem baixinha enquanto a voz avisa */ }
     else if (S.estado === 'preparo' || S.estado === 'pergunta') Musica.pausar();   // anunciando ou perguntando: espera
     else if (S.estado === 'concluindo') { /* segue tocando baixinho enquanto avisa o fim */ }
     else if (S.estado === 'descanso') { Musica.tocar('pausa', { modo, nova: musicaNova }); musicaNova = false; }
