@@ -433,6 +433,11 @@ body.claro .fmCorpo{fill:#D9C6A8;stroke:#D9C6A8}
 .ic.sm{width:36px;height:36px}.ic.sm svg{width:18px;height:18px}
 .ic.perigo,.lk.perigo{width:auto;border-radius:999px;padding:0 12px;font-size:13px;background:#5a1622;border-color:#FF2D45;color:#fff}
 .trc{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--card2)}
+.trShare{margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd)}.trShare .btnLinha{flex-wrap:wrap}.trShare .btnLinha button{flex:1 1 auto}
+.rcNome{font-size:20px;font-weight:700}
+.rcLista{margin:0 0 6px;padding-left:22px;display:flex;flex-direction:column;gap:6px}.rcLista li{line-height:1.25}.rcLista b{display:block;font-size:14px}.rcLista small{font-size:12px;color:var(--tx2)}
+.bkMapa{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;flex-wrap:wrap}.bkMapa span{font-weight:600}.bkMapa .selMes{max-width:100%}
+.bkConf p.bkPrev{color:var(--ok)}
 .tra{display:flex;gap:8px;align-items:center;margin-top:10px}
 .tra .pill{height:38px;margin-right:auto}
 .tra .pill svg{width:16px;height:16px}
@@ -702,6 +707,15 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 </div>
 <div id="legenda" role="status" aria-live="polite" hidden></div>
 <input type="file" id="muAchar" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
+<div id="rcSheet" class="sheetw" hidden>
+  <div class="box">
+    <div style="display:flex;align-items:center;margin-bottom:8px;gap:6px"><span class="ttl">Treino recebido</span><button class="ic" id="bRcFechar" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div id="rcCorpo"></div>
+    <p class="msg" id="rcMsg"></p>
+    <div class="btnLinha"><button id="bRcAgora">Agora não</button><button class="pri" id="bRcAdd">Adicionar aos meus treinos</button></div>
+  </div>
+</div>
+<input type="file" id="trArquivo" accept=".json,.txt,application/json,text/plain" hidden>
 <script>/*THREE*/</script>
 <script>/*MUS*/</script>
 <script>/*EXS*/</script>

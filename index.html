@@ -433,6 +433,11 @@ body.claro .fmCorpo{fill:#D9C6A8;stroke:#D9C6A8}
 .ic.sm{width:36px;height:36px}.ic.sm svg{width:18px;height:18px}
 .ic.perigo,.lk.perigo{width:auto;border-radius:999px;padding:0 12px;font-size:13px;background:#5a1622;border-color:#FF2D45;color:#fff}
 .trc{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--card2)}
+.trShare{margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd)}.trShare .btnLinha{flex-wrap:wrap}.trShare .btnLinha button{flex:1 1 auto}
+.rcNome{font-size:20px;font-weight:700}
+.rcLista{margin:0 0 6px;padding-left:22px;display:flex;flex-direction:column;gap:6px}.rcLista li{line-height:1.25}.rcLista b{display:block;font-size:14px}.rcLista small{font-size:12px;color:var(--tx2)}
+.bkMapa{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;flex-wrap:wrap}.bkMapa span{font-weight:600}.bkMapa .selMes{max-width:100%}
+.bkConf p.bkPrev{color:var(--ok)}
 .tra{display:flex;gap:8px;align-items:center;margin-top:10px}
 .tra .pill{height:38px;margin-right:auto}
 .tra .pill svg{width:16px;height:16px}
@@ -631,7 +636,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.41.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.42.0</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -702,6 +707,15 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
 </div>
 <div id="legenda" role="status" aria-live="polite" hidden></div>
 <input type="file" id="muAchar" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
+<div id="rcSheet" class="sheetw" hidden>
+  <div class="box">
+    <div style="display:flex;align-items:center;margin-bottom:8px;gap:6px"><span class="ttl">Treino recebido</span><button class="ic" id="bRcFechar" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div id="rcCorpo"></div>
+    <p class="msg" id="rcMsg"></p>
+    <div class="btnLinha"><button id="bRcAgora">Agora não</button><button class="pri" id="bRcAdd">Adicionar aos meus treinos</button></div>
+  </div>
+</div>
+<input type="file" id="trArquivo" accept=".json,.txt,application/json,text/plain" hidden>
 <script>/**
  * @license
  * Copyright 2010-2021 Three.js Authors
@@ -4829,7 +4843,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     play: svg('<path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/>'), edit: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'),
     dup: svg('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'), del: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
     up: svg('<path d="M6 15l6-6 6 6"/>'), down: svg('<path d="M6 9l6 6 6-6"/>'), x: svg('<path d="M6 6l12 12M18 6L6 18"/>'), next: svg('<path d="M6 5l9 7-9 7z"/><path d="M18 5v14"/>'),
-    swap: svg('<path d="M7 7h12l-3-3M17 17H5l3 3"/>'), stop: svg('<rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" stroke="none"/>')
+    swap: svg('<path d="M7 7h12l-3-3M17 17H5l3 3"/>'), share: svg('<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>'), stop: svg('<rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" stroke="none"/>')
   };
   function botao(cls, html, rotulo, fn) {
     const b = document.createElement('button'); b.className = cls; b.innerHTML = html;
@@ -4863,10 +4877,106 @@ window.CORPO3D_EXERCICIOS = function (H) {
       const ac = document.createElement('div'); ac.className = 'tra';
       ac.appendChild(botao('pill on trPlay', IC.play + '<span>Iniciar</span>', 'Iniciar ' + tr.nome, () => { $('trSheet').hidden = true; executarTreino(tr.id); }));
       ac.appendChild(botao('ic sm', IC.edit, 'Editar ' + tr.nome, () => abrirEditor(tr.id)));
+      ac.appendChild(botao('ic sm', IC.share, 'Compartilhar ' + tr.nome, () => { trCompart = trCompart === tr.id ? null : tr.id; renderTreinos(); }));
       ac.appendChild(botao('ic sm', IC.dup, 'Duplicar ' + tr.nome, () => duplicarTreino(tr.id)));
       ac.appendChild(botao('ic sm', IC.del, 'Apagar ' + tr.nome, bt => confirmar(bt, 'Apagar?', () => apagarTreino(tr.id))));
-      c.appendChild(ac); box.appendChild(c);
+      c.appendChild(ac);
+      if (trCompart === tr.id) { // opções de envio do treino
+        const sh = document.createElement('div'); sh.className = 'trShare'; sh.id = 'trShare';
+        const n = document.createElement('p'); n.className = 'nota'; n.style.margin = '0 0 8px';
+        n.textContent = 'Quem receber toca no link (ou abre o arquivo no AnatoMotion) e escolhe adicionar aos treinos dela. Vão só os exercícios e os ajustes; nada pessoal.';
+        sh.appendChild(n);
+        const l = document.createElement('div'); l.className = 'btnLinha'; l.style.margin = '0';
+        const b1 = botao('pri', IC.share + '<span>Enviar link</span>', 'Enviar o link do treino', () => enviarTreino(tr, 'link')); b1.id = 'bTrEnvLink'; l.appendChild(b1);
+        const b2 = botao('', '<span>Enviar arquivo</span>', 'Enviar o treino como arquivo', () => enviarTreino(tr, 'arquivo')); b2.id = 'bTrEnvArq'; l.appendChild(b2);
+        const b3 = botao('', '<span>Copiar link</span>', 'Copiar o link do treino', () => enviarTreino(tr, 'copiar')); b3.id = 'bTrCopiar'; l.appendChild(b3);
+        sh.appendChild(l); c.appendChild(sh);
+      }
+      box.appendChild(c);
     }
+    // treino recebido por arquivo
+    const rec = document.createElement('div'); rec.className = 'btnLinha'; rec.style.marginTop = '4px';
+    const br = botao('', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Abrir treino recebido (arquivo)…</span>', 'Abrir um treino recebido como arquivo', () => $('trArquivo').click());
+    br.id = 'bTrReceber'; rec.appendChild(br); box.appendChild(rec);
+  }
+  /* ---------- Compartilhar treino ----------
+     Sem servidor: o treino vai dentro do link (depois do #), em texto compacto. Quem recebe abre o link e
+     escolhe adicionar. O mesmo conteúdo pode ir como arquivo .txt. */
+  const APP_URL = 'https://fabiocabel-afk.github.io/anatomo-coach/';
+  let trCompart = null;
+  const b64url = t => btoa(unescape(encodeURIComponent(t))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const deB64url = c => decodeURIComponent(escape(atob(c.replace(/-/g, '+').replace(/_/g, '/'))));
+  function pacoteTreino(tr) {
+    return { app: 'AnatoMotion', tipo: 'treino', formato: 1, nome: tr.nome, trilha: tr.trilha === 'minhas' ? 'padrao' : tr.trilha,
+      itens: tr.itens.map(i => { const a = [i.ex, i.reps, i.ciclos, i.descanso, i.pausaRep, i.ritmo, i.depois]; if (i.peso != null) a.push(i.peso); return a; }) };
+  }
+  function linkTreino(tr) {
+    const base = location.protocol === 'https:' && /github\.io$/.test(location.hostname) ? location.origin + location.pathname : APP_URL;
+    return base + '#treino=j' + b64url(JSON.stringify(pacoteTreino(tr)));
+  }
+  async function enviarTreino(tr, como) {
+    const url = linkTreino(tr), titulo = 'Treino ' + tr.nome;
+    const texto = 'Treino "' + tr.nome + '" (' + tr.itens.length + (tr.itens.length === 1 ? ' exercício' : ' exercícios') + ') para fazer no AnatoMotion:';
+    try {
+      if (como === 'arquivo') {
+        const f = new File([JSON.stringify(pacoteTreino(tr))], 'treino-' + tr.nome.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '.txt', { type: 'text/plain' });
+        if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: titulo, text: texto }); renderTreinos('Treino enviado.'); return; }
+        const u = URL.createObjectURL(f), a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000);
+        renderTreinos('Arquivo "' + f.name + '" salvo em Downloads. Envie para a outra pessoa.'); return;
+      }
+      if (como === 'link' && navigator.share) { await navigator.share({ title: titulo, text: texto, url }); renderTreinos('Treino enviado.'); return; }
+      await navigator.clipboard.writeText(texto + ' ' + url);
+      renderTreinos('Link copiado. Cole numa conversa para enviar.');
+    } catch (e) {
+      if (e && e.name === 'AbortError') { renderTreinos('Envio cancelado.'); return; }
+      renderTreinos('Não consegui enviar daqui. Use "Copiar link" e cole numa conversa.');
+    }
+  }
+  // lê um treino recebido: link (#treino=...), texto com o link ou o arquivo com o pacote
+  function lerPacoteTreino(txt) {
+    txt = String(txt || '').trim();
+    let o = null;
+    const m = txt.match(/#treino=j([A-Za-z0-9_-]+)/);
+    try { o = m ? JSON.parse(deB64url(m[1])) : JSON.parse(txt); } catch (e) { return { erro: 'Não reconheci o treino. O link ou o arquivo pode estar incompleto.' }; }
+    if (!o || o.app !== 'AnatoMotion' || o.tipo !== 'treino' || !Array.isArray(o.itens)) return { erro: 'Isto não é um treino do AnatoMotion.' };
+    if (o.formato > 1) return { erro: 'Este treino foi feito numa versão mais nova do app. Atualize o app e abra de novo.' };
+    const brutos = o.itens.slice(0, 60).map(a => Array.isArray(a) ? { ex: a[0], reps: a[1], ciclos: a[2], descanso: a[3], pausaRep: a[4], ritmo: a[5], depois: a[6], peso: a[7] } : a);
+    const itens = brutos.map(limparItem).filter(Boolean);
+    return { nome: String(o.nome || 'Treino recebido').slice(0, 60), trilha: TRILHAS.some(x => x[0] === o.trilha) ? o.trilha : 'padrao', itens, faltam: brutos.length - itens.length };
+  }
+  let trRecebido = null;
+  function mostrarTreinoRecebido(r) {
+    trRecebido = r;
+    const box = $('rcCorpo'); box.innerHTML = '';
+    if (r.erro) { const p = document.createElement('p'); p.className = 'msg'; p.textContent = r.erro; box.appendChild(p); $('bRcAdd').hidden = true; }
+    else {
+      const b = document.createElement('div'); b.className = 'rcNome'; b.textContent = r.nome; box.appendChild(b);
+      const sm = document.createElement('p'); sm.className = 'nota'; sm.style.margin = '2px 0 10px';
+      sm.textContent = r.itens.length + (r.itens.length === 1 ? ' exercício' : ' exercícios') + ' · ' + minTxt(duracao(r)) + (r.faltam ? ' · ' + r.faltam + (r.faltam === 1 ? ' exercício não existe' : ' exercícios não existem') + ' nesta versão do app e ficaram de fora' : '');
+      box.appendChild(sm);
+      const ol = document.createElement('ol'); ol.className = 'rcLista';
+      for (const it of r.itens) { const li = document.createElement('li'); const nb = document.createElement('b'); nb.textContent = nomeEx(it.ex); li.appendChild(nb); const s2 = document.createElement('small'); s2.textContent = itemTxt(it); li.appendChild(s2); ol.appendChild(li); }
+      box.appendChild(ol);
+      const pf = PERFIS.lista.find(x => x.id === PERFIS.atual);
+      const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'Vai para os treinos do perfil ' + (pf ? pf.nome : 'atual') + '.'; box.appendChild(n);
+      $('bRcAdd').hidden = !r.itens.length;
+    }
+    $('rcMsg').textContent = '';
+    $('rcSheet').hidden = false;
+  }
+  function adicionarRecebido() {
+    const r = trRecebido; if (!r || r.erro || !r.itens.length) return;
+    let nome = r.nome, k = 2; while (TREINOS.some(t => t.nome === nome)) nome = (r.nome + ' (' + (k++) + ')').slice(0, 60);
+    const novo = limparTreino({ id: 't' + Date.now().toString(36), nome, trilha: r.trilha, itens: r.itens, criado: Date.now(), alterado: Date.now() });
+    const lista = TREINOS.concat(novo);
+    if (!gravarTreinos(lista)) { $('rcMsg').textContent = 'Atenção: não consegui gravar neste aparelho. Nada foi alterado.'; return; }
+    TREINOS = lista; trRecebido = null; $('rcSheet').hidden = true;
+    abrirTreinos(); renderTreinos('Treino "' + nome + '" adicionado aos seus treinos.');
+  }
+  function verLinkRecebido() {
+    const h = location.hash || ''; if (!/^#treino=/.test(h)) return;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ok */ }
+    mostrarTreinoRecebido(lerPacoteTreino(h));
   }
   function abrirTreinos() { renderTreinos(); $('trTitulo').textContent = 'Escolher'; $('trSheet').hidden = false; }
   function salvarLista(nova, okMsg) {
@@ -6314,6 +6424,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
   function voltarUmaTela() {
     if (visivel('sairBox')) { $('sairBox').hidden = true; return true; }
     if (visivel('hdSheet')) { if (HD && HD.confirma) { HD.confirma = null; renderDiaHist(); } else fecharDiaHist(); return true; }
+    if (visivel('rcSheet')) { $('rcSheet').hidden = true; trRecebido = null; return true; }
     if (visivel('atSheet')) { fecharAddTreino(); return true; }
     if (visivel('infoSheet')) { $('infoSheet').hidden = true; return true; }
     if (visivel('pvSheet')) { fecharPrevia(); return true; }
@@ -6358,7 +6469,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.41.0';
+  const BK_VERSAO = '2.42.0';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;
@@ -6470,7 +6581,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
   }
   // grava um backup no lugar dos dados atuais. Antes, guarda uma cópia do que existe (para desfazer).
   // Se qualquer gravação falhar, volta tudo como estava.
-  async function aplicarBackup(o, desfazendo) {
+  async function aplicarBackup(o, desfazendo, modo) {
     if (bkOcupado) return; bkOcupado = true;
     const falhar = m => { bkMsg = 'Atenção: ' + m; bkOcupado = false; renderPerfis(); };
     let antes;
@@ -6500,11 +6611,112 @@ window.CORPO3D_EXERCICIOS = function (H) {
     }
     if (desfazendo) try { localStorage.removeItem(BK_ANTES); } catch (e) { /* ok */ }
     else try { const c = Date.parse(o.criado); if (isFinite(c) && !(Number(localStorage.getItem(BK_ULTIMO)) > c)) localStorage.setItem(BK_ULTIMO, String(c)); } catch (e) { /* ok */ }
-    const msg = (desfazendo ? 'Dados de antes da restauração de volta.' : 'Backup restaurado.') + musAviso +
+    const msg = (desfazendo ? 'Dados de antes da restauração de volta.' : modo === 'juntar' ? 'Dados juntados: o que veio do arquivo foi somado aos deste aparelho.' : 'Backup restaurado.') + musAviso +
       (falta ? ' ' + falta + (falta > 1 ? ' músicas precisam' : ' música precisa') + ' ter o arquivo reencontrado (botão abaixo).' : '');
     try { sessionStorage.setItem(BK_AVISO, msg); } catch (e) { /* ok */ }
     bkPend = null; bkOcupado = false;
     recarregarPerfil();
+  }
+  /* ---------- Juntar backups (vários aparelhos) ----------
+     Monta um backup novo = dados deste aparelho + os do arquivo, e grava pelo mesmo caminho seguro da
+     restauração (cópia de antes, conferência item a item, desfazer). Juntar só acrescenta: nada daqui é apagado.
+     mapa: { idDoPerfilNoArquivo: idDoPerfilDaqui | 'novo' } */
+  const lerJ = s => { try { return JSON.parse(s); } catch (e) { return null; } };
+  function juntarHist(a, b) { // exercícios feitos: pelo código de cada registro (e por exercício + início, por garantia)
+    const la = (a && Array.isArray(a.lista)) ? a.lista : [], lb = (b && Array.isArray(b.lista)) ? b.lista : [];
+    const ids = new Set(la.map(r => r && r.id)), chv = new Set(la.map(r => r && (r.ex + '|' + r.inicio)));
+    const out = la.slice();
+    for (const r of lb) { if (!r || !r.dia || !r.inicio || ids.has(r.id) || chv.has(r.ex + '|' + r.inicio)) continue; out.push(r); ids.add(r.id); chv.add(r.ex + '|' + r.inicio); }
+    out.sort((x, y) => (x.inicio || 0) - (y.inicio || 0));
+    return { v: 1, lista: out };
+  }
+  function juntarTreinos(a, b) { // treinos: pelo código; o mesmo treino nos dois → fica o alterado por último
+    const la = (a && Array.isArray(a.lista)) ? a.lista : [], lb = (b && Array.isArray(b.lista)) ? b.lista : [];
+    const out = la.slice(), pos = new Map(out.map((t, i) => [t && t.id, i]));
+    const quando = t => Number(t && (t.alterado || t.criado)) || 0;
+    for (const t of lb) { if (!t || !t.id) continue; if (!pos.has(t.id)) { pos.set(t.id, out.length); out.push(t); } else if (quando(t) > quando(out[pos.get(t.id)])) out[pos.get(t.id)] = t; }
+    return { v: 1, lista: out };
+  }
+  function juntarCorpo(a, b) { // medidas: todas as datas; a mesma data nos dois → fica a registrada por último
+    if (!a) return b; if (!b) return a;
+    const c = JSON.parse(JSON.stringify(a));
+    for (const k of ['sexo', 'altura', 'idade', 'idadeEm', 'lado']) if ((c[k] === undefined || c[k] === null || c[k] === '') && b[k] !== undefined && b[k] !== null && b[k] !== '') c[k] = b[k];
+    c.medidas = c.medidas && typeof c.medidas === 'object' ? c.medidas : {};
+    const mb = b.medidas && typeof b.medidas === 'object' ? b.medidas : {};
+    for (const k of Object.keys(mb)) {
+      if (!Array.isArray(mb[k])) continue;
+      const l = Array.isArray(c.medidas[k]) ? c.medidas[k].slice() : [];
+      for (const r of mb[k]) {
+        if (!r || !r.d) continue;
+        const i = l.findIndex(x => x && x.d === r.d);
+        if (i < 0) l.push(r); else if ((Number(r.t) || 0) > (Number(l[i].t) || 0)) l[i] = r;
+      }
+      l.sort((x, y) => x.d < y.d ? -1 : x.d > y.d ? 1 : 0); c.medidas[k] = l;
+    }
+    return c;
+  }
+  function juntarCat(a, b) { if (!a) return b; if (!b) return a; const c = Object.assign({}, a); c.favs = [...new Set([].concat(a.favs || [], b.favs || []))]; return c; }
+  function juntarBackups(atual, novo, mapa) {
+    const reg = JSON.parse(JSON.stringify(atual.perfis)), dados = Object.assign({}, atual.dados);
+    const idsLocais = new Set(reg.lista.map(p => p.id)), destino = {};
+    let n = 0;
+    for (const p of novo.perfis.lista) {
+      let alvo = mapa[p.id];
+      if (alvo && alvo !== 'novo' && idsLocais.has(alvo)) { destino[p.id] = alvo; continue; }
+      let id = p.id; while (idsLocais.has(id)) id = 'p' + Date.now().toString(36) + (n++);
+      idsLocais.add(id); destino[p.id] = id;
+      reg.lista.push({ id, nome: p.nome, cor: p.cor || CORES_PERFIL[reg.lista.length % CORES_PERFIL.length], criado: p.criado || Date.now() });
+    }
+    if (reg.lista.length > 8) throw new Error('ficariam mais de 8 perfis. Junte alguns perfis do arquivo com perfis daqui.');
+    const junta = { [HIST_BASE]: (a, b) => juntarHist(a, b), 'corpo3d.treinos.v1': juntarTreinos, [CORPO_BASE]: juntarCorpo, 'corpo3d.catalogo.v1': juntarCat };
+    for (const [k, v] of Object.entries(novo.dados)) {
+      const i = k.lastIndexOf('@'), base = k.slice(0, i), alvo = destino[k.slice(i + 1)], kk = base + '@' + alvo;
+      if (!alvo) continue;
+      if (!(kk in dados)) { dados[kk] = v; continue; }            // não tinha aqui: vem do arquivo
+      if (junta[base]) { const r = junta[base](lerJ(dados[kk]), lerJ(v)); if (r) dados[kk] = JSON.stringify(r); }
+      // ajustes, câmera e música: ficam os deste aparelho
+    }
+    // músicas: as daqui continuam; as do arquivo entram no perfil de destino (sem repetir)
+    const mus = (atual.musicas || []).slice(), ids = new Set(mus.map(f => f.id));
+    for (const f of (novo.musicas || [])) {
+      const perfil = destino[f.perfil]; if (!perfil) continue;
+      const igual = mus.some(m => m.perfil === perfil && m.lista === f.lista && (m.id === f.id || (m.nome === f.nome && Number(m.tam) === Number(f.tam))));
+      if (igual) continue;
+      const g = Object.assign({}, f, { perfil });
+      if (ids.has(g.id)) g.id = g.id + '-' + perfil;
+      g.ordem = 1 + Math.max(-1, ...mus.filter(m => m.perfil === perfil && m.lista === f.lista).map(m => Number(m.ordem) || 0));
+      ids.add(g.id); mus.push(g);
+    }
+    return { app: 'AnatoMotion', tipo: 'backup', formato: 1, versao: BK_VERSAO, criado: new Date().toISOString(), perfis: reg, dados, musicas: mus };
+  }
+  // quanto entra de novo (para mostrar antes de juntar)
+  function contarNovidades(atual, junto) {
+    const conta = (b, base, f) => b.perfis.lista.reduce((s, p) => s + f(lerJ(b.dados[base + '@' + p.id])), 0);
+    const nh = o => (o && Array.isArray(o.lista)) ? o.lista.length : 0;
+    const nm = o => o && o.medidas ? Object.values(o.medidas).reduce((s, l) => s + (Array.isArray(l) ? l.length : 0), 0) : 0;
+    return { exs: conta(junto, HIST_BASE, nh) - conta(atual, HIST_BASE, nh), trs: conta(junto, 'corpo3d.treinos.v1', nh) - conta(atual, 'corpo3d.treinos.v1', nh),
+      meds: conta(junto, CORPO_BASE, nm) - conta(atual, CORPO_BASE, nm), perfis: junto.perfis.lista.length - atual.perfis.lista.length };
+  }
+  // sugestão de destino: mesmo nome; se cada lado tem um perfil só, junta os dois; senão, cria novo
+  function mapaSugerido(atualReg, novoReg) {
+    const norm = t => String(t || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const m = {};
+    for (const p of novoReg.lista) {
+      const q = atualReg.lista.find(x => norm(x.nome) === norm(p.nome));
+      m[p.id] = q ? q.id : (novoReg.lista.length === 1 && atualReg.lista.length === 1 ? atualReg.lista[0].id : 'novo');
+    }
+    return m;
+  }
+  async function prepararJuncao() {
+    bkPend.modo = 'juntar';
+    try { const atual = await montarBackup(); delete atual.musErro; bkPend.atual = atual; bkPend.mapa = mapaSugerido(atual.perfis, bkPend.obj.perfis); } catch (e) { bkMsg = 'Atenção: não consegui ler os dados atuais.'; bkPend.modo = null; }
+    renderPerfis();
+  }
+  async function confirmarJuncao() {
+    let junto;
+    try { junto = juntarBackups(bkPend.atual, bkPend.obj, bkPend.mapa); const v = validarBackup(JSON.parse(JSON.stringify(junto))); if (!v.ok) throw new Error(v.erro); }
+    catch (e) { bkMsg = 'Atenção: não consegui juntar: ' + ((e && e.message) || 'erro') + ' Nada foi alterado.'; renderPerfis(); return; }
+    aplicarBackup(junto, false, 'juntar');
   }
   function lerAntes() { try { const o = JSON.parse(localStorage.getItem(BK_ANTES) || 'null'); const v = validarBackup(o); return v.ok ? v : null; } catch (e) { return null; } }
   async function reencontrarMusicas(arqs) {
@@ -6559,16 +6771,46 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (bkPend) {
       const r = bkPend.resumo, c = document.createElement('div'); c.className = 'bkConf';
       c.appendChild(linhaBk('Backup de ' + fmtDataHora(r.criado), r.perfis.length + (r.perfis.length > 1 ? ' perfis: ' : ' perfil: ') + r.perfis.join(', ') + ' · ' + r.exs + ' exercícios feitos · ' + r.trs + (r.trs === 1 ? ' treino' : ' treinos') + ' · ' + r.mus + (r.mus === 1 ? ' música' : ' músicas')));
-      const av = document.createElement('p'); av.className = 'msg'; av.textContent = 'Os dados atuais deste aparelho serão trocados pelos do backup. Antes, o app guarda uma cópia deles para você poder desfazer.'; c.appendChild(av);
-      c.appendChild(botoesBk([['Cancelar', '', () => { bkPend = null; bkMsg = ''; renderPerfis(); }], ['Restaurar', 'pri', () => aplicarBackup(bkPend.obj, false), 'bBkRestaurar']]));
+      const cancelar = ['Cancelar', '', () => { bkPend = null; bkMsg = ''; renderPerfis(); }];
+      if (!bkPend.modo) {
+        const av = document.createElement('p'); av.className = 'nota'; av.style.margin = '0 0 8px';
+        av.textContent = 'Juntar: soma o que está no arquivo aos dados deste aparelho (bom para quem usa o app em mais de um aparelho). Substituir: troca tudo daqui pelo arquivo. Nos dois casos dá para desfazer.';
+        c.appendChild(av);
+        c.appendChild(botoesBk([['Juntar com os dados daqui', 'pri', () => prepararJuncao(), 'bBkJuntar']]));
+        c.appendChild(botoesBk([cancelar, ['Substituir tudo', '', () => { bkPend.modo = 'substituir'; renderPerfis(); }, 'bBkSubstituir']]));
+      } else if (bkPend.modo === 'substituir') {
+        const av = document.createElement('p'); av.className = 'msg'; av.textContent = 'Os dados atuais deste aparelho serão trocados pelos do backup. Antes, o app guarda uma cópia deles para você poder desfazer.'; c.appendChild(av);
+        c.appendChild(botoesBk([cancelar, ['Restaurar', 'pri', () => aplicarBackup(bkPend.obj, false), 'bBkRestaurar']]));
+      } else {
+        // juntar: para cada perfil do arquivo, com qual perfil daqui ele se junta
+        const t = document.createElement('p'); t.className = 'nota'; t.style.margin = '0 0 6px'; t.textContent = 'Cada perfil do arquivo vai para:'; c.appendChild(t);
+        for (const p of bkPend.obj.perfis.lista) {
+          const l = document.createElement('label'); l.className = 'bkMapa';
+          const nm = document.createElement('span'); nm.textContent = p.nome; l.appendChild(nm);
+          const sel = document.createElement('select'); sel.className = 'selMes'; sel.dataset.pid = p.id;
+          for (const q of bkPend.atual.perfis.lista) { const o = document.createElement('option'); o.value = q.id; o.textContent = 'Juntar com ' + q.nome; sel.appendChild(o); }
+          const o2 = document.createElement('option'); o2.value = 'novo'; o2.textContent = 'Criar como novo perfil'; sel.appendChild(o2);
+          sel.value = bkPend.mapa[p.id]; sel.addEventListener('change', () => { bkPend.mapa[p.id] = sel.value; renderPerfis(); });
+          l.appendChild(sel); c.appendChild(l);
+        }
+        let prev = null; try { prev = contarNovidades(bkPend.atual, juntarBackups(bkPend.atual, bkPend.obj, bkPend.mapa)); } catch (e) { const er = document.createElement('p'); er.className = 'msg'; er.textContent = 'Atenção: ' + e.message; c.appendChild(er); }
+        if (prev) {
+          const pv = document.createElement('p'); pv.className = 'msg bkPrev'; pv.id = 'bkPrev';
+          const partes = [prev.exs + (prev.exs === 1 ? ' exercício feito' : ' exercícios feitos'), prev.trs + (prev.trs === 1 ? ' treino' : ' treinos'), prev.meds + (prev.meds === 1 ? ' medida' : ' medidas')];
+          if (prev.perfis) partes.push(prev.perfis + (prev.perfis === 1 ? ' perfil novo' : ' perfis novos'));
+          pv.textContent = (prev.exs + prev.trs + prev.meds + prev.perfis) ? 'Vai entrar: ' + partes.join(' · ') + '. Nada daqui é apagado.' : 'Tudo o que está no arquivo já existe aqui. Nada vai mudar.';
+          c.appendChild(pv);
+        }
+        c.appendChild(botoesBk([cancelar, ['Juntar', 'pri', () => confirmarJuncao(), 'bBkConfJuntar']]));
+      }
       box.appendChild(c);
     } else {
       box.appendChild(botoesBk([['Importar backup…', '', () => $('bkArquivo').click(), 'bBkImportar']]));
     }
     const antes = lerAntes();
     if (antes && !bkPend) {
-      box.appendChild(linhaBk('Cópia de antes da última restauração', 'Dados deste aparelho de ' + fmtDataHora(antes.resumo.criado) + ', caso a restauração não tenha sido o que você queria.'));
-      box.appendChild(botoesBk([['Desfazer a última restauração', '', b => confirmar(b, 'Toque de novo para desfazer', () => aplicarBackup(antes.obj, true)), 'bBkDesfazer']]));
+      box.appendChild(linhaBk('Cópia de antes da última restauração ou junção', 'Dados deste aparelho de ' + fmtDataHora(antes.resumo.criado) + ', caso a restauração não tenha sido o que você queria.'));
+      box.appendChild(botoesBk([['Desfazer a última restauração ou junção', '', b => confirmar(b, 'Toque de novo para desfazer', () => aplicarBackup(antes.obj, true)), 'bBkDesfazer']]));
     }
     // músicas sem arquivo
     if (window.Musica) Musica.faltando().then(n => {
@@ -6592,6 +6834,17 @@ window.CORPO3D_EXERCICIOS = function (H) {
 
   setExercise('repouso', true);
   painelTreino();
+  // treino recebido: botões, arquivo e link aberto (#treino=...)
+  $('bRcAdd').addEventListener('click', adicionarRecebido);
+  for (const id of ['bRcFechar', 'bRcAgora']) $(id).addEventListener('click', () => { $('rcSheet').hidden = true; trRecebido = null; });
+  $('rcSheet').addEventListener('click', e => { if (e.target.id === 'rcSheet') { $('rcSheet').hidden = true; trRecebido = null; } });
+  $('trArquivo').addEventListener('change', async e => {
+    const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (f.size > 200000) { mostrarTreinoRecebido({ erro: 'Arquivo grande demais para ser um treino.' }); return; }
+    try { mostrarTreinoRecebido(lerPacoteTreino(await f.text())); } catch (er) { mostrarTreinoRecebido({ erro: 'Não consegui ler o arquivo.' }); }
+  });
+  window.addEventListener('hashchange', verLinkRecebido);
+  setTimeout(verLinkRecebido, 300);
 
   let last = null;
   /* ---------- Outro lado: o corpo (e o que ele segura) é desenhado espelhado ----------

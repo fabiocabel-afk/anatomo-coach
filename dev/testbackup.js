@@ -69,7 +69,7 @@ await cl('#bPerfil');await cl('#bPfBackup');await p.$('#bkArquivo').then(i=>i.up
 t=await p.evaluate(()=>document.getElementById('pfList').innerText);
 ok(/2 perfis: Fabio, Ana/.test(t)&&/10 exercícios feitos/.test(t)&&/1 treino/.test(t)&&/2 músicas/.test(t),'resumo antes de restaurar');
 await p.screenshot({path:'shots/backup_confirmar.png'});
-await Promise.all([p.waitForNavigation({timeout:60000}),cl('#bBkRestaurar')]);await carregar();await sleep(500);
+await cl('#bBkSubstituir');await Promise.all([p.waitForNavigation({timeout:60000}),cl('#bBkRestaurar')]);await carregar();await sleep(500);
 t=await p.evaluate(()=>({vis:!document.getElementById('pfSheet').hidden,txt:document.getElementById('pfList').innerText}));
 ok(t.vis&&/Backup restaurado/.test(t.txt)&&/2 músicas precisam/.test(t.txt),'depois de reabrir: aviso de restaurado');
 await sleep(500);t=await p.evaluate(()=>document.getElementById('pfList').innerText);ok(/Reencontrar músicas/.test(t)&&/Desfazer a última restauração/.test(t),'botões reencontrar e desfazer');
@@ -98,7 +98,7 @@ await cl('#bBkDesfazer');await Promise.all([p.waitForNavigation({timeout:60000})
 r=await estado();ok(r.h_p1===0&&r.tr===''&&r.mus===''&&/Dados de antes/.test(await p.evaluate(()=>document.getElementById('pfList').innerText)),'desfazer volta ao estado anterior');
 // ---- importar de novo: as músicas voltam sozinhas (arquivos já estavam no aparelho)
 await cl('#bPfBackup').catch(()=>{});await p.$('#bkArquivo').then(i=>i.uploadFile('/tmp/bk_ok.json'));await sleep(600);
-await Promise.all([p.waitForNavigation({timeout:60000}),cl('#bBkRestaurar')]);await carregar();await sleep(400);
+await cl('#bBkSubstituir');await Promise.all([p.waitForNavigation({timeout:60000}),cl('#bBkRestaurar')]);await carregar();await sleep(400);
 r=await estado();ok(r.mus==='Treino 2,Relax pausa'&&r.h_p1===7,'restaurar de novo: músicas já encaixadas sozinhas '+r.mus);
 // perfil Ana também
 const txt=await p.evaluate(()=>document.getElementById('pfList').innerText);ok(/Backup restaurado\./.test(txt)&&!/precisa/.test(txt),'sem músicas faltando');
