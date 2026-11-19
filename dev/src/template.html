@@ -162,6 +162,11 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 #rest .rc span{display:block;font-size:13px;color:var(--tx2);text-transform:uppercase;letter-spacing:.08em}
 #rest .rc b{display:block;font-size:64px;font-weight:600;line-height:1.1;color:var(--tx)}
 #rest .rc small{display:block;font-size:13px;color:var(--tx2);margin-bottom:12px}
+#restProx{margin:-4px -8px 10px;display:flex;flex-direction:column;align-items:center}
+#restProx .rpRot{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--lilas);margin:0 0 6px !important}
+#rest #restCv{width:min(170px,42vw);height:min(170px,42vw);border-radius:14px;border:1px solid var(--bd);display:block;background:var(--card2)}
+#restProxNome{font-size:17px !important;font-weight:700;line-height:1.25 !important;margin-top:8px;color:var(--tx);max-width:240px}
+#restProxSub{margin:2px 0 0 !important;font-size:12px !important;max-width:240px}
 #concBox{position:absolute;inset:0;display:grid;place-items:center;z-index:7;background:rgba(10,8,14,.45)}
 #concBox .rc{background:var(--sobre);border:1px solid var(--roxo-f);border-radius:20px;padding:18px;width:min(340px,90%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
 #concTit{display:block;font-size:17px;font-weight:600;text-align:center;margin-bottom:12px}
@@ -503,7 +508,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <button class="ic" id="bBest" aria-label="Voltar ao melhor ângulo" title="Melhor ângulo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
     <button class="ic" id="bClose" aria-label="Ver corpo inteiro" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
-  <div id="rest" hidden><div class="rc"><span>Descanso</span><b id="restN">30</b><small id="restNext"></small><button id="bSkip">Pular descanso</button></div></div>
+  <div id="rest" hidden><div class="rc"><div id="restProx" hidden><small class="rpRot">A seguir</small><canvas id="restCv" width="300" height="300" aria-label="Movimento do próximo exercício"></canvas><b id="restProxNome"></b><small id="restProxSub"></small></div><span>Descanso</span><b id="restN">30</b><small id="restNext"></small><button id="bSkip">Pular descanso</button></div></div>
   <div id="pausaBox" hidden><div class="rc"><span>Treino pausado</span><small id="pausaInfo"></small><div class="pbBtns"><button class="pri" id="bContinuar">Continuar</button><button id="bEncerrar">Encerrar treino</button><button class="lk" id="bRecomecarEx">Recomeçar este exercício</button></div></div></div>
   <div id="concBox" hidden><div class="rc"><span id="concTit">Você concluiu o exercício?</span><div id="concLista"></div><small id="concMsg"></small><div class="pbBtns lado"><button id="bConcNao">Não</button><button class="pri" id="bConcSim">Sim, concluí</button></div></div></div>
   <div id="hint">Toque num músculo · 1 dedo gira · 2 dedos movem e dão zoom</div>

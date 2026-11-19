@@ -162,6 +162,11 @@ body.imersivo.rodando:not(.toque):not(.infoAberta):not(.musAberto) #bRecolher{op
 #rest .rc span{display:block;font-size:13px;color:var(--tx2);text-transform:uppercase;letter-spacing:.08em}
 #rest .rc b{display:block;font-size:64px;font-weight:600;line-height:1.1;color:var(--tx)}
 #rest .rc small{display:block;font-size:13px;color:var(--tx2);margin-bottom:12px}
+#restProx{margin:-4px -8px 10px;display:flex;flex-direction:column;align-items:center}
+#restProx .rpRot{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--lilas);margin:0 0 6px !important}
+#rest #restCv{width:min(170px,42vw);height:min(170px,42vw);border-radius:14px;border:1px solid var(--bd);display:block;background:var(--card2)}
+#restProxNome{font-size:17px !important;font-weight:700;line-height:1.25 !important;margin-top:8px;color:var(--tx);max-width:240px}
+#restProxSub{margin:2px 0 0 !important;font-size:12px !important;max-width:240px}
 #concBox{position:absolute;inset:0;display:grid;place-items:center;z-index:7;background:rgba(10,8,14,.45)}
 #concBox .rc{background:var(--sobre);border:1px solid var(--roxo-f);border-radius:20px;padding:18px;width:min(340px,90%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
 #concTit{display:block;font-size:17px;font-weight:600;text-align:center;margin-bottom:12px}
@@ -503,7 +508,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <button class="ic" id="bBest" aria-label="Voltar ao melhor ângulo" title="Melhor ângulo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
     <button class="ic" id="bClose" aria-label="Ver corpo inteiro" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
-  <div id="rest" hidden><div class="rc"><span>Descanso</span><b id="restN">30</b><small id="restNext"></small><button id="bSkip">Pular descanso</button></div></div>
+  <div id="rest" hidden><div class="rc"><div id="restProx" hidden><small class="rpRot">A seguir</small><canvas id="restCv" width="300" height="300" aria-label="Movimento do próximo exercício"></canvas><b id="restProxNome"></b><small id="restProxSub"></small></div><span>Descanso</span><b id="restN">30</b><small id="restNext"></small><button id="bSkip">Pular descanso</button></div></div>
   <div id="pausaBox" hidden><div class="rc"><span>Treino pausado</span><small id="pausaInfo"></small><div class="pbBtns"><button class="pri" id="bContinuar">Continuar</button><button id="bEncerrar">Encerrar treino</button><button class="lk" id="bRecomecarEx">Recomeçar este exercício</button></div></div></div>
   <div id="concBox" hidden><div class="rc"><span id="concTit">Você concluiu o exercício?</span><div id="concLista"></div><small id="concMsg"></small><div class="pbBtns lado"><button id="bConcNao">Não</button><button class="pri" id="bConcSim">Sim, concluí</button></div></div></div>
   <div id="hint">Toque num músculo · 1 dedo gira · 2 dedos movem e dão zoom</div>
@@ -636,7 +641,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.42.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.43.0</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -4368,8 +4373,17 @@ window.CORPO3D_EXERCICIOS = function (H) {
     if (S.estado === 'pausado') $('pausaInfo').textContent = (SEQ ? SEQ.t.nome + ' · exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + '\n' : '') + cur.nome + ' · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (cur.doisLados && S.antes !== 'descanso' ? ' · ' + (S.lado2 ? '2º lado' : '1º lado') : '') + (S.antes === 'treino' ? ' · ' + S.rep + '/' + tc.reps : '');
     if (!$('rest').hidden) {
       $('restN').textContent = String(Math.max(0, Math.ceil(S.resto)));
-      $('restNext').textContent = S.troca && SEQ ? 'Próximo: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
-    }
+      // entre exercícios de um treino: cartão com o movimento do próximo, o nome e os ajustes dele
+      const itProx = S.troca && SEQ ? SEQ.t.itens[SEQ.idx + 1] : null, exProx = itProx && exPorId(itProx.ex);
+      $('restProx').hidden = !exProx;
+      if (exProx) {
+        $('restProxNome').textContent = exProx.nome; $('restProxSub').textContent = itemTxt(itProx);
+        const cv = $('restCv'), px = Math.round(170 * Math.min(window.devicePixelRatio || 1, 2)); if (cv.width !== px) cv.width = cv.height = px;
+        MINI.mostrarProximo($('restCv'), exProx);
+      } else MINI.esconderProximo();
+      $('restNext').hidden = !!exProx;
+      $('restNext').textContent = exProx ? '' : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
+    } else MINI.esconderProximo();
     modoImersivo(rodando || S.estado === 'pausado', rodando);
     seqBarUI(); atualizarMusica(); telaAcesa(rodando || S.estado === 'pausado');
   }
@@ -5364,7 +5378,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
   const MINI = (function () {
     const TAM = Math.round(150 * Math.min(window.devicePixelRatio || 1, 1.6));
     let r2 = null, camM = null, falhou = false;
-    const itens = []; let fila = 0, obs = null, tempo = 0, prev = null, tamAtual = 0;
+    const itens = []; let fila = 0, obs = null, tempo = 0, prev = null, tamAtual = 0, prox = null, proxPar = false;
     function garantir() {
       if (r2 || falhou) return !!r2;
       try {
@@ -5419,17 +5433,27 @@ window.CORPO3D_EXERCICIOS = function (H) {
       prev = { ex, t0: tempo };
     }
     function fecharPrevia() { prev = null; if (r2 && r2.domElement.parentNode) r2.domElement.parentNode.removeChild(r2.domElement); }
+    // cartão do próximo exercício (no descanso entre exercícios de um treino montado)
+    function mostrarProximo(canvas, ex) { if (prox && prox.ex === ex && prox.canvas === canvas) return; prox = { canvas, ctx: canvas.getContext('2d'), ex, t0: tempo, n: 0 }; }
+    function esconderProximo() { prox = null; }
     // chamado a cada quadro; devolve true se a tela principal está coberta
     function quadro(dt) {
       tempo += dt;
       const galeria = !$('exSheet').hidden && CAT.modo === 'mini' && itens.length > 0;
       const previa = !!prev && !$('pvSheet').hidden;
-      if (!galeria && !previa) return false;
+      // próximo exercício: desenha em quadros alternados (metade do custo), sem cobrir a tela principal
+      const proximo = !galeria && !previa && !!prox && prox.canvas.isConnected && prox.canvas.offsetParent !== null && (proxPar = !proxPar);
+      if (!galeria && !previa && !proximo) return false;
       if (!garantir()) return false;
       const sv = salvarPrincipal();
       miniRender = true;
       try {
         if (previa) { desenhar(prev.ex, tempo - prev.t0); prev.n = (prev.n || 0) + 1; }
+        else if (proximo) {
+          tamanho(prox.canvas.width);
+          desenhar(prox.ex, tempo - prox.t0);
+          prox.ctx.drawImage(r2.domElement, 0, 0, prox.canvas.width, prox.canvas.height); prox.n++;
+        }
         else {
           tamanho(TAM);
           // orçamento de tempo por quadro: algumas miniaturas por vez, em rodízio
@@ -5447,9 +5471,9 @@ window.CORPO3D_EXERCICIOS = function (H) {
       } catch (e) { /* uma miniatura com problema não derruba o app */ }
       miniRender = false;
       restaurarPrincipal(sv);
-      return true;
+      return galeria || previa;
     }
-    return { TAM, registrar, limpar, quadro, abrirPrevia, fecharPrevia, ativo: () => !!r2, previaQuadros: () => prev ? prev.n || 0 : -1 };
+    return { TAM, registrar, limpar, quadro, abrirPrevia, fecharPrevia, mostrarProximo, esconderProximo, ativo: () => !!r2, previaQuadros: () => prev ? prev.n || 0 : -1, proximoQuadros: () => prox ? prox.n : -1, proximoEx: () => prox ? prox.ex.id : null };
   })();
 
   /* =====================================================================
@@ -6469,7 +6493,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.42.0';
+  const BK_VERSAO = '2.43.0';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;
@@ -6943,6 +6967,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
     },
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     camera2: () => ({ dif: ['th', 'ph', 'dist', 'tx', 'ty', 'tz'].map(k => +(camT[k] - cam[k]).toFixed(4)).join(','), tw: tweening, est: S.estado, rep: cur.repouso, foco: focusKey, ptrs: ptrs.size, cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
+    proximoCard: () => ({ ex: MINI.proximoEx(), quadros: MINI.proximoQuadros(), vis: !$('restProx').hidden && !$('rest').hidden }),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, lado, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },

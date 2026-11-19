@@ -2092,8 +2092,17 @@
     if (S.estado === 'pausado') $('pausaInfo').textContent = (SEQ ? SEQ.t.nome + ' · exercício ' + (SEQ.idx + 1) + ' de ' + SEQ.t.itens.length + '\n' : '') + cur.nome + ' · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (cur.doisLados && S.antes !== 'descanso' ? ' · ' + (S.lado2 ? '2º lado' : '1º lado') : '') + (S.antes === 'treino' ? ' · ' + S.rep + '/' + tc.reps : '');
     if (!$('rest').hidden) {
       $('restN').textContent = String(Math.max(0, Math.ceil(S.resto)));
-      $('restNext').textContent = S.troca && SEQ ? 'Próximo: ' + nomeEx(SEQ.t.itens[SEQ.idx + 1].ex) : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
-    }
+      // entre exercícios de um treino: cartão com o movimento do próximo, o nome e os ajustes dele
+      const itProx = S.troca && SEQ ? SEQ.t.itens[SEQ.idx + 1] : null, exProx = itProx && exPorId(itProx.ex);
+      $('restProx').hidden = !exProx;
+      if (exProx) {
+        $('restProxNome').textContent = exProx.nome; $('restProxSub').textContent = itemTxt(itProx);
+        const cv = $('restCv'), px = Math.round(170 * Math.min(window.devicePixelRatio || 1, 2)); if (cv.width !== px) cv.width = cv.height = px;
+        MINI.mostrarProximo($('restCv'), exProx);
+      } else MINI.esconderProximo();
+      $('restNext').hidden = !!exProx;
+      $('restNext').textContent = exProx ? '' : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
+    } else MINI.esconderProximo();
     modoImersivo(rodando || S.estado === 'pausado', rodando);
     seqBarUI(); atualizarMusica(); telaAcesa(rodando || S.estado === 'pausado');
   }
@@ -3088,7 +3097,7 @@
   const MINI = (function () {
     const TAM = Math.round(150 * Math.min(window.devicePixelRatio || 1, 1.6));
     let r2 = null, camM = null, falhou = false;
-    const itens = []; let fila = 0, obs = null, tempo = 0, prev = null, tamAtual = 0;
+    const itens = []; let fila = 0, obs = null, tempo = 0, prev = null, tamAtual = 0, prox = null, proxPar = false;
     function garantir() {
       if (r2 || falhou) return !!r2;
       try {
@@ -3143,17 +3152,27 @@
       prev = { ex, t0: tempo };
     }
     function fecharPrevia() { prev = null; if (r2 && r2.domElement.parentNode) r2.domElement.parentNode.removeChild(r2.domElement); }
+    // cartão do próximo exercício (no descanso entre exercícios de um treino montado)
+    function mostrarProximo(canvas, ex) { if (prox && prox.ex === ex && prox.canvas === canvas) return; prox = { canvas, ctx: canvas.getContext('2d'), ex, t0: tempo, n: 0 }; }
+    function esconderProximo() { prox = null; }
     // chamado a cada quadro; devolve true se a tela principal está coberta
     function quadro(dt) {
       tempo += dt;
       const galeria = !$('exSheet').hidden && CAT.modo === 'mini' && itens.length > 0;
       const previa = !!prev && !$('pvSheet').hidden;
-      if (!galeria && !previa) return false;
+      // próximo exercício: desenha em quadros alternados (metade do custo), sem cobrir a tela principal
+      const proximo = !galeria && !previa && !!prox && prox.canvas.isConnected && prox.canvas.offsetParent !== null && (proxPar = !proxPar);
+      if (!galeria && !previa && !proximo) return false;
       if (!garantir()) return false;
       const sv = salvarPrincipal();
       miniRender = true;
       try {
         if (previa) { desenhar(prev.ex, tempo - prev.t0); prev.n = (prev.n || 0) + 1; }
+        else if (proximo) {
+          tamanho(prox.canvas.width);
+          desenhar(prox.ex, tempo - prox.t0);
+          prox.ctx.drawImage(r2.domElement, 0, 0, prox.canvas.width, prox.canvas.height); prox.n++;
+        }
         else {
           tamanho(TAM);
           // orçamento de tempo por quadro: algumas miniaturas por vez, em rodízio
@@ -3171,9 +3190,9 @@
       } catch (e) { /* uma miniatura com problema não derruba o app */ }
       miniRender = false;
       restaurarPrincipal(sv);
-      return true;
+      return galeria || previa;
     }
-    return { TAM, registrar, limpar, quadro, abrirPrevia, fecharPrevia, ativo: () => !!r2, previaQuadros: () => prev ? prev.n || 0 : -1 };
+    return { TAM, registrar, limpar, quadro, abrirPrevia, fecharPrevia, mostrarProximo, esconderProximo, ativo: () => !!r2, previaQuadros: () => prev ? prev.n || 0 : -1, proximoQuadros: () => prox ? prox.n : -1, proximoEx: () => prox ? prox.ex.id : null };
   })();
 
   /* =====================================================================
@@ -4667,6 +4686,7 @@
     },
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     camera2: () => ({ dif: ['th', 'ph', 'dist', 'tx', 'ty', 'tz'].map(k => +(camT[k] - cam[k]).toFixed(4)).join(','), tw: tweening, est: S.estado, rep: cur.repouso, foco: focusKey, ptrs: ptrs.size, cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
+    proximoCard: () => ({ ex: MINI.proximoEx(), quadros: MINI.proximoQuadros(), vis: !$('restProx').hidden && !$('rest').hidden }),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, lado, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },

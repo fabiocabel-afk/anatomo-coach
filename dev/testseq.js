@@ -83,7 +83,7 @@ await sleep(500);m=await p.evaluate(()=>__corpo.musica());ok(m.tipo==='pausa'&&m
 await p.evaluate(()=>__corpo.avancar(5.2));s=await p.evaluate(()=>__corpo.treino());ok(s.estado==='treino'&&s.ciclo===2,'ciclo 2');
 s=await p.evaluate(()=>{for(let i=0;i<600&&__corpo.seq().idx===0;i++){if(!document.getElementById('concBox').hidden)document.getElementById('bConcSim').click();__corpo.avancar(0.05);}return {seq:__corpo.seq(),tr:__corpo.treino(),at:__corpo.atual()};});
 ok(s.seq.idx===1&&s.at==='prancha'&&s.tr.estado==='treino'&&s.tr.cfg.reps===4,'depois=0: foi direto para o exercício 2 '+JSON.stringify(s));
-s=await p.evaluate(()=>{for(let i=0;i<600&&['treino','pergunta','concluindo'].includes(__corpo.treino().estado);i++){if(!document.getElementById('concBox').hidden)document.getElementById('bConcSim').click();__corpo.avancar(0.05);}return {seq:__corpo.seq(),tr:__corpo.treino(),nx:document.getElementById('restNext').textContent};});
+s=await p.evaluate(()=>{for(let i=0;i<600&&['treino','pergunta','concluindo'].includes(__corpo.treino().estado);i++){if(!document.getElementById('concBox').hidden)document.getElementById('bConcSim').click();__corpo.avancar(0.05);}return {seq:__corpo.seq(),tr:__corpo.treino(),nx:document.getElementById('restProxNome').textContent};});
 ok(s.tr.estado==='descanso'&&s.seq.troca&&/Rosca/.test(s.nx),'descanso até o próximo exercício: '+s.nx);
 await shot('6_troca');
 await p.evaluate(()=>__corpo.avancar(5.2));
