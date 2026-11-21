@@ -2501,6 +2501,7 @@
     painelTreino();
   }
   function irDescansar(seg) {
+    if (!S.troca) { const pa = parteAtual(); if (pa && !pa.fimAtivo) { pa.fimAtivo = Date.now(); pa.descProg = seg; } }
     fotografarPose(); S.estado = 'descanso'; S.resto = seg; S.restoInt = Math.ceil(seg); aimCamera(REPOUSO.cam); musicaNova = true;
     painelTreino();
   }
@@ -2512,7 +2513,20 @@
   // pausas programadas também entram no histórico: o descanso entre os ciclos (dentro do exercício)
   // e o descanso entre um exercício e outro do treino montado (fica no exercício que vem depois).
   // As pausas feitas pela pessoa (botão Parar) não contam em nada.
-  function marcarInicio() { if (!S.reg) { S.reg = { inicio: Date.now(), pausadoMs: 0, pausaDesde: null, descMs: 0, antesMs: SEQ ? S.pausaEntreMs : 0 }; S.pausaEntreMs = 0; } }
+  // cada ciclo também fica guardado (horário, tempo, repetições, descanso), para o histórico mostrar
+  // quando a pessoa muda repetições, ciclos ou descanso no meio do exercício
+  function marcarInicio() {
+    if (!S.reg) {
+      const ag = Date.now();
+      S.reg = { inicio: ag, pausadoMs: 0, pausaDesde: null, descMs: 0, antesMs: SEQ ? S.pausaEntreMs : 0, plano: { ciclos: tc.ciclos, reps: tc.reps, descanso: tc.descanso }, partes: [] };
+      S.pausaEntreMs = 0; novaParte(ag);
+    }
+  }
+  function novaParte(ag) { if (S.reg) S.reg.partes.push({ ini: ag || Date.now(), pausadoMs: 0, descMs: 0 }); }
+  const parteAtual = () => S.reg && S.reg.partes && S.reg.partes[S.reg.partes.length - 1];
+  function fecharPausa() {
+    if (S.reg && S.reg.pausaDesde) { const d = Date.now() - S.reg.pausaDesde; S.reg.pausadoMs += d; const pa = parteAtual(); if (pa) pa.pausadoMs += d; S.reg.pausaDesde = null; }
+  }
   function registroDoExercicio() {
     const r = S.reg || { inicio: Date.now(), pausadoMs: 0, descMs: 0, antesMs: 0 }, fim = Date.now();
     return {
@@ -2521,7 +2535,13 @@
       inicio: r.inicio, fim, ativoSeg: Math.max(0, Math.round((fim - r.inicio - (r.pausadoMs || 0) - (r.descMs || 0)) / 1000)),
       descansoSeg: Math.round((r.descMs || 0) / 1000), pausaAntesSeg: Math.round((r.antesMs || 0) / 1000),
       ciclos: tc.ciclos, reps: tc.reps, iso: !!cur.isometria, ritmo: tc.ritmo, ritmoNome: ritmoNome(tc.ritmo),
-      descanso: tc.descanso, peso: pesoAtual(), pesoTipo: tipoPeso(cur), pesoUn: tipoPeso(cur) === 'barra' ? 'anilha' : undefined, lados: cur.doisLados ? 2 : 1
+      descanso: tc.descanso, peso: pesoAtual(), pesoTipo: tipoPeso(cur), pesoUn: tipoPeso(cur) === 'barra' ? 'anilha' : undefined, lados: cur.doisLados ? 2 : 1,
+      plano: r.plano || null,
+      // cada ciclo vai até o começo do seguinte (ou o fim), tirando o descanso e as pausas: a soma bate com o total
+      partes: (r.partes || []).map((p, i, l) => Object.assign({}, p, { ate: i < l.length - 1 ? l[i + 1].ini : fim })).filter(p => p.reps != null).map(p => ({
+        ini: p.ini, ativo: Math.max(0, Math.round((p.ate - p.ini - p.pausadoMs - p.descMs) / 1000)), reps: p.reps,
+        desc: Math.round(p.descMs / 1000), descProg: p.descProg == null ? null : p.descProg
+      }))
     };
   }
   function resetTreino(silencioso) {
@@ -2533,7 +2553,9 @@
   function proximoCiclo() {
     if (S.troca) { proximoExercicio(); return; }
     if (S.estado === 'descanso' || S.estado === 'pausado') { fotografarPose(); bestAngle(false); }
-    S.ciclo++; S.espera = 0; S.rep = 0; setLado2(false);
+    fecharPausa();
+    { const pa = parteAtual(); if (pa && !pa.fimAtivo) { pa.fimAtivo = Date.now(); pa.descProg = 0; } }
+    S.ciclo++; S.espera = 0; S.rep = 0; setLado2(false); novaParte();
     preparar('Ciclo ' + S.ciclo + ' de ' + tc.ciclos + '.');
   }
   function repCompleta() {
@@ -2547,6 +2569,7 @@
     }
     if (S.rep >= tc.reps) {
       t = 0; lastCycle = 0; phase = 0;
+      { const pa = parteAtual(); if (pa) pa.reps = S.rep; }
       if (S.ciclo >= tc.ciclos) {
         const reg = registroDoExercicio(); S.reg = null;
         if (SEQ && SEQ.idx < SEQ.t.itens.length - 1) {
@@ -2605,7 +2628,7 @@
       lado = cur.alt ? Math.floor(t / per) % 2 : 0;
     } else if (S.estado === 'descanso') {
       S.resto -= dt;
-      if (S.troca) S.pausaEntreMs += dt * 1000; else if (S.reg) S.reg.descMs = (S.reg.descMs || 0) + dt * 1000;
+      if (S.troca) S.pausaEntreMs += dt * 1000; else if (S.reg) { S.reg.descMs = (S.reg.descMs || 0) + dt * 1000; const pa = parteAtual(); if (pa) pa.descMs += dt * 1000; }
       const n = Math.ceil(S.resto);
       if (n !== S.restoInt) {
         S.restoInt = n;
@@ -2624,7 +2647,7 @@
     if (S.estado === 'previa' || S.estado === 'fim' || S.estado === 'congelado') iniciarTreino();
     else if (S.estado === 'treino' || S.estado === 'descanso' || S.estado === 'preparo' || S.estado === 'concluindo' || S.estado === 'pergunta') { S.antes = S.estado; S.estado = 'pausado'; if (S.reg) S.reg.pausaDesde = Date.now(); calarVoz(); painelTreino(); }
     else if (S.estado === 'pausado') {
-      if (S.reg && S.reg.pausaDesde) { S.reg.pausadoMs += Date.now() - S.reg.pausaDesde; S.reg.pausaDesde = null; }
+      fecharPausa();
       if (S.antes === 'preparo') { S.estado = 'preparo'; dizerComeca(); painelTreino(); return; }
       if (S.antes === 'concluindo') { const f = S.prep && S.prep.depois; S.prep = null; if (f) f(); else proximoCiclo(); return; }
       S.estado = S.antes; if (S.estado === 'treino') falar('Continuando.', true); painelTreino();
@@ -4238,6 +4261,10 @@
       const inf = document.createElement('span'); inf.className = 'histInfo';
       inf.textContent = d.n + (d.n === 1 ? ' exercício' : ' exercícios') + ' · ' + durTxt(d.seg) + (d.pausa ? ' + ' + durTxt(d.pausa) + ' de pausas' : '');
       h.appendChild(cap); h.appendChild(inf);
+      // toque na data: card do dia com todos os exercícios
+      h.classList.add('clic'); h.tabIndex = 0; h.setAttribute('role', 'button'); h.setAttribute('aria-label', 'Ver todos os exercícios de ' + dataBR(k)); h.dataset.dia = k;
+      const abrirD = () => abrirDiaHist(p.id, k, null);
+      h.addEventListener('click', abrirD); h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirD(); } });
       box.appendChild(h);
       const tb = document.createElement('table'); tb.className = 'tab tabHist'; const tbody = document.createElement('tbody');
       for (const r of d.itens) {
@@ -4247,7 +4274,7 @@
         const t3 = document.createElement('td'); t3.className = 'num'; t3.textContent = durTxt(r.ativoSeg);
         if (pausasSeg(r)) { const s4 = document.createElement('small'); s4.textContent = '+' + durTxt(pausasSeg(r)) + ' pausa'; t3.appendChild(s4); }
         tr.appendChild(t3);
-        const abrir = () => abrirDiaHist(p.id, k, r.id);
+        const abrir = () => abrirExHist(p.id, r.id); // só este exercício
         tr.addEventListener('click', abrir); tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } });
         tbody.appendChild(tr);
       }
@@ -4256,17 +4283,125 @@
   }
   /* ---------- Card do dia: exercícios, tempos e pausas; aqui dentro é que se exclui ---------- */
   let HD = null; // { pid, dia, sel: id do registro, confirma: null | 'ex' | 'treino' }
-  function abrirDiaHist(pid, dia, sel) { HD = { pid, dia, sel, confirma: null }; renderDiaHist(); $('hdSheet').hidden = false; $('hdSheet').querySelector('.box').scrollTop = 0; }
+  function abrirDiaHist(pid, dia, sel) { HD = { pid, dia, sel, confirma: null, modo: 'dia' }; renderDiaHist(); $('hdSheet').hidden = false; $('hdSheet').querySelector('.box').scrollTop = 0; }
+  function abrirExHist(pid, id) {
+    const r = lerHistorico(pid).find(x => x.id === id); if (!r) return;
+    HD = { pid, dia: r.dia, sel: id, confirma: null, modo: 'ex' }; renderDiaHist(); $('hdSheet').hidden = false; $('hdSheet').querySelector('.box').scrollTop = 0;
+  }
+  const durSeg = seg => { seg = Math.max(0, Math.round(seg || 0)); if (seg < 60) return seg + ' s'; const m = Math.floor(seg / 60), x = seg % 60; return m + ' min' + (x ? ' ' + String(x).padStart(2, '0') + ' s' : ''); };
+  const horaSeg = ms => { const d = new Date(ms); return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':'); };
+  const qtdTxt = (r, n) => r.iso ? n + ' s' : n + (n === 1 ? ' repetição' : ' repetições');
+  // o exercício mudou durante o treino? (repetições, ciclos ou descanso diferentes do que estava previsto no início)
+  function mudouNoTreino(r) {
+    const ps = r.partes; if (!ps || !ps.length) return false;
+    const pl = r.plano || { ciclos: r.ciclos, reps: r.reps, descanso: r.descanso };
+    return ps.length !== pl.ciclos || ps.some(p => p.reps !== pl.reps) || ps.slice(0, -1).some(p => p.descProg != null && p.descProg !== pl.descanso);
+  }
+  // detalhe de um exercício do histórico (card do exercício e item aberto no card do dia)
+  function detalheExercicio(r, det, comResumo) {
+    const pau = pausasSeg(r), ps = r.partes && r.partes.length ? r.partes : null;
+    if (comResumo) {
+      const g = document.createElement('div'); g.className = 'pfDados duas hdResumo';
+      for (const [k, v] of [['Horário', horaTxt(r.inicio) + ' – ' + horaTxt(r.fim)], ['Total', durSeg(r.ativoSeg + pau)], ['Tempo de exercício', durSeg(r.ativoSeg)], ['Tempo de pausa', r.descansoSeg === undefined ? '—' : durSeg(pau)]]) {
+        const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); g.appendChild(d);
+      }
+      det.appendChild(g);
+    }
+    const lin = (a, b, cls) => { const l = document.createElement('div'); l.className = 'hdLin' + (cls ? ' ' + cls : ''); const x = document.createElement('span'); x.textContent = a; const y2 = document.createElement('b'); y2.textContent = b; l.appendChild(x); l.appendChild(y2); det.appendChild(l); return l; };
+    const lados = r.lados === 2 ? ' de cada lado' : '';
+    if (mudouNoTreino(r)) {
+      // mudou no meio: uma linha por ciclo, com horário, repetições, tempo e descanso
+      const tt = document.createElement('p'); tt.className = 'hdSub'; tt.textContent = 'Ciclo a ciclo · mudou durante o exercício'; det.appendChild(tt);
+      const tb = document.createElement('table'); tb.className = 'tab hdCiclos'; tb.id = 'hdCiclos';
+      const th = document.createElement('thead'); th.innerHTML = '<tr><th>Ciclo</th><th>Início</th><th>' + (r.iso ? 'Tempo' : 'Repet.') + '</th><th class="num">Exercício</th><th class="num">Pausa</th></tr>'; tb.appendChild(th);
+      const tbo = document.createElement('tbody');
+      ps.forEach((p, i) => {
+        const tr = document.createElement('tr');
+        for (const [v, c] of [[(i + 1) + 'º', ''], [horaSeg(p.ini), 'hora'], [r.iso ? p.reps + ' s' : String(p.reps), ''], [durSeg(p.ativo), 'num'], [i < ps.length - 1 ? durSeg(p.desc) : '—', 'num']]) { const td = document.createElement('td'); td.textContent = v; if (c) td.className = c; tr.appendChild(td); }
+        tbo.appendChild(tr);
+      });
+      tb.appendChild(tbo); det.appendChild(tb);
+      if (lados) { const n = document.createElement('p'); n.className = 'nota'; n.style.margin = '4px 0 0'; n.textContent = 'Repetições de cada lado.'; det.appendChild(n); }
+      const pl = r.plano; if (pl) lin('Previsto no início', pl.ciclos + (pl.ciclos === 1 ? ' ciclo' : ' ciclos') + ' de ' + qtdTxt(r, pl.reps) + ' · descanso ' + pl.descanso + ' s');
+    } else {
+      // como previsto: a forma resumida
+      lin('Séries', r.ciclos + (r.ciclos === 1 ? ' ciclo' : ' ciclos') + ' de ' + qtdTxt(r, r.reps) + lados);
+      if (r.ciclos > 1) lin('Descanso entre ciclos', r.descansoSeg === undefined ? 'não registrado' : (r.descanso || 0) + ' s cada' + (r.descansoSeg ? ' · ' + durSeg(r.descansoSeg) + ' no total' : ''));
+    }
+    if (!comResumo) { lin('Horário', horaTxt(r.inicio) + ' – ' + horaTxt(r.fim)); }
+    lin('Descanso antes (entre exercícios)', r.pausaAntesSeg ? durSeg(r.pausaAntesSeg) : '—');
+    lin('Ritmo', r.ritmoNome || '—');
+    if (r.peso || r.caneleira) lin('Peso', (PESOS[r.pesoTipo] ? PESOS[r.pesoTipo].nome : 'Caneleira') + ' · ' + pesoRegTxt(r));
+    if (r.treino) lin('Treino', r.treino.nome);
+    lin('Total de exercício', durSeg(r.ativoSeg), 'hdTot');
+    lin('Total de pausa', r.descansoSeg === undefined ? 'não registrado' : durSeg(pau), 'hdTot');
+    // gráfico: cada ciclo é uma barra (exercício cheio, pausa apagada), com os valores de cima
+    if (ps) {
+      const serie = [], maior = Math.max(r.pausaAntesSeg || 0, ...ps.map((p, i) => p.ativo + (i < ps.length - 1 ? p.desc : 0))), un = maior < 180 ? 1 : 60; // ciclos curtos: segundos
+      if (r.pausaAntesSeg) serie.push({ rot: 'antes', v: r.pausaAntesSeg / un, partes: [0, r.pausaAntesSeg / un], dica: 'Descanso antes do exercício', dica2: 'pausa ' + durSeg(r.pausaAntesSeg) });
+      ps.forEach((p, i) => { const des = i < ps.length - 1 ? p.desc : 0; serie.push({ rot: (i + 1) + 'º', v: (p.ativo + des) / un, partes: [p.ativo / un, des / un], dica: (i + 1) + 'º ciclo · ' + qtdTxt(r, p.reps) + lados + ' · ' + horaSeg(p.ini), dica2: 'exercício ' + durSeg(p.ativo) + (des ? ' · pausa ' + durSeg(des) : '') }); });
+      const gw = document.createElement('div'); gw.className = 'gWrap hdGraf'; gw.id = 'hdGraf'; det.appendChild(gw);
+      grafico(gw, 'pilha', serie, v => numBR(Math.round(v * 10) / 10), { alt: 150 });
+      const leg = document.createElement('div'); leg.className = 'gLeg';
+      leg.innerHTML = '<span><i class="gSw a"></i>Exercício</span><span><i class="gSw b"></i>Pausa</span><em>' + (un === 1 ? 'segundos' : 'minutos') + ' por ciclo · toque numa barra para ver os valores</em>';
+      det.appendChild(leg);
+    }
+  }
   function fecharDiaHist() { $('hdSheet').hidden = true; HD = null; }
   function renderDiaHist(msg) {
     if (!HD) return;
     const itens = lerHistorico(HD.pid).filter(r => r.dia === HD.dia).sort((a, b) => a.inicio - b.inicio);
+    const soEx = HD.modo === 'ex';
+    if (soEx && !itens.some(r => r.id === HD.sel)) { fecharDiaHist(); return; }
     if (!itens.length) { fecharDiaHist(); return; }
-    if (!itens.some(r => r.id === HD.sel)) HD.sel = itens[0].id;
     const dt = new Date(HD.dia + 'T12:00:00');
-    $('hdTitulo').textContent = (HD.dia === hojeStr() ? 'Hoje, ' : dt.toLocaleDateString('pt-BR', { weekday: 'long' }).replace(/^./, c => c.toUpperCase()) + ', ') + dataBR(HD.dia);
-    $('hdMsg').textContent = msg || '';
+    const dataTx = (HD.dia === hojeStr() ? 'Hoje, ' : dt.toLocaleDateString('pt-BR', { weekday: 'long' }).replace(/^./, c => c.toUpperCase()) + ', ') + dataBR(HD.dia);
     const box = $('hdCorpo'); box.innerHTML = '';
+    $('hdMsg').textContent = msg || '';
+    // botões de excluir (sempre com confirmação)
+    const acoes = (r, det) => {
+      const mesmoTreino = r.treino && !soEx ? itens.filter(x => x.treino && (r.sessao ? x.sessao === r.sessao : x.treino.id === r.treino.id)) : [];
+      if (!HD.confirma) {
+        const bl = document.createElement('div'); bl.className = 'btnLinha hdAcoes';
+        bl.appendChild(botao('perigoTx', 'Excluir este exercício', null, () => { HD.confirma = 'ex'; renderDiaHist(); }));
+        if (mesmoTreino.length > 1) bl.appendChild(botao('perigoTx', 'Excluir o treino inteiro (' + mesmoTreino.length + ')', null, () => { HD.confirma = 'treino'; renderDiaHist(); }));
+        det.appendChild(bl);
+      } else {
+        const cf = document.createElement('div'); cf.className = 'hdConf'; cf.setAttribute('role', 'alertdialog');
+        const q = document.createElement('p');
+        q.textContent = HD.confirma === 'ex' ? 'Excluir "' + r.nome + '" das ' + horaTxt(r.inicio) + ' do histórico? Isso não pode ser desfeito.'
+          : 'Excluir o treino "' + r.treino.nome + '" deste dia, com os ' + mesmoTreino.length + ' exercícios? Isso não pode ser desfeito.';
+        cf.appendChild(q);
+        const bl = document.createElement('div'); bl.className = 'btnLinha';
+        bl.appendChild(botao('', 'Cancelar', null, () => { HD.confirma = null; renderDiaHist(); }));
+        bl.appendChild(botao('perigoCheio', 'Sim, excluir', null, () => {
+          const ids = new Set(HD.confirma === 'ex' ? [r.id] : mesmoTreino.map(x => x.id));
+          const l = lerHistorico(HD.pid).filter(x => !ids.has(x.id));
+          const okG = gravarHistorico(HD.pid, l);
+          HD.confirma = null;
+          if (okG) {
+            renderPerfis(ids.size > 1 ? ids.size + ' registros excluídos.' : 'Registro excluído.');
+            if (soEx) { fecharDiaHist(); return; }
+            HD.sel = null; renderDiaHist(ids.size > 1 ? 'Treino excluído.' : 'Exercício excluído.');
+          } else renderDiaHist('Atenção: não consegui gravar neste aparelho. Nada foi excluído.');
+        }));
+        cf.appendChild(bl); det.appendChild(cf);
+      }
+    };
+    if (soEx) {
+      // card de um exercício só
+      const r = itens.find(x => x.id === HD.sel);
+      $('hdTitulo').textContent = r.nome;
+      const sub = document.createElement('p'); sub.className = 'hdData'; sub.textContent = dataTx + (r.treino ? ' · ' + r.treino.nome : ''); box.appendChild(sub);
+      const det = document.createElement('div'); det.className = 'hdDet soEx'; box.appendChild(det);
+      detalheExercicio(r, det, true);
+      if (r.descansoSeg === undefined) { const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'Registro feito antes das pausas serem separadas: o descanso entre ciclos está somado ao tempo do exercício.'; det.appendChild(n); }
+      else if (!r.partes) { const n = document.createElement('p'); n.className = 'nota'; n.textContent = 'Registro feito antes do detalhe ciclo a ciclo: aparece só o resumo.'; det.appendChild(n); }
+      acoes(r, det);
+      return;
+    }
+    // card do dia: todos os exercícios (toque em um para ver o detalhe)
+    $('hdTitulo').textContent = dataTx;
     const seg = itens.reduce((a, r) => a + (r.ativoSeg || 0), 0), pau = itens.reduce((a, r) => a + pausasSeg(r), 0);
     const g = document.createElement('div'); g.className = 'pfDados duas';
     for (const [k, v] of [['Exercícios', String(itens.length)], ['Exercício', durTxt(seg)], ['Pausas', durTxt(pau)], ['Total', durTxt(seg + pau)]]) { const d = document.createElement('div'); const s1 = document.createElement('span'); s1.textContent = k; const s2 = document.createElement('b'); s2.textContent = v; d.appendChild(s1); d.appendChild(s2); g.appendChild(d); }
@@ -4279,50 +4414,11 @@
       top.innerHTML = '<span class="hdHora"></span><span class="trt"><b></b><small></small></span><span class="hdTempo"></span>';
       top.querySelector('.hdHora').textContent = horaTxt(r.inicio);
       top.querySelector('b').textContent = r.nome;
-      top.querySelector('small').textContent = regTxt(r) + (r.treino ? ' · ' + r.treino.nome : '');
+      top.querySelector('small').textContent = regTxt(r) + (mudouNoTreino(r) ? ' · alterado' : '') + (r.treino ? ' · ' + r.treino.nome : '');
       top.querySelector('.hdTempo').textContent = durTxt(r.ativoSeg) + (pausasSeg(r) ? ' + ' + durTxt(pausasSeg(r)) : '');
       top.addEventListener('click', () => { HD.sel = aberto ? null : r.id; HD.confirma = null; renderDiaHist(); });
       c.appendChild(top);
-      if (aberto) {
-        const det = document.createElement('div'); det.className = 'hdDet';
-        const linhas = [
-          ['Horário', horaTxt(r.inicio) + ' – ' + horaTxt(r.fim)],
-          ['Tempo de exercício', durTxt(r.ativoSeg)],
-          ['Descanso entre ciclos', r.descansoSeg === undefined ? 'não registrado' : durTxt(r.descansoSeg)],
-          ['Descanso antes (entre exercícios)', r.pausaAntesSeg ? durTxt(r.pausaAntesSeg) : '—'],
-          ['Séries', r.ciclos + (r.ciclos === 1 ? ' ciclo' : ' ciclos') + ' de ' + r.reps + (r.iso ? ' segundos' : ' repetições') + (r.lados === 2 ? ' de cada lado' : '')],
-          ['Ritmo', r.ritmoNome || '—']
-        ];
-        if (r.peso || r.caneleira) linhas.push(['Peso', (PESOS[r.pesoTipo] ? PESOS[r.pesoTipo].nome : 'Caneleira') + ' · ' + pesoRegTxt(r)]);
-        if (r.treino) linhas.push(['Treino', r.treino.nome]);
-        for (const [a, b] of linhas) { const l = document.createElement('div'); l.className = 'hdLin'; const x = document.createElement('span'); x.textContent = a; const y2 = document.createElement('b'); y2.textContent = b; l.appendChild(x); l.appendChild(y2); det.appendChild(l); }
-        // excluir: sempre com confirmação
-        const mesmoTreino = r.treino ? itens.filter(x => x.treino && (r.sessao ? x.sessao === r.sessao : x.treino.id === r.treino.id)) : [];
-        if (!HD.confirma) {
-          const bl = document.createElement('div'); bl.className = 'btnLinha hdAcoes';
-          bl.appendChild(botao('perigoTx', 'Excluir este exercício', null, () => { HD.confirma = 'ex'; renderDiaHist(); }));
-          if (mesmoTreino.length > 1) bl.appendChild(botao('perigoTx', 'Excluir o treino inteiro (' + mesmoTreino.length + ')', null, () => { HD.confirma = 'treino'; renderDiaHist(); }));
-          det.appendChild(bl);
-        } else {
-          const cf = document.createElement('div'); cf.className = 'hdConf'; cf.setAttribute('role', 'alertdialog');
-          const q = document.createElement('p');
-          q.textContent = HD.confirma === 'ex' ? 'Excluir "' + r.nome + '" das ' + horaTxt(r.inicio) + ' do histórico? Isso não pode ser desfeito.'
-            : 'Excluir o treino "' + r.treino.nome + '" deste dia, com os ' + mesmoTreino.length + ' exercícios? Isso não pode ser desfeito.';
-          cf.appendChild(q);
-          const bl = document.createElement('div'); bl.className = 'btnLinha';
-          bl.appendChild(botao('', 'Cancelar', null, () => { HD.confirma = null; renderDiaHist(); }));
-          bl.appendChild(botao('perigoCheio', 'Sim, excluir', null, () => {
-            const ids = new Set(HD.confirma === 'ex' ? [r.id] : mesmoTreino.map(x => x.id));
-            const l = lerHistorico(HD.pid).filter(x => !ids.has(x.id));
-            const okG = gravarHistorico(HD.pid, l);
-            HD.confirma = null;
-            if (okG) { HD.sel = null; renderPerfis(ids.size > 1 ? ids.size + ' registros excluídos.' : 'Registro excluído.'); renderDiaHist(ids.size > 1 ? 'Treino excluído.' : 'Exercício excluído.'); }
-            else renderDiaHist('Atenção: não consegui gravar neste aparelho. Nada foi excluído.');
-          }));
-          cf.appendChild(bl); det.appendChild(cf);
-        }
-        c.appendChild(det);
-      }
+      if (aberto) { const det = document.createElement('div'); det.className = 'hdDet'; detalheExercicio(r, det, false); acoes(r, det); c.appendChild(det); }
       box.appendChild(c);
     }
   }
@@ -5088,6 +5184,7 @@
     pecas: () => ({ halter: Object.assign({}, cabecaHalter(dumbbells[0].userData.kg), { kg: dumbbells[0].userData.kg, rot: dumbbells[0].userData.rot.length }), anilha: { kg: anilha.userData.kg, raio: anilha.userData.raio, esc: anilha.userData.disc.scale.x, rot: anilha.userData.rot.length }, barra: { kg: barra.userData.kg, placas: barra.userData.placas.map(m => +(m.scale.x).toFixed(3)), rot: barra.userData.rots.length } }),
     proximoCard: () => ({ ex: MINI.proximoEx(), quadros: MINI.proximoQuadros(), vis: !$('restProx').hidden && !$('rest').hidden }),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
+    mudarTc: o => { Object.assign(tc, o); painelTreino(); },
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, lado, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
     avancar: seg => { const n = Math.round(seg / 0.05); for (let i = 0; i < n; i++) passo(0.05); },
     mirarEm: (k, th, ph, dist) => { const ids = BYKEY[k], c = new V3(); ids.forEach(i => c.add(centroid(i))); c.divideScalar(ids.length); tweening = false; Object.assign(cam, { th: rad(th), ph: rad(ph), dist, tx: c.x, ty: c.y, tz: c.z }); },

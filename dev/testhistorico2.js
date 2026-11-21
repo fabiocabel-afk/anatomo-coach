@@ -43,11 +43,11 @@ ok(await p.evaluate(()=>!document.getElementById('histFiltro')),'tocar de novo n
 // barra de dia sem treino não filtra
 await p.evaluate(()=>{const r=document.querySelectorAll('#grafHist .gToque');r[r.length-2].dispatchEvent(new MouseEvent('click',{bubbles:true}));});await sleep(250);
 ok(await p.evaluate(()=>!document.getElementById('histFiltro')),'dia sem treino: não filtra');
-// tocar numa linha abre o card do dia
+// tocar numa linha de exercício abre o card só daquele exercício
 await p.evaluate(()=>document.querySelector('#pfList table tbody tr[data-id="a2"]').click());await sleep(300);
-x=await p.evaluate(()=>({vis:!document.getElementById('hdSheet').hidden,tit:document.getElementById('hdTitulo').textContent,n:document.querySelectorAll('#hdCorpo .hdItem').length,on:(document.querySelector('#hdCorpo .hdItem.on')||{dataset:{}}).dataset.id,txt:document.getElementById('hdCorpo').innerText}));
-ok(x.vis&&/^Hoje/.test(x.tit)&&x.n===3&&x.on==='a2','tocar na linha abre o card do dia com o exercício aberto');
-ok(/Descanso entre ciclos\s*1 min/.test(x.txt)&&/Descanso antes \(entre exercícios\)\s*45 s/.test(x.txt)&&/Total\s*16 min/.test(x.txt),'card mostra tempos e pausas');
+x=await p.evaluate(()=>({vis:!document.getElementById('hdSheet').hidden,tit:document.getElementById('hdTitulo').textContent,n:document.querySelectorAll('#hdCorpo .hdItem').length,txt:document.getElementById('hdCorpo').innerText}));
+ok(x.vis&&x.tit==='Afundo (parado)'&&x.n===0&&/^Hoje/.test(x.txt),'tocar no exercício abre o card só dele '+x.tit);
+ok(/Séries\s*3 ciclos de 10 repetições/.test(x.txt)&&/Descanso entre ciclos\s*30 s cada · 1 min no total/.test(x.txt)&&/Descanso antes \(entre exercícios\)\s*45 s/.test(x.txt)&&/Total de exercício\s*4 min/.test(x.txt)&&/Total de pausa\s*1 min 45 s/.test(x.txt),'card do exercício: forma resumida, tempos e pausas');
 await p.screenshot({path:'shots/hist2_card.png'});
 // excluir pede confirmação; cancelar não apaga
 await p.evaluate(()=>[...document.querySelectorAll('#hdCorpo button')].find(b=>b.textContent==='Excluir este exercício').click());await sleep(200);
@@ -62,8 +62,13 @@ ok(await p.evaluate(()=>!document.getElementById('hdSheet').hidden&&!document.qu
 // confirmar apaga só aquele
 await p.evaluate(()=>[...document.querySelectorAll('#hdCorpo button')].find(b=>b.textContent==='Excluir este exercício').click());await sleep(200);
 await p.evaluate(()=>[...document.querySelectorAll('#hdCorpo .hdConf button')].find(b=>b.textContent==='Sim, excluir').click());await sleep(300);
-x=await p.evaluate(()=>({h:__corpo.historico().map(r=>r.id).join(','),n:document.querySelectorAll('#hdCorpo .hdItem').length,msg:document.getElementById('hdMsg').textContent,linhas:document.querySelectorAll('#pfList table tbody tr').length}));
-ok(x.h==='a1,a3,b1,c1'&&x.n===2&&/excluído/.test(x.msg)&&x.linhas===4,'confirmado: apaga só aquele exercício, card e tabela atualizam '+JSON.stringify(x));
+x=await p.evaluate(()=>({h:__corpo.historico().map(r=>r.id).join(','),vis:!document.getElementById('hdSheet').hidden,linhas:document.querySelectorAll('#pfList table tbody tr').length}));
+ok(x.h==='a1,a3,b1,c1'&&!x.vis&&x.linhas===4,'confirmado: apaga só aquele exercício, card fecha e a tabela atualiza '+JSON.stringify(x));
+// tocar na data abre o card do dia com todos os exercícios
+await p.evaluate(()=>document.querySelector('#pfList .histDia.clic').click());await sleep(300);
+x=await p.evaluate(()=>({tit:document.getElementById('hdTitulo').textContent,n:document.querySelectorAll('#hdCorpo .hdItem').length}));
+ok(/^Hoje/.test(x.tit)&&x.n===2,'tocar na data abre o card do dia com todos os exercícios '+JSON.stringify(x));
+await p.screenshot({path:'shots/hist2_dia.png'});
 // excluir o treino inteiro
 await p.evaluate(()=>document.querySelector('#hdCorpo .hdItem .hdTopo').click());await sleep(200);
 x=await p.evaluate(()=>[...document.querySelectorAll('#hdCorpo .hdItem.on button')].map(b=>b.textContent).join('|'));ok(/Excluir o treino inteiro \(2\)/.test(x),'opção de excluir o treino inteiro: '+x);
@@ -74,7 +79,7 @@ x=await p.evaluate(()=>({h:__corpo.historico().map(r=>r.id).join(','),vis:!docum
 ok(x.h==='b1,c1'&&!x.vis,'treino inteiro apagado; dia vazio fecha o card');
 // registro antigo (sem pausas separadas) avisa no card
 await p.evaluate(()=>document.querySelector('#pfList table tbody tr[data-id="c1"]').click());await sleep(300);
-ok(/antes desta versão/.test(await p.evaluate(()=>document.getElementById('hdCorpo').innerText)),'registro antigo: aviso de que as pausas não estavam separadas');
+ok(/antes das pausas serem separadas/.test(await p.evaluate(()=>document.getElementById('hdCorpo').innerText)),'registro antigo: aviso de que as pausas não estavam separadas');
 await cl('#bHdClose');
 // treino de verdade: mede o descanso entre ciclos e o descanso entre exercícios
 const p2=await b.newPage();await p2.setViewport({width:390,height:844});p2.on('pageerror',e=>errs.push(e.message));
