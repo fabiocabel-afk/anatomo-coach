@@ -17,7 +17,11 @@ const mudarPeso=async v=>{await p.evaluate(()=>document.getElementById('bCfg').c
 await mudarPeso(1);const h1=await p.evaluate(()=>__corpo.pecas().halter);
 await mudarPeso(30);const h30=await p.evaluate(()=>__corpo.pecas().halter);
 ok(h1.kg===1&&h30.kg===30&&h30.r>h1.r*2&&h30.L>h1.L*2.5,'halter de 30 kg bem maior que o de 1 kg (raio '+h1.r.toFixed(3)+'→'+h30.r.toFixed(3)+', largura '+h1.L.toFixed(3)+'→'+h30.L.toFixed(3)+')');
-await p.evaluate(()=>{__corpo.cam&&0;});await shot('peca_halter30');
+await shot('peca_halter30');
+await mudarPeso(5);const h5=await p.evaluate(()=>__corpo.pecas().halter);ok(Math.abs(h5.r-0.0607)<0.001&&Math.abs(h5.L-0.0455)<0.001,'halter de 5 kg no tamanho de referência (o antigo de 15 kg) '+JSON.stringify(h5));
+await shot('peca_halter5');
+for(const [id,kg] of [['rosca',20],['elevacao_lateral',10],['agachamento_halteres',20],['supino_halteres',20]]){const ex=await p.evaluate(id=>__corpo.exercicios.includes(id),id);if(!ex)continue;await p.evaluate(id=>__corpo.setExercise(id),id);await sleep(300);await mudarPeso(kg);await p.evaluate(()=>{__corpo.setPhase(1);});await sleep(400);await shot('peca_h_'+id+kg);}
+await p.evaluate(()=>__corpo.setExercise('rosca'));await sleep(300);
 // anilha
 const anId=await p.evaluate(()=>__corpo.exercicios.find(id=>{__corpo.setExercise(id);return __corpo.exAtual().equip==='anilha';}));
 await p.evaluate(id=>__corpo.setExercise(id),anId);await sleep(300);
@@ -46,7 +50,7 @@ console.log('    sub:',s);
 await p.evaluate(()=>{document.getElementById('bParar')&&!document.getElementById('bParar').hidden&&document.getElementById('bParar').click();});await sleep(300);
 // tamanhos reais máximos
 await p.evaluate(()=>__corpo.setExercise('rosca'));await sleep(200);await mudarPeso(40);
-const h40=await p.evaluate(()=>__corpo.pecas().halter);ok(h40.r<=0.075&&h40.L<=0.075,'halter de 40 kg não passa do tamanho real '+JSON.stringify(h40));
+const h40=await p.evaluate(()=>__corpo.pecas().halter);ok(h40.r<=0.11&&h40.L<=0.12,'halter de 40 kg não passa do tamanho real '+JSON.stringify(h40));
 await p.evaluate(id=>__corpo.setExercise(id),anId);await sleep(200);await mudarPeso(100);
 const a100=await p.evaluate(()=>__corpo.pecas().anilha);ok(a100.raio<=0.2,'anilha de 100 kg não passa do tamanho real (raio '+a100.raio+')');
 await shot('peca_anilha100');

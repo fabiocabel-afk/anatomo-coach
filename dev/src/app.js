@@ -704,15 +704,19 @@
   const TEX_PESO = new Map();
   function texPeso(kg, modo) {
     const chave = kg + '|' + modo; if (TEX_PESO.has(chave)) return TEX_PESO.get(chave);
-    const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
-    g.fillStyle = '#E9E4F0'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const n = String(Math.round(kg * 100) / 100).replace('.', ','), f = n.length > 3 ? 74 : n.length > 2 ? 92 : 112;
-    if (modo === 'anel') { // anilha com furo no meio: número em cima, "kg" embaixo
-      g.font = '700 ' + Math.round(f * 0.62) + 'px system-ui, sans-serif'; g.fillText(n, 128, 58);
-      g.font = '600 34px system-ui, sans-serif'; g.fillText('KG', 128, 200);
-    } else { g.font = '700 ' + f + 'px system-ui, sans-serif'; g.fillText(n, 128, 112); g.font = '600 40px system-ui, sans-serif'; g.fillText('kg', 128, 196); }
-    const t = new THREE.CanvasTexture(c); t.anisotropy = 4;
-    const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false });
+    // 512 px, número grande e grosso, claro sobre o preto da peça (legível mesmo pequeno)
+    const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+    g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const n = String(Math.round(kg * 100) / 100).replace('.', ','), L = n.length;
+    if (modo === 'anel') { // anilha com furo no meio: número em cima, "KG" embaixo
+      g.font = '800 ' + (L > 3 ? 104 : L > 2 ? 128 : 150) + 'px system-ui, sans-serif'; g.fillText(n, 256, 118);
+      g.font = '700 70px system-ui, sans-serif'; g.fillText('KG', 256, 404);
+    } else { // cabeça do halter: só o número, ocupando a face
+      g.font = '800 ' + (L > 3 ? 170 : L > 2 ? 210 : L > 1 ? 280 : 330) + 'px system-ui, sans-serif'; g.fillText(n, 256, 240);
+      g.font = '700 64px system-ui, sans-serif'; g.fillText('kg', 256, 420);
+    }
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 8;
+    const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
     TEX_PESO.set(chave, m); return m;
   }
   const GEO_ROTULO = new THREE.CircleGeometry(1, 32);
@@ -721,7 +725,8 @@
     const r = new THREE.Mesh(GEO_ROTULO, texPeso(kg, modo || 'cheio')); r.scale.setScalar(raio); r.position.x = pos; r.rotation.y = k * Math.PI / 2; r.renderOrder = 2; return r;
   }
   // tamanhos pré-definidos de peças reais (nunca maiores que uma peça de verdade)
-  const cabecaHalter = kg => { kg = Math.max(0.5, kg); return { r: Math.min(0.075, 0.022 + 0.01 * Math.sqrt(kg)), L: Math.min(0.075, 0.017 + 0.0019 * kg) }; };
+  // halter: referência 5 kg = cabeça de ~12 cm de diâmetro e ~4,5 cm de largura; cresce/diminui a partir dele
+  const cabecaHalter = kg => { const f = Math.max(0.5, kg) / 5; return { r: Math.min(0.11, 0.0607 * Math.pow(f, 0.33)), L: Math.min(0.12, 0.0455 * Math.pow(f, 0.6)) }; };
   // anilhas reais: [kg, raio, espessura]; acima de 25 kg fica no tamanho da maior (45 cm não existe maior na academia)
   const TAB_ANILHA = [[0.5, 0.065, 0.012], [1, 0.075, 0.015], [2, 0.09, 0.018], [2.5, 0.095, 0.02], [5, 0.115, 0.024], [10, 0.15, 0.03], [15, 0.175, 0.035], [20, 0.2, 0.04], [25, 0.2, 0.045]];
   function medAnilha(kg) {
@@ -748,7 +753,7 @@
     const { r, L } = cabecaHalter(kg), x0 = 0.047;
     u.bar.scale.set(1, 2 * (x0 + L) + 0.01, 1);
     u.cab.forEach((pl, i) => { const k = i ? 1 : -1; pl.scale.set(r, L, r); pl.position.x = k * (x0 + L / 2); });
-    u.rot.forEach((m, i) => { const k = i ? 1 : -1; m.material = texPeso(kg, 'cheio'); m.scale.setScalar(r * 0.86); m.position.x = k * (x0 + L + 0.0008); });
+    u.rot.forEach((m, i) => { const k = i ? 1 : -1; m.material = texPeso(kg, 'cheio'); m.scale.setScalar(r * 0.9); m.position.x = k * (x0 + L + 0.0015); });
   }
   const dumbbells = [];
   for (const [s, p] of SIDES) {
@@ -4775,6 +4780,7 @@
     },
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     camera2: () => ({ dif: ['th', 'ph', 'dist', 'tx', 'ty', 'tz'].map(k => +(camT[k] - cam[k]).toFixed(4)).join(','), tw: tweening, est: S.estado, rep: cur.repouso, foco: focusKey, ptrs: ptrs.size, cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
+    halterMinY: () => { const out = []; for (const d of dumbbells.concat([halter1.children[0]])) { if (!d.visible || (d === halter1.children[0] && !halter1.visible)) continue; d.updateMatrixWorld(true); for (const c of d.userData.cab) { const p = c.getWorldPosition(new V3()); out.push(p.y - d.userData.cab[0].scale.x); } } return out.length ? +Math.min(...out).toFixed(3) : null; },
     barraY: () => { const g = barra.visible ? barra : barraW; return g.visible ? +g.getWorldPosition(new V3()).y.toFixed(3) : null; },
     pecas: () => ({ halter: Object.assign({}, cabecaHalter(dumbbells[0].userData.kg), { kg: dumbbells[0].userData.kg, rot: dumbbells[0].userData.rot.length }), anilha: { kg: anilha.userData.kg, raio: anilha.userData.raio, esc: anilha.userData.disc.scale.x, rot: anilha.userData.rot.length }, barra: { kg: barra.userData.kg, placas: barra.userData.placas.map(m => +(m.scale.x).toFixed(3)), rot: barra.userData.rots.length } }),
     proximoCard: () => ({ ex: MINI.proximoEx(), quadros: MINI.proximoQuadros(), vis: !$('restProx').hidden && !$('rest').hidden }),
