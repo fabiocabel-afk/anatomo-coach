@@ -26,22 +26,42 @@ await mudarPeso(1);let a1=await p.evaluate(()=>__corpo.pecas().anilha);
 await mudarPeso(25);let a25=await p.evaluate(()=>__corpo.pecas().anilha);
 ok(a12.kg===12&&a1.raio<a12.raio&&a25.raio>a12.raio&&a25.raio<=0.225&&a1.rot===2,'anilha: 1 kg < 12 kg < 25 kg (raio '+a1.raio.toFixed(3)+' / '+a12.raio.toFixed(3)+' / '+a25.raio.toFixed(3)+'), número nas duas faces');
 await shot('peca_anilha25');
-// barra: campo novo 1–150, padrão 20
+// barra: o campo é o peso de CADA anilha (1–150), padrão 10; são duas na barra
 await p.evaluate(()=>__corpo.setExercise('rosca_barra'));await sleep(300);
 await p.evaluate(()=>document.getElementById('bCfg').click());await sleep(300);
-s=await p.evaluate(()=>({vis:!document.getElementById('rowPeso').hidden,nome:document.querySelector('#rowPeso .lb').firstChild.textContent,val:document.querySelector('#rowPeso .pesoNum').textContent,marcas:document.querySelectorAll('#rowPeso .rgTk').length}));
-ok(s.vis&&s.nome==='Anilhas na barra'&&s.val==='20 kg'&&s.marcas===150,'barra: régua "Anilhas na barra" de 1 a 150 kg, começa em 20 '+JSON.stringify(s));
+s=await p.evaluate(()=>({vis:!document.getElementById('rowPeso').hidden,nome:document.querySelector('#rowPeso .lb').firstChild.textContent,sub:document.querySelector('#rowPeso .lb small').textContent,val:document.querySelector('#rowPeso .pesoNum').textContent,marcas:document.querySelectorAll('#rowPeso .rgTk').length}));
+ok(s.vis&&s.nome==='Anilha da barra'&&s.val==='10 kg'&&s.marcas===150&&/= 20 kg/.test(s.sub),'barra: régua "Anilha da barra" de 1 a 150 kg, começa em 10 (total 20) '+JSON.stringify(s));
 await p.evaluate(()=>document.getElementById('bCfgClose').click());await sleep(200);
 let br=await p.evaluate(()=>__corpo.pecas().barra);
-ok(br.kg===20&&br.placas.join()==='0.165,0.165'&&br.rot===2,'20 kg = uma anilha de 10 kg de cada lado, com o número '+JSON.stringify(br));
+ok(br.kg===10&&br.placas.join()==='0.15,0.15'&&br.rot===2,'10 kg = uma anilha de 10 kg de cada lado, com o número '+JSON.stringify(br));
+await mudarPeso(100);br=await p.evaluate(()=>__corpo.pecas().barra);
+ok(br.kg===100&&br.placas.length===2&&br.placas.every(r=>r===0.2),'100 kg: anilha de 100 em cada lado (não divide), tamanho travado no real (raio 0,20) '+JSON.stringify(br));
 await mudarPeso(150);br=await p.evaluate(()=>__corpo.pecas().barra);
-ok(br.placas.length===6&&br.placas.every(r=>r===0.225),'150 kg = 3 anilhas de 25 kg de cada lado');
+ok(br.kg===150&&br.placas.every(r=>r===0.2),'150 kg também fica no tamanho real máximo');
 await shot('peca_barra150');
-await mudarPeso(47);br=await p.evaluate(()=>__corpo.pecas().barra);
-ok(br.placas.length===6&&br.placas.slice(0,3).join()==='0.225,0.095,0.075','47 kg → 20 + 2,5 + 1 por lado (anilhas de tamanhos diferentes): '+br.placas.join());
 s=await p.evaluate(()=>{__falas.length=0;document.getElementById('bPlay').click();return __falas.join(' | ');});
-ok(/47 quilos de anilhas na barra/.test(s)&&/Anilhas na barra 47 kg/.test(await p.evaluate(()=>document.getElementById('nSub').textContent+' '))||/47 quilos de anilhas/.test(s),'voz: '+s.slice(0,90));
-await shot('peca_barra47');
+ok(/duas anilhas de 150 quilos na barra/.test(s),'voz: '+s.slice(0,90));
+s=await p.evaluate(()=>document.getElementById('nSub')?document.getElementById('nSub').textContent:'');
+console.log('    sub:',s);
+await p.evaluate(()=>{document.getElementById('bParar')&&!document.getElementById('bParar').hidden&&document.getElementById('bParar').click();});await sleep(300);
+// tamanhos reais máximos
+await p.evaluate(()=>__corpo.setExercise('rosca'));await sleep(200);await mudarPeso(40);
+const h40=await p.evaluate(()=>__corpo.pecas().halter);ok(h40.r<=0.075&&h40.L<=0.075,'halter de 40 kg não passa do tamanho real '+JSON.stringify(h40));
+await p.evaluate(id=>__corpo.setExercise(id),anId);await sleep(200);await mudarPeso(100);
+const a100=await p.evaluate(()=>__corpo.pecas().anilha);ok(a100.raio<=0.2,'anilha de 100 kg não passa do tamanho real (raio '+a100.raio+')');
+await shot('peca_anilha100');
+// miniaturas: peças no tamanho padrão, mesmo com o principal pesado; e o principal continua pesado
+await p.evaluate(()=>__corpo.setExercise('rosca_barra'));await sleep(200);
+await p.evaluate(()=>document.getElementById('bEscolher').click());await sleep(300);await p.evaluate(()=>document.getElementById('bTrAvulso').click());await sleep(300);
+await p.evaluate(()=>document.getElementById('exGrupoBtn').click());await sleep(200);
+await p.evaluate(()=>[...document.querySelectorAll('#exGrupoMenu .ddOp')].find(o=>o.dataset.k==='barra|inferior').click());await sleep(300);
+await p.evaluate(()=>document.querySelector('#exModo [data-v=mini]').click());await sleep(3500);
+await p.screenshot({path:'shots/peca_mini_barra.png'});
+br=await p.evaluate(()=>__corpo.pecas().barra);ok(br.kg===150,'depois das miniaturas a barra principal continua com 150 kg');
+await p.evaluate(()=>document.getElementById('exGrupoBtn').click());await sleep(200);
+await p.evaluate(()=>[...document.querySelectorAll('#exGrupoMenu .ddOp')].find(o=>o.dataset.k==='anilha|superior').click());await sleep(3500);
+await p.screenshot({path:'shots/peca_mini_anilha.png'});
+const an2=await p.evaluate(()=>__corpo.pecas().anilha);ok(an2.kg===100||an2.kg===12,'anilha volta ao peso do principal: '+an2.kg);
 // barra W também
 await p.evaluate(()=>{document.getElementById('bParar')&&!document.getElementById('bParar').hidden&&document.getElementById('bParar').click();});await sleep(300);
 console.log('erros',errs);if(errs.length)process.exitCode=1;await b.close();})().catch(e=>{console.error('EXC',e);process.exit(1);});

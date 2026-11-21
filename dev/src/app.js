@@ -720,32 +720,35 @@
   function rotuloX(kg, raio, pos, k, modo) {
     const r = new THREE.Mesh(GEO_ROTULO, texPeso(kg, modo || 'cheio')); r.scale.setScalar(raio); r.position.x = pos; r.rotation.y = k * Math.PI / 2; r.renderOrder = 2; return r;
   }
-  // tamanhos aproximados de peças reais
-  const cabecaHalter = kg => { kg = Math.max(0.5, kg); return { r: 0.022 + 0.012 * Math.sqrt(kg), L: Math.min(0.095, 0.017 + 0.0019 * kg) }; };
-  const raioAnilha = kg => Math.min(0.225, 0.085 + 0.024 * Math.sqrt(Math.max(1, kg)));
-  const espAnilha = kg => Math.min(0.09, 0.018 + 0.0011 * Math.max(1, kg));
-  const PLACAS = [[25, 0.225, 0.05], [20, 0.225, 0.045], [15, 0.2, 0.04], [10, 0.165, 0.035], [5, 0.115, 0.028], [2.5, 0.095, 0.022], [1.25, 0.08, 0.018], [1, 0.075, 0.016], [0.5, 0.065, 0.012]];
-  function placasPorLado(total) { // decompõe metade do total nas anilhas padrão (maior primeiro)
-    let resto = Math.round((total / 2) * 100) / 100; const out = [];
-    for (const [kg, r, t] of PLACAS) while (resto >= kg - 1e-6 && out.length < 8) { out.push([kg, r, t]); resto = Math.round((resto - kg) * 100) / 100; }
-    return out;
+  // tamanhos pré-definidos de peças reais (nunca maiores que uma peça de verdade)
+  const cabecaHalter = kg => { kg = Math.max(0.5, kg); return { r: Math.min(0.075, 0.022 + 0.01 * Math.sqrt(kg)), L: Math.min(0.075, 0.017 + 0.0019 * kg) }; };
+  // anilhas reais: [kg, raio, espessura]; acima de 25 kg fica no tamanho da maior (45 cm não existe maior na academia)
+  const TAB_ANILHA = [[0.5, 0.065, 0.012], [1, 0.075, 0.015], [2, 0.09, 0.018], [2.5, 0.095, 0.02], [5, 0.115, 0.024], [10, 0.15, 0.03], [15, 0.175, 0.035], [20, 0.2, 0.04], [25, 0.2, 0.045]];
+  function medAnilha(kg) {
+    const T = TAB_ANILHA; kg = Math.max(T[0][0], kg);
+    if (kg >= 25) return { r: 0.2, t: Math.min(0.05, 0.045 + (kg - 25) * 0.0002) };
+    for (let i = 1; i < T.length; i++) if (kg <= T[i][0]) { const [k0, r0, t0] = T[i - 1], [k1, r1, t1] = T[i], f = (kg - k0) / (k1 - k0); return { r: r0 + (r1 - r0) * f, t: t0 + (t1 - t0) * f }; }
+    return { r: 0.2, t: 0.045 };
   }
   function makeDumbbell() {
     const g = new THREE.Group();
     const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 14), mBar); bar.rotation.z = Math.PI / 2; g.add(bar);
-    const cab = []; for (const k of [-1, 1]) { const pl = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 28), mPlate); pl.rotation.z = Math.PI / 2; g.add(pl); cab.push(pl); }
-    g.userData = { bar, cab, rot: [], kg: null };
+    const cab = [], rot = [];
+    for (const k of [-1, 1]) {
+      const pl = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 28), mPlate); pl.rotation.z = Math.PI / 2; g.add(pl); cab.push(pl);
+      const m = rotuloX(4, 1, 0, k); g.add(m); rot.push(m);
+    }
+    g.userData = { bar, cab, rot, kg: null };
     ajustarHalter(g, 4);
     return g;
   }
-  // cabeças do halter do tamanho do peso, com o número na face de fora
+  // cabeças do halter do tamanho do peso, com o número na face de fora (só muda escala e textura: barato)
   function ajustarHalter(g, kg) {
     const u = g.userData; if (u.kg === kg) return; u.kg = kg;
     const { r, L } = cabecaHalter(kg), x0 = 0.047;
     u.bar.scale.set(1, 2 * (x0 + L) + 0.01, 1);
     u.cab.forEach((pl, i) => { const k = i ? 1 : -1; pl.scale.set(r, L, r); pl.position.x = k * (x0 + L / 2); });
-    for (const m of u.rot) g.remove(m); u.rot = [];
-    for (const k of [-1, 1]) { const m = rotuloX(kg, r * 0.86, k * (x0 + L + 0.0008), k); g.add(m); u.rot.push(m); }
+    u.rot.forEach((m, i) => { const k = i ? 1 : -1; m.material = texPeso(kg, 'cheio'); m.scale.setScalar(r * 0.86); m.position.x = k * (x0 + L + 0.0008); });
   }
   const dumbbells = [];
   for (const [s, p] of SIDES) {
@@ -764,23 +767,22 @@
     const aro = new THREE.Mesh(new THREE.TorusGeometry(1, 0.064, 8, 48), mPlate); aro.rotation.x = Math.PI / 2; anilha.add(aro);
     const aro2 = aro.clone(); anilha.add(aro2);
     const miolo = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 24), mBar); anilha.add(miolo);
-    anilha.userData = { disc, aro, aro2, miolo, rot: [], kg: null, raio: 0.14 };
+    const rot = [];
+    for (const k of [-1, 1]) { const m = new THREE.Mesh(GEO_ROTULO, texPeso(10, 'anel')); m.rotation.x = -k * Math.PI / 2; m.renderOrder = 2; anilha.add(m); rot.push(m); }
+    anilha.userData = { disc, aro, aro2, miolo, rot, kg: null, raio: 0.14 };
   }
   anilha.visible = false; scene.add(anilha);
   // anilha do tamanho do peso (1 kg pequena, 20–25 kg grande), com o número nas duas faces
   function ajustarAnilha(kg) {
     const u = anilha.userData; if (u.kg === kg) return; u.kg = kg;
-    const R = raioAnilha(kg), t = espAnilha(kg); u.raio = R;
+    const { r: R, t } = medAnilha(kg); u.raio = R;
     u.disc.scale.set(R, t, R);
     for (const [a, k] of [[u.aro, 1], [u.aro2, -1]]) { a.scale.setScalar(R * 0.89); a.scale.z = R * 0.89; a.position.y = k * (t / 2 + 0.002); }
     u.miolo.scale.set(1, t + 0.006, 1);
-    for (const m of u.rot) anilha.remove(m); u.rot = [];
-    for (const k of [-1, 1]) {
-      const m = new THREE.Mesh(GEO_ROTULO, texPeso(kg, 'anel')); m.scale.setScalar(R * 0.8); m.position.y = k * (t / 2 + 0.0035); m.rotation.x = -k * Math.PI / 2; m.renderOrder = 2;
-      anilha.add(m); u.rot.push(m);
-    }
+    u.rot.forEach((m, i) => { const k = i ? 1 : -1; m.material = texPeso(kg, 'anel'); m.scale.setScalar(R * 0.8); m.position.y = k * (t / 2 + 0.0035); });
   }
   // barra reta e barra W (eixo da barra = x local)
+  const GEO_PLACA = new THREE.CylinderGeometry(1, 1, 1, 40), GEO_TRAVA = new THREE.CylinderGeometry(0.022, 0.022, 0.03, 14);
   function makeBarra(w) {
     const g = new THREE.Group();
     let bar;
@@ -793,26 +795,26 @@
     g.add(bar);
     const x0 = w ? 0.47 : 0.6;
     for (const k of [-1, 1]) { const col = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.04, 16), mBar); col.rotation.z = Math.PI / 2; col.position.x = k * (x0 - 0.045); g.add(col); }
-    g.userData = { x0, pecas: [], kg: null };
-    ajustarBarra(g, 20);
+    // uma anilha de cada lado (o peso escolhido é o de cada anilha), com o número, e a trava por fora
+    const placas = [], rots = [], travas = [];
+    for (const k of [-1, 1]) {
+      const pl = new THREE.Mesh(GEO_PLACA, mPlate); pl.rotation.z = Math.PI / 2; g.add(pl); placas.push(pl);
+      const m = rotuloX(10, 1, 0, k, 'anel'); g.add(m); rots.push(m);
+      const tr = new THREE.Mesh(GEO_TRAVA, mBar); tr.rotation.z = Math.PI / 2; g.add(tr); travas.push(tr);
+    }
+    g.userData = { x0, placas, rots, travas, kg: null };
+    ajustarBarra(g, 10);
     g.visible = false; scene.add(g);
     return g;
   }
-  // anilhas da barra: o total escolhido dividido nos dois lados, em anilhas padrão (cada uma do seu tamanho e com o número)
-  const GEO_PLACA = new THREE.CylinderGeometry(1, 1, 1, 40);
-  function ajustarBarra(g, total) {
-    const u = g.userData; if (u.kg === total) return; u.kg = total;
-    for (const m of u.pecas) g.remove(m); u.pecas = [];
-    const lista = placasPorLado(total);
-    for (const k of [-1, 1]) {
-      let x = u.x0 - 0.025;
-      for (const [kg, r, t] of lista) {
-        const pl = new THREE.Mesh(GEO_PLACA, mPlate); pl.rotation.z = Math.PI / 2; pl.scale.set(r, t, r); pl.position.x = k * (x + t / 2); g.add(pl); u.pecas.push(pl);
-        const m = rotuloX(kg, r * 0.8, k * (x + t + 0.0008), k, 'anel'); g.add(m); u.pecas.push(m);
-        x += t + 0.002;
-      }
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.03, 14), mBar); tr.rotation.z = Math.PI / 2; tr.position.x = k * (x + 0.015); g.add(tr); u.pecas.push(tr);
-    }
+  function ajustarBarra(g, kg) {
+    const u = g.userData; if (u.kg === kg) return; u.kg = kg;
+    const { r, t } = medAnilha(kg), x = u.x0 - 0.025;
+    [-1, 1].forEach((k, i) => {
+      u.placas[i].scale.set(r, t, r); u.placas[i].position.x = k * (x + t / 2);
+      const m = u.rots[i]; m.material = texPeso(kg, 'anel'); m.scale.setScalar(r * 0.8); m.position.x = k * (x + t + 0.0008);
+      u.travas[i].position.x = k * (x + t + 0.017);
+    });
   }
   const barra = makeBarra(false), barraW = makeBarra(true);
   // caneleiras (tornozelo e punho)
@@ -2019,7 +2021,7 @@
     halteres: { nome: 'Halteres', max: 40, passo: 0.5, padrao: 4, rotulo: 5, sub: 'cada halter' },
     anilha: { nome: 'Anilha', max: 100, passo: 1, padrao: 12, rotulo: 10, sub: 'a anilha' },
     caneleira: { nome: 'Caneleira', max: 20, passo: 0.5, padrao: 3, rotulo: 2, sub: 'cada caneleira' },
-    barra: { nome: 'Anilhas na barra', max: 150, passo: 1, padrao: 20, rotulo: 10, sub: 'total dos dois lados, sem a barra' }
+    barra: { nome: 'Anilha da barra', max: 150, passo: 1, padrao: 10, rotulo: 10, sub: 'peso de cada anilha · vão 2 na barra' }
   };
   const tipoPeso = ex => (ex && PESOS[ex.equip] ? ex.equip : null);
   function pesoValido(tipo, v) {
@@ -2028,6 +2030,8 @@
     return clamp(Math.round(v / P.passo) * P.passo, P.passo, P.max);
   }
   const kgTxt = v => String(Math.round(Number(v) * 10) / 10).replace('.', ',');
+  // barra: o peso guardado é o de cada anilha; são duas (uma de cada lado)
+  const pesoTxt = (tp, v) => tp === 'barra' ? '2 × ' + kgTxt(v) + ' kg' : kgTxt(v) + ' kg';
   const pesoPadrao = () => { const o = {}; for (const k in PESOS) o[k] = PESOS[k].padrao; return o; };
   const CFG_PADRAO = { reps: 10, ciclos: 3, descanso: 30, voz: true, ritmo: 1, pesos: pesoPadrao() };
   const LIM = { reps: [1, 50, 1], ciclos: [1, 10, 1], descanso: [0, 300, 5], pausaRep: [0, 30, 1], depois: [0, 300, 5] };
@@ -2061,7 +2065,7 @@
   function pesoFalado() {
     const tp = tipoPeso(cur); if (!tp) return '';
     const v = pesoAtual(), nm = tp === 'halteres' ? (cur.prop === 'halter1' ? 'halter' : 'halteres') : tp;
-    if (tp === 'barra') return ', com ' + kgTxt(v) + (v > 1 ? ' quilos' : ' quilo') + ' de anilhas na barra';
+    if (tp === 'barra') return ', com duas anilhas de ' + kgTxt(v) + (v > 1 ? ' quilos' : ' quilo') + ' na barra';
     return ', com ' + nm + ' de ' + kgTxt(v) + (v > 1 ? ' quilos' : ' quilo');
   }
   escalaCaneleira(cfg.pesos.caneleira);
@@ -2126,9 +2130,8 @@
   $('bReset').innerHTML = ICON_RESET;
 
   // o tamanho das peças segue o peso escolhido
-  function pesoVisual() {
-    const tp = tipoPeso(cur); if (!tp) return;
-    const v = pesoAtual();
+  function pesoVisual() { const tp = tipoPeso(cur); if (tp) aplicarPeso(tp, pesoAtual()); }
+  function aplicarPeso(tp, v) {
     if (tp === 'caneleira') escalaCaneleira(v);
     else if (tp === 'halteres') { for (const d of dumbbells) ajustarHalter(d, v); ajustarHalter(halter1.children[0], v); }
     else if (tp === 'anilha') ajustarAnilha(v);
@@ -2148,7 +2151,7 @@
     else if (S.estado === 'concluindo' || (S.estado === 'pausado' && S.antes === 'concluindo')) sub = 'Ciclo ' + S.ciclo + ' concluído' + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (S.estado === 'preparo' || (S.estado === 'pausado' && S.antes === 'preparo')) sub = 'Prepare-se · ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : '');
     else if (ativo) sub = 'Ciclo ' + S.ciclo + ' de ' + tc.ciclos + (S.estado === 'pausado' ? ' · pausado' : S.espera > 0 ? ' · pausa' : '');
-    else sub = (tipoPeso(cur) ? PESOS[tipoPeso(cur)].nome + ' ' + kgTxt(pesoAtual()) + ' kg · ' : '') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + (tc.descanso ? ' · desc. ' + tc.descanso + ' s' : '');
+    else sub = (tipoPeso(cur) ? PESOS[tipoPeso(cur)].nome + ' ' + pesoTxt(tipoPeso(cur), pesoAtual()) + ' · ' : '') + tc.ciclos + (tc.ciclos > 1 ? ' ciclos' : ' ciclo') + (tc.descanso ? ' · desc. ' + tc.descanso + ' s' : '');
     if (cur.doisLados && ['treino', 'preparo', 'pausado'].includes(S.estado) && !(S.estado === 'pausado' && S.antes === 'descanso')) sub += ' · ' + (S.lado2 ? '2º lado' : '1º lado');
     if (cur.repouso) sub = 'Escolha um exercício';
     if (SEQ && !cur.repouso) sub = (S.estado === 'fim' ? '' : (SEQ.idx + 1) + '/' + SEQ.t.itens.length + ' · ') + sub;
@@ -2179,7 +2182,7 @@
       if (exProx) {
         $('restProxNome').textContent = exProx.nome; $('restProxSub').textContent = itemTxt(itProx);
         const cv = $('restCv'), px = Math.round(170 * Math.min(window.devicePixelRatio || 1, 2)); if (cv.width !== px) cv.width = cv.height = px;
-        MINI.mostrarProximo($('restCv'), exProx);
+        MINI.mostrarProximo($('restCv'), exProx, tipoPeso(exProx) ? (pesoValido(tipoPeso(exProx), itProx.peso) ?? cfg.pesos[tipoPeso(exProx)]) : null);
       } else MINI.esconderProximo();
       $('restNext').hidden = !!exProx;
       $('restNext').textContent = exProx ? '' : 'Próximo: ciclo ' + (S.ciclo + 1) + ' de ' + tc.ciclos;
@@ -2255,7 +2258,7 @@
       inicio: r.inicio, fim, ativoSeg: Math.max(0, Math.round((fim - r.inicio - (r.pausadoMs || 0) - (r.descMs || 0)) / 1000)),
       descansoSeg: Math.round((r.descMs || 0) / 1000), pausaAntesSeg: Math.round((r.antesMs || 0) / 1000),
       ciclos: tc.ciclos, reps: tc.reps, iso: !!cur.isometria, ritmo: tc.ritmo, ritmoNome: ritmoNome(tc.ritmo),
-      descanso: tc.descanso, peso: pesoAtual(), pesoTipo: tipoPeso(cur), lados: cur.doisLados ? 2 : 1
+      descanso: tc.descanso, peso: pesoAtual(), pesoTipo: tipoPeso(cur), pesoUn: tipoPeso(cur) === 'barra' ? 'anilha' : undefined, lados: cur.doisLados ? 2 : 1
     };
   }
   function resetTreino(silencioso) {
@@ -2451,7 +2454,7 @@
     }
     tr.appendChild(dir); sc.appendChild(tr);
     const idx = x => Math.round(x / P.passo) - 1;
-    const mostrar = () => { out.textContent = kgTxt(v) + ' kg'; sc.setAttribute('aria-valuenow', v); sc.setAttribute('aria-valuetext', kgTxt(v) + ' quilos'); };
+    const mostrar = () => { out.textContent = kgTxt(v) + ' kg'; if (tipo === 'barra') sm.textContent = 'cada anilha · vão 2 na barra = ' + kgTxt(2 * v) + ' kg'; sc.setAttribute('aria-valuenow', v); sc.setAttribute('aria-valuetext', kgTxt(v) + ' quilos'); };
     const rolarPara = () => { ignorar = true; sc.scrollLeft = idx(v) * RG_PASSO_PX; requestAnimationFrame(() => { ignorar = false; }); };
     const definir = (nv, rolar) => {
       nv = pesoValido(tipo, nv); if (nv === null) return;
@@ -2651,7 +2654,7 @@
     return s;
   }
   const minTxt = s => s < 60 ? Math.round(s) + ' s' : '~' + Math.round(s / 60) + ' min';
-  const itemTxt = it => { const ex = exPorId(it.ex); return it.reps + (ex && ex.isometria ? ' s' : ' reps') + ' · ' + it.ciclos + (it.ciclos > 1 ? ' ciclos' : ' ciclo') + ' · desc. ' + it.descanso + ' s' + (it.pausaRep ? ' · pausa ' + it.pausaRep + ' s' : '') + ' · ' + ritmoNome(it.ritmo).toLowerCase() + (it.peso && tipoPeso(ex) ? ' · ' + kgTxt(it.peso) + ' kg' : ''); };
+  const itemTxt = it => { const ex = exPorId(it.ex); return it.reps + (ex && ex.isometria ? ' s' : ' reps') + ' · ' + it.ciclos + (it.ciclos > 1 ? ' ciclos' : ' ciclo') + ' · desc. ' + it.descanso + ' s' + (it.pausaRep ? ' · pausa ' + it.pausaRep + ' s' : '') + ' · ' + ritmoNome(it.ritmo).toLowerCase() + (it.peso && tipoPeso(ex) ? ' · ' + pesoTxt(tipoPeso(ex), it.peso) : ''); };
   const svg = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
   const IC = {
     play: svg('<path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/>'), edit: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'),
@@ -3197,9 +3200,12 @@
       cur = sv.cur; lado = sv.lado; focusKey = sv.focusKey; PIVO = sv.pivo; cicloU = sv.cicloU; esfSeq = sv.esfSeq;
       garrafas.forEach((g, i) => { g.visible = sv.garr[i][0]; g.position.copy(sv.garr[i][1]); });
       shadow.scale.copy(sv.sombra); shadow.position.copy(sv.sp);
+      pesoVisual(); // peças de volta ao peso do exercício principal
     }
-    function desenhar(ex, tt) {
+    function desenhar(ex, tt, kg) {
       cur = ex; focusKey = null;
+      // demonstração: peças no tamanho padrão (ou no peso do próximo item do treino)
+      const tp = tipoPeso(ex); if (tp) aplicarPeso(tp, kg != null ? kg : PESOS[tp].padrao);
       if (!ex._mini) {
         calibrate();
         ex._mini = { garr: garrafas.map(g => [g.visible, g.position.clone()]), sombra: shadow.scale.clone() };
@@ -3234,7 +3240,7 @@
     }
     function fecharPrevia() { prev = null; if (r2 && r2.domElement.parentNode) r2.domElement.parentNode.removeChild(r2.domElement); }
     // cartão do próximo exercício (no descanso entre exercícios de um treino montado)
-    function mostrarProximo(canvas, ex) { if (prox && prox.ex === ex && prox.canvas === canvas) return; prox = { canvas, ctx: canvas.getContext('2d'), ex, t0: tempo, n: 0 }; }
+    function mostrarProximo(canvas, ex, kg) { if (prox && prox.ex === ex && prox.canvas === canvas) { prox.kg = kg; return; } prox = { canvas, ctx: canvas.getContext('2d'), ex, kg, t0: tempo, n: 0 }; }
     function esconderProximo() { prox = null; }
     // chamado a cada quadro; devolve true se a tela principal está coberta
     function quadro(dt) {
@@ -3251,7 +3257,7 @@
         if (previa) { desenhar(prev.ex, tempo - prev.t0); prev.n = (prev.n || 0) + 1; }
         else if (proximo) {
           tamanho(prox.canvas.width);
-          desenhar(prox.ex, tempo - prox.t0);
+          desenhar(prox.ex, tempo - prox.t0, prox.kg);
           prox.ctx.drawImage(r2.domElement, 0, 0, prox.canvas.width, prox.canvas.height); prox.n++;
         }
         else {
@@ -3273,7 +3279,7 @@
       restaurarPrincipal(sv);
       return galeria || previa;
     }
-    return { TAM, registrar, limpar, quadro, abrirPrevia, fecharPrevia, mostrarProximo, esconderProximo, ativo: () => !!r2, previaQuadros: () => prev ? prev.n || 0 : -1, proximoQuadros: () => prox ? prox.n : -1, proximoEx: () => prox ? prox.ex.id : null };
+    return { TAM, registrar, limpar, quadro, abrirPrevia, fecharPrevia, mostrarProximo, esconderProximo, ativo: () => !!r2, previaQuadros: () => prev ? prev.n || 0 : -1, proximoQuadros: () => prox ? prox.n : -1, proximoEx: () => prox ? prox.ex.id : null, proximoKg: () => prox ? prox.kg : null };
   })();
 
   /* =====================================================================
@@ -3353,7 +3359,9 @@
   }
   const durTxt = seg => { seg = Math.round(seg || 0); if (seg < 60) return seg + ' s'; const h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60); return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min'; };
   const horaTxt = ms => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-  const regTxt = r => r.ciclos + '×' + r.reps + (r.iso ? ' s' : '') + ' · ' + (r.ritmoNome || '').toLowerCase() + ((r.peso || r.caneleira) ? ' · ' + kgTxt(r.peso || r.caneleira) + ' kg' : '');
+  // registros da barra feitos na v2.44.0 guardavam o total; os novos guardam cada anilha (pesoUn: 'anilha')
+  const pesoRegTxt = r => r.pesoTipo === 'barra' && r.pesoUn === 'anilha' ? pesoTxt('barra', r.peso) : kgTxt(r.peso || r.caneleira) + ' kg';
+  const regTxt = r => r.ciclos + '×' + r.reps + (r.iso ? ' s' : '') + ' · ' + (r.ritmoNome || '').toLowerCase() + ((r.peso || r.caneleira) ? ' · ' + pesoRegTxt(r) : '');
 
   /* ---------- Pergunta no fim: "Você concluiu?" ---------- */
   let concPend = null, concCb = null; // concCb: o que fazer depois da resposta (treino montado segue)
@@ -4022,7 +4030,7 @@
           ['Séries', r.ciclos + (r.ciclos === 1 ? ' ciclo' : ' ciclos') + ' de ' + r.reps + (r.iso ? ' segundos' : ' repetições') + (r.lados === 2 ? ' de cada lado' : '')],
           ['Ritmo', r.ritmoNome || '—']
         ];
-        if (r.peso || r.caneleira) linhas.push(['Peso', (PESOS[r.pesoTipo] ? PESOS[r.pesoTipo].nome : 'Caneleira') + ' · ' + kgTxt(r.peso || r.caneleira) + ' kg']);
+        if (r.peso || r.caneleira) linhas.push(['Peso', (PESOS[r.pesoTipo] ? PESOS[r.pesoTipo].nome : 'Caneleira') + ' · ' + pesoRegTxt(r)]);
         if (r.treino) linhas.push(['Treino', r.treino.nome]);
         for (const [a, b] of linhas) { const l = document.createElement('div'); l.className = 'hdLin'; const x = document.createElement('span'); x.textContent = a; const y2 = document.createElement('b'); y2.textContent = b; l.appendChild(x); l.appendChild(y2); det.appendChild(l); }
         // excluir: sempre com confirmação
@@ -4768,7 +4776,7 @@
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     camera2: () => ({ dif: ['th', 'ph', 'dist', 'tx', 'ty', 'tz'].map(k => +(camT[k] - cam[k]).toFixed(4)).join(','), tw: tweening, est: S.estado, rep: cur.repouso, foco: focusKey, ptrs: ptrs.size, cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
     barraY: () => { const g = barra.visible ? barra : barraW; return g.visible ? +g.getWorldPosition(new V3()).y.toFixed(3) : null; },
-    pecas: () => ({ halter: Object.assign({}, cabecaHalter(dumbbells[0].userData.kg), { kg: dumbbells[0].userData.kg, rot: dumbbells[0].userData.rot.length }), anilha: { kg: anilha.userData.kg, raio: anilha.userData.raio, esc: anilha.userData.disc.scale.x, rot: anilha.userData.rot.length }, barra: { kg: barra.userData.kg, placas: barra.userData.pecas.filter(m => m.geometry === GEO_PLACA).map(m => +(m.scale.x).toFixed(3)), rot: barra.userData.pecas.filter(m => m.geometry === GEO_ROTULO).length } }),
+    pecas: () => ({ halter: Object.assign({}, cabecaHalter(dumbbells[0].userData.kg), { kg: dumbbells[0].userData.kg, rot: dumbbells[0].userData.rot.length }), anilha: { kg: anilha.userData.kg, raio: anilha.userData.raio, esc: anilha.userData.disc.scale.x, rot: anilha.userData.rot.length }, barra: { kg: barra.userData.kg, placas: barra.userData.placas.map(m => +(m.scale.x).toFixed(3)), rot: barra.userData.rots.length } }),
     proximoCard: () => ({ ex: MINI.proximoEx(), quadros: MINI.proximoQuadros(), vis: !$('restProx').hidden && !$('rest').hidden }),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, lado, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
