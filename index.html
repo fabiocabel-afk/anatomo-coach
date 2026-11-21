@@ -641,7 +641,7 @@ input[type=range]{width:140px;accent-color:var(--roxo)}
     <div class="cr"><label for="cVoz" class="lb">Voz contando<small>repetições, ciclos e descanso</small></label><span class="sw"><input type="checkbox" id="cVoz"><i></i></span></div>
     <p id="cfgMsg"></p>
     <div class="cbtns"><button id="bTestVoz">Testar voz</button><button class="pri" id="bCfgSave">Salvar</button></div>
-    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.46.0</p>
+    <p class="nota" style="text-align:center;margin-top:12px">Versão 2.47.0</p>
   </div>
 </div>
 <div id="pfSheet" class="sheetw" hidden>
@@ -1386,9 +1386,9 @@ window.CORPO3D_EXERCICIOS = function (H) {
     { id: 'remada_alta', nome: 'Remada alta', equip: 'halteres', regiao: 'superior',
       desc: 'Puxe os halteres pela frente do corpo até o peito, cotovelos altos.',
       prim: ['deltoide_lateral', 'trapezio_desc'], sec: ['deltoide_anterior', 'biceps_braquial', 'braquiorradial'],
-      cam: { th: 20, ph: 6, dist: 2.8, ty: 1.15 }, prop: 'halteres', periodo: 2.8,
+      cam: { th: 20, ph: 6, dist: 2.8, ty: 1.15 }, prop: 'halteres', periodo: 2.8, halterLado: true,
       A: O(fist, PRONADO), B: O(fist, PRONADO),
-      bracos: { frame: 'peito', A: { p: [0.09, -0.50, 0.09] }, B: { p: [0.08, 0.03, 0.11] }, polo: [1, 0, -0.2] },
+      bracos: { frame: 'peito', A: { p: [0.13, -0.50, 0.09] }, B: { p: [0.15, -0.02, 0.12] }, polo: [1, 0.3, -0.2] },
       info: { passos: ['Em pé, halteres à frente das coxas, palmas para trás.', 'Puxe os halteres para cima, rente ao corpo, levando os cotovelos para o alto e para os lados.', 'Pare com as mãos na altura do peito e desça devagar.'],
         dicas: ['Os cotovelos sempre mais altos que as mãos.'], erros: ['Subir as mãos acima do queixo, forçando o ombro.'], resp: 'Solte o ar ao puxar.' } },
     { id: 'remada_curvada', nome: 'Remada curvada', equip: 'halteres', regiao: 'superior',
@@ -3040,7 +3040,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
   for (const [s, p] of SIDES) {
     const g = makeDumbbell();
     const h = SEG[p + 'Hand'].a; g.position.set(s * 0.21 - h.x, 0.805 - h.y, 0.028 - h.z); g.visible = false;
-    bones[p + 'Hand'].add(g); dumbbells.push(g);
+    bones[p + 'Hand'].add(g); g.userData.q0 = g.quaternion.clone(); dumbbells.push(g);
   }
   // halter único segurado com as duas mãos (na vertical)
   const halter1 = new THREE.Group();
@@ -3306,8 +3306,249 @@ window.CORPO3D_EXERCICIOS = function (H) {
       rig.updateMatrixWorld(true);
     }
     if (cur.bracos) bracosIK(p, li);
+    if (!cur._calibrando) folgaPecas();
     atualizarProps();
     bones.hips.getWorldPosition(_w); shadow.position.x = _w.x; shadow.position.z = _w.z;
+  }
+  /* ---------- Folga das peças: halter, anilha não entram no corpo ----------
+   * Depois de montar a pose, mede as peças (cabeças do halter, disco da anilha) contra uma
+   * amostra de pontos da pele (coxas, quadril, tronco, pescoço, cabeça; braços e mãos não
+   * contam, pois são eles que seguram). Se entrar, afasta as mãos só o necessário, como uma
+   * pessoa de verdade faz: abre os braços com halter pesado, afasta do peito, etc. */
+  /* pele "rápida": cada ponto da amostra segue só o osso principal (uma conta de matriz por ponto) */
+  const _MB = [], _mbS = []; let _mbStamp = 0;
+  function novaPose() { rig.updateMatrixWorld(true); _mbStamp++; }
+  function matOsso(k) {
+    if (_mbS[k] !== _mbStamp) { const m = _MB[k] || (_MB[k] = new THREE.Matrix4()); m.multiplyMatrices(baseMesh.matrixWorld, baseMesh.bindMatrixInverse).multiply(baseMesh.skeleton.bones[k].matrixWorld); _mbS[k] = _mbStamp; }
+    return _MB[k];
+  }
+  // escolhe pontos (~1 cm) dos ossos pedidos e guarda cada um no espaço do seu osso
+  function prepararPontos(re) {
+    const g = baseMesh.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, sk = baseMesh.skeleton, ossos = sk.bones;
+    const vox = new Set(), v = new V3(), out = [];
+    for (let i = 0; i < pos.count; i++) {
+      let k = 0; for (let j = 1; j < 4; j++) if (sw.array[i * 4 + j] > sw.array[i * 4 + k]) k = j;
+      const ob = si.array[i * 4 + k]; if (!re.test(ossos[ob].name)) continue;
+      v.fromBufferAttribute(pos, i);
+      const ch = Math.round(v.x / 0.01) + ',' + Math.round(v.y / 0.01) + ',' + Math.round(v.z / 0.01); if (vox.has(ch)) continue; vox.add(ch);
+      const q = v.clone().applyMatrix4(baseMesh.bindMatrix).applyMatrix4(sk.boneInverses[ob]);
+      out.push({ k: ob, q, bind: v.clone(), nome: ossos[ob].name, w: new V3() });
+    }
+    return out;
+  }
+  let AMOSTRA = null;
+  // pele do corpo (sem braços), agrupada por osso, com um raio por grupo para medir só perto das peças
+  function amostraCorpo() {
+    if (AMOSTRA) return AMOSTRA;
+    const pts = prepararPontos(/^(left|right)(UpperLeg|LowerLeg|Foot|Shoulder)$|^(hips|spine|chest|upperChest|neck|head)$/), grupos = new Map();
+    for (const p of pts) { if (!grupos.has(p.k)) grupos.set(p.k, []); grupos.get(p.k).push(p); }
+    AMOSTRA = [];
+    for (const [k, lista] of grupos) {
+      const c = new V3(); for (const p of lista) c.add(p.bind); c.divideScalar(lista.length);
+      let rad = 0; for (const p of lista) rad = Math.max(rad, p.bind.distanceTo(c));
+      const cq = c.clone().applyMatrix4(baseMesh.bindMatrix).applyMatrix4(baseMesh.skeleton.boneInverses[k]);
+      AMOSTRA.push({ k, lista, cq, rad });
+    }
+    return AMOSTRA;
+  }
+  // pontos da pele (mundo) perto das esferas dadas [{c, r}]
+  function pontosPerto(esferas) {
+    const G = amostraCorpo(), out = [], c = new V3();
+    novaPose();
+    for (const g of G) {
+      const M = matOsso(g.k); c.copy(g.cq).applyMatrix4(M);
+      if (!esferas.some(e => c.distanceTo(e.c) < g.rad + e.r + 0.05)) continue;
+      for (const p of g.lista) { p.w.copy(p.q).applyMatrix4(M); if (esferas.some(e => p.w.distanceTo(e.c) < e.r + 0.02)) out.push(p.w); }
+    }
+    return out;
+  }
+  const FOLGA = 0.006; // 6 mm de folga
+  const OFS_PECA = new V3(); // deslize da pegada (halter seguro com as duas mãos, anilha)
+  const _ql = new V3(), _qa2 = new V3(), _sc = new V3(), _ma = new THREE.Matrix4(), _qq = new THREE.Quaternion(), _pp = new V3();
+  // quanto (m) a peça entra no corpo e para onde sair: do meio dos pontos invadidos para o centro da peça
+  function penetracao(cils, pts, bracos) {
+    let prof = 0; const dir = new V3();
+    for (const m of cils) {
+      m.updateWorldMatrix(true, false);
+      m.matrixWorld.decompose(_pp, _qq, _sc);
+      _ma.copy(m.matrixWorld).invert();
+      const sr = _sc.x, sh = _sc.y, R = 1 + FOLGA / sr, H = 0.5 + FOLGA / sh;
+      let pm = 0, n = 0, sd = 0; const cen = new V3(), uv = new V3();
+      const rb2 = (sr * sr + sh * sh / 4) * 1.02 + 0.0002 + FOLGA * 2; // esfera em volta da peça: pontos fora dela nem entram na conta
+      for (const q of pts) {
+        if (q.distanceToSquared(_pp) > rb2) continue;
+        _ql.copy(q).applyMatrix4(_ma);
+        const rd = Math.hypot(_ql.x, _ql.z); if (rd >= R || Math.abs(_ql.y) >= H) continue;
+        const d = Math.min((R - rd) * sr, (H - Math.abs(_ql.y)) * sh);
+        cen.add(q); n++; if (d > pm) pm = d;
+        _qa2.copy(_pp).sub(q); const L = _qa2.length(); if (L > 1e-6) { uv.addScaledVector(_qa2, d / L); sd += d; }
+      }
+      if (!n) continue;
+      cen.divideScalar(n);
+      const lc = cen.clone().applyMatrix4(_ma), eixo = new V3(0, 1, 0).applyQuaternion(_qq);
+      let v;
+      const pelaFace = sh * 2 < sr && Math.hypot(lc.x, lc.z) < 0.6 && (bracos || cur.anilhaNormal !== 'maos'); // entre as palmas: nunca de lado
+      if (pelaFace) { // anilha (fina) tocada pela face: sai pela face
+        let sg;
+        if (bracos) sg = -Math.sign(lc.y) || 1; // braço atrás ou na frente: sai para o outro lado
+        else { const sp = bones.spine.getWorldPosition(new V3()), cp = _pp.clone().sub(sp); cp.y = 0; sg = Math.sign(eixo.dot(cp)) || -Math.sign(lc.y) || 1; } // corpo: sempre para longe da coluna
+        v = eixo.multiplyScalar(sg);
+      } else if (sd > 0 && uv.length() < 0.5 * sd) { // tocada dos dois lados (ex.: entre as coxas): a resultante
+        v = uv.normalize();
+      } else { v = _pp.clone().sub(cen); if (v.lengthSq() < 1e-10) continue; v.normalize(); }
+      if (sh * 2 < sr && !pelaFace) { v.addScaledVector(eixo, -v.dot(eixo)); if (v.lengthSq() < 1e-8) continue; v.normalize(); } // anilha pela borda: sai pelo plano dela
+      dir.addScaledVector(v, pm); if (pm > prof) prof = pm;
+    }
+    if (prof <= 0 || dir.lengthSq() < 1e-12) return null;
+    return { prof, dir: dir.normalize() };
+  }
+  // presa entre duas partes (ex.: entre as coxas): se a saída inverte, sai para a frente do corpo
+  function vaiVolta(dir, ant, centro) {
+    // peça na frente do corpo nunca é empurrada para dentro dele (para trás)
+    if (centro) {
+      const fr = new V3(0, 0, 1).applyQuaternion(bones.hips.getWorldQuaternion(new THREE.Quaternion())); fr.y = 0;
+      if (fr.lengthSq() > 1e-6) { fr.normalize(); const sp = bones.spine.getWorldPosition(new V3()); const f0 = centro.clone().sub(sp).dot(fr);
+        if (f0 > 0.05 && dir.dot(fr) < 0) { dir.addScaledVector(fr, -dir.dot(fr)); if (dir.lengthSq() < 0.09) dir.copy(fr); else dir.normalize(); } }
+    }
+    if (ant.lengthSq() > 0 && dir.dot(ant) < -0.3) { const fr = new V3(0, 0, 1).applyQuaternion(bones.hips.getWorldQuaternion(new THREE.Quaternion())); fr.y = 0; if (fr.lengthSq() > 1e-6) dir.copy(fr.normalize()); }
+    ant.copy(dir);
+  }
+  // pontos dos braços (mudam a cada passo, pois os braços se mexem)
+  let AMOSTRA_BR = null, ESF_BR = null; // esferas das peças: só os pontos perto delas contam
+  function pontosBracos(lado, soAntebraco) {
+    if (!AMOSTRA_BR) AMOSTRA_BR = prepararPontos(/^(left|right)(UpperArm|LowerArm|LowerArmTwist)$/);
+    novaPose(); const out = [];
+    for (const p of AMOSTRA_BR) {
+      if (lado && !p.nome.startsWith(lado)) continue; if (soAntebraco && p.nome.endsWith('UpperArm')) continue;
+      p.w.copy(p.q).applyMatrix4(matOsso(p.k));
+      if (ESF_BR && !ESF_BR.some(e => p.w.distanceTo(e.c) < e.r + 0.02)) continue;
+      out.push(p.w);
+    }
+    return out;
+  }
+  const _qg = new THREE.Quaternion(), _qpai = new THREE.Quaternion();
+  function girarNoMundo(o, eixo, ang) {
+    o.parent.getWorldQuaternion(_qpai);
+    _qg.setFromAxisAngle(eixo, ang);
+    const qw = o.getWorldQuaternion(new THREE.Quaternion()).premultiply(_qg);
+    o.quaternion.copy(_qpai.invert().multiply(qw)); o.updateWorldMatrix(false, true);
+  }
+  // leva a mão (punho) para outra posição sem mudar o plano do cotovelo
+  function moverMao(pn, delta) {
+    const h = bones[pn + 'Hand'], alvo = h.getWorldPosition(new V3()).add(delta);
+    const om = bones[pn + 'UpperArm'].getWorldPosition(new V3()), co = bones[pn + 'LowerArm'].getWorldPosition(new V3());
+    const ate = alvo.clone().sub(om), lim = (L_BRACO + L_ANTEBRACO) * 0.995; if (ate.length() > lim) alvo.copy(om).addScaledVector(ate.normalize(), lim); // braço esticado: gira, não estica
+    const ik0 = ikErro; ik2(bones[pn + 'UpperArm'], bones[pn + 'LowerArm'], h, alvo, co.sub(om), L_BRACO, L_ANTEBRACO); ikErro = ik0;
+    h.updateMatrixWorld(true);
+  }
+  // anilha apertada entre as palmas: cada mão sai da espessura dela (a palma encosta na face)
+  function abrirPalmas() {
+    let mx = false;
+    for (let k = 0; k < 4; k++) {
+      atualizarProps(); let m = false;
+      const n = new V3(0, 1, 0).applyQuaternion(anilha.quaternion);
+      for (const [, pn] of SIDES) {
+        const h = bones[pn + 'Hand'].getWorldPosition(new V3()), dh = h.sub(anilha.position).dot(n);
+        if (Math.abs(dh) > anilha.userData.disc.scale.y / 2 + 0.035) continue; // palma na face: não abre mais
+        const r = penetracao([anilha.userData.disc], pontosBracos(pn, true), true); if (!r) continue;
+        moverMao(pn, n.clone().multiplyScalar((Math.sign(dh) || 1) * (r.prof + 0.002))); m = mx = true;
+      }
+      if (!m) break;
+    }
+    return mx;
+  }
+  function folgaPecas() {
+    const lista = Array.isArray(cur.prop) ? cur.prop : [cur.prop || (cur.halteres ? 'halteres' : null)];
+    const halt = lista.includes('halteres'), h1 = lista.includes('halter1'), an = lista.includes('anilha');
+    if (!halt && !h1 && !an) return;
+    OFS_PECA.set(0, 0, 0);
+    if (halt) for (const d of dumbbells) d.quaternion.copy(d.userData.q0);
+    // halteres atravessados na frente do corpo (remada alta): o eixo fica de um lado ao outro do corpo
+    if (halt && cur.halterLado) {
+      const fr = new V3(0, 0, 1).applyQuaternion(bones.hips.getWorldQuaternion(new THREE.Quaternion())), lat = new V3().crossVectors(_up, fr).normalize();
+      for (const d of dumbbells) {
+        d.updateWorldMatrix(true, true);
+        const e = d.userData.cab[1].getWorldPosition(new V3()).sub(d.userData.cab[0].getWorldPosition(new V3())).normalize();
+        const alvo = e.dot(lat) >= 0 ? lat : lat.clone().negate();
+        const q = new THREE.Quaternion().setFromUnitVectors(e, alvo), ax = new V3(q.x, q.y, q.z); const ang = 2 * Math.acos(clamp(q.w, -1, 1));
+        if (ax.lengthSq() > 1e-10 && ang > 1e-4) girarNoMundo(d, ax.normalize(), ang);
+      }
+    }
+    // os pontos do corpo não mudam quando só os braços se mexem: mede uma vez, perto das peças
+    const esf = [];
+    const esfDe = (m, folga) => { m.updateWorldMatrix(true, false); m.matrixWorld.decompose(_pp, _qq, _sc); esf.push({ c: _pp.clone(), r: Math.hypot(_sc.x, _sc.y / 2) + folga }); };
+    if (halt) for (const d of dumbbells) { d.updateWorldMatrix(true, true); for (const c of d.userData.cab) esfDe(c, 0.12); }
+    else { atualizarProps(); if (h1) for (const c of halter1.children[0].userData.cab) esfDe(c, 0.12); else esfDe(anilha.userData.disc, 0.12); }
+    const pts = pontosPerto(esf);
+    ESF_BR = esf.map(e => ({ c: e.c, r: e.r + 0.05 })); // as peças ainda podem se mexer um pouco
+    const ant = [new V3(), new V3()], ant2 = new V3();
+    for (let it = 0; it < 8; it++) {
+      let mexeu = false;
+      if (halt) {
+        SIDES.forEach(([, pn], i) => {
+          const d = dumbbells[i]; d.updateWorldMatrix(true, true);
+          const r = penetracao(d.userData.cab, pts);
+          if (r) { vaiVolta(r.dir, ant[i], d.getWorldPosition(new V3())); moverMao(pn, r.dir.multiplyScalar(r.prof * 1.05 + 0.001)); mexeu = true; }
+        });
+        // um halter não entra no outro (mãos juntas, ex.: remada alta)
+        const c = dumbbells.map(d => { d.updateWorldMatrix(true, true); const u = d.userData; return { a: u.cab[0].getWorldPosition(new V3()), b: u.cab[1].getWorldPosition(new V3()), r: u.cab[0].scale.x }; });
+        const sep = distSegmentos(c[0].a, c[0].b, c[1].a, c[1].b), falta = c[0].r + c[1].r + FOLGA - sep.d;
+        if (falta > 0) {
+          const v = sep.p2.clone().sub(sep.p1); if (v.lengthSq() < 1e-10) v.set(1, 0, 0).applyQuaternion(rig.quaternion); v.normalize();
+          moverMao(SIDES[0][1], v.clone().multiplyScalar(-falta / 2 - 0.001)); moverMao(SIDES[1][1], v.multiplyScalar(falta / 2 + 0.001)); mexeu = true;
+        }
+      } else {
+        if (an && cur.anilhaNormal === 'maos' && abrirPalmas()) mexeu = true;
+        atualizarProps();
+        const cils = h1 ? halter1.children[0].userData.cab : [anilha.userData.disc];
+        // peça contra os antebraços: a pegada desliza um pouco (até 6 cm) para fora deles
+        if (h1) { // halter seguro com as duas mãos: cada mão vai para a borda da cabeça, com o antebraço por fora dela
+          const d1 = halter1.children[0]; d1.updateWorldMatrix(true, true);
+          const c1 = d1.getWorldPosition(new V3()), ax1 = d1.userData.cab[1].getWorldPosition(new V3()).sub(d1.userData.cab[0].getWorldPosition(new V3())).normalize();
+          for (const [s1, pn] of SIDES) {
+            const r = penetracao(cils, pontosBracos(pn), true); if (!r) continue;
+            const v = bones[pn + 'Hand'].getWorldPosition(new V3()).sub(c1); v.addScaledVector(ax1, -v.dot(ax1));
+            const borda = d1.userData.cab[0].scale.x + 0.01 - v.length(); if (borda <= 0) continue; // a mão já está na borda: não sai da peça
+            if (v.lengthSq() < 1e-8) v.set(s1, 0, 0).applyQuaternion(bones.hips.getWorldQuaternion(new THREE.Quaternion()));
+            moverMao(pn, v.normalize().multiplyScalar(Math.min(r.prof, 0.03, borda) + 0.001)); mexeu = true;
+          }
+          atualizarProps();
+        }
+        const rb = h1 || (cur.anilhaNormal === 'maos' && an) ? null : penetracao(cils, pontosBracos(), true); // entre as palmas, encostar nelas é o certo
+        if (rb && OFS_PECA.length() < 0.06) { OFS_PECA.addScaledVector(rb.dir, Math.min(rb.prof * 1.05 + 0.001, 0.06 - OFS_PECA.length())); atualizarProps(); mexeu = true; }
+        const r = penetracao(cils, pts);
+        if (r) { vaiVolta(r.dir, ant2, (h1 ? halter1 : anilha).getWorldPosition(new V3())); const dl = r.dir.multiplyScalar(r.prof * 1.05 + 0.001); for (const [, pn] of SIDES) moverMao(pn, dl); mexeu = true; }
+      }
+      if (!mexeu) break;
+    }
+    // halter contra os braços (ex.: remada alta com halter grande): a cabeça de fora desce (o punho
+    // dobra), girando o halter em torno da frente do corpo só o necessário
+    if (halt) {
+      const br = pontosBracos(), fr = new V3(0, 0, 1).applyQuaternion(bones.hips.getWorldQuaternion(new THREE.Quaternion())), sp = bones.spine.getWorldPosition(new V3());
+      const lat = new V3().crossVectors(_up, fr).normalize();
+      dumbbells.forEach(d => {
+        d.updateWorldMatrix(true, true);
+        const r0 = penetracao(d.userData.cab, br); if (!r0 || r0.prof < 0.004) return;
+        const c0 = d.getWorldPosition(new V3()), fora = d.userData.cab.map(c => Math.abs(c.getWorldPosition(new V3()).sub(sp).dot(lat)));
+        const ext = d.userData.cab[fora[0] > fora[1] ? 0 : 1].getWorldPosition(new V3()).sub(c0);
+        const sg = Math.sign(new V3().crossVectors(fr, ext).y) > 0 ? -1 : 1; // sentido em que a cabeça de fora desce
+        const q0 = d.quaternion.clone();
+        const prova = a => { d.quaternion.copy(q0); girarNoMundo(d, fr, sg * a); const r = penetracao(d.userData.cab, br); return r ? r.prof : 0; };
+        let a = 0;
+        if (prova(0.7) <= 0.004) { let lo = 0, hi = 0.7; for (let k = 0; k < 8; k++) { const m = (lo + hi) / 2; if (prova(m) > 0.004) lo = m; else hi = m; } a = hi; }
+        else { let mp = r0.prof; for (let t = 0.1; t <= 0.71; t += 0.1) { const pr = prova(t); if (pr < mp - 0.003) { mp = pr; a = t; } } }
+        d.quaternion.copy(q0); if (a) girarNoMundo(d, fr, sg * a);
+      });
+    }
+  }
+  // menor distância entre os segmentos p1–q1 e p2–q2 (e os pontos mais próximos)
+  function distSegmentos(p1, q1, p2, q2) {
+    const d1 = q1.clone().sub(p1), d2 = q2.clone().sub(p2), r = p1.clone().sub(p2);
+    const a = d1.dot(d1), e = d2.dot(d2), f = d2.dot(r), c = d1.dot(r), b = d1.dot(d2), den = a * e - b * b;
+    let s1 = den > 1e-10 ? clamp((b * f - c * e) / den, 0, 1) : 0, t = (b * s1 + f) / e;
+    if (t < 0) { t = 0; s1 = clamp(-c / a, 0, 1); } else if (t > 1) { t = 1; s1 = clamp((b - c) / a, 0, 1); }
+    const c1 = p1.clone().addScaledVector(d1, s1), c2 = p2.clone().addScaledVector(d2, t);
+    return { d: c1.distanceTo(c2), p1: c1, p2: c2 };
   }
   /* ---------- Movimento natural ----------
    * Ninguém fica 100% parado: por cima da pose do exercício entram três camadas mínimas
@@ -3597,7 +3838,10 @@ window.CORPO3D_EXERCICIOS = function (H) {
       return;
     }
     if (tem('halter1')) {
-      halter1.position.copy(meio).addScaledVector(_up, -0.075);
+      // mãos por baixo da cabeça de cima: halter grande desce para os antebraços ficarem fora dela
+      const Lh = halter1.children[0].userData.cab[0].scale.y;
+      halter1.position.copy(meio).addScaledVector(_up, -(0.075 - clamp((Lh - 0.03) / 0.05, 0, 1) * 0.038));
+      halter1.position.add(OFS_PECA);
       halter1.quaternion.identity();
       return;
     }
@@ -3611,8 +3855,14 @@ window.CORPO3D_EXERCICIOS = function (H) {
       for (const pn of ['left', 'right']) fa.add(bones[pn + 'Hand'].getWorldPosition(new V3()).sub(bones[pn + 'LowerArmTwist'].getWorldPosition(new V3())));
       fa.addScaledVector(normal, -fa.dot(normal)).normalize();
       centro = meio.clone().addScaledVector(fa, anilha.userData.raio - 0.025);
+    } else if (cur.anilhaNormal !== 'maos') {
+      // mãos espalmadas atrás da anilha: ela fica na frente das palmas (o punho não entra nela)
+      const fa = new V3();
+      for (const pn of ['left', 'right']) fa.add(bones[pn + 'Hand'].getWorldPosition(new V3()).sub(bones[pn + 'LowerArmTwist'].getWorldPosition(new V3())));
+      const sg = Math.sign(fa.dot(normal)) || 1;
+      centro = meio.clone().addScaledVector(normal, sg * (anilha.userData.disc.scale.y / 2 + 0.012));
     }
-    anilha.position.copy(centro);
+    anilha.position.copy(centro).add(OFS_PECA);
     anilha.quaternion.setFromUnitVectors(_up, normal);
   }
 
@@ -6587,7 +6837,7 @@ window.CORPO3D_EXERCICIOS = function (H) {
    *     depois de restaurar, a pessoa aponta os arquivos e cada um volta ao lugar.
    * ===================================================================== */
   const BK_ULTIMO = 'anatomotion.backup.ultimo', BK_ANTES = 'anatomotion.backup.antes', BK_AVISO = 'anatomotion.backup.aviso';
-  const BK_VERSAO = '2.46.0';
+  const BK_VERSAO = '2.47.0';
   const idValido = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(id);
   const fmtDataHora = ms => { const d = new Date(ms); if (!isFinite(d)) return '—'; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   let bkPend = null, bkMsg = '', bkOcupado = false;
@@ -7062,6 +7312,39 @@ window.CORPO3D_EXERCICIOS = function (H) {
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     camera2: () => ({ dif: ['th', 'ph', 'dist', 'tx', 'ty', 'tz'].map(k => +(camT[k] - cam[k]).toFixed(4)).join(','), tw: tweening, est: S.estado, rep: cur.repouso, foco: focusKey, ptrs: ptrs.size, cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
     halterMinY: () => { const out = []; for (const d of dumbbells.concat([halter1.children[0]])) { if (!d.visible || (d === halter1.children[0] && !halter1.visible)) continue; d.updateMatrixWorld(true); for (const c of d.userData.cab) { const p = c.getWorldPosition(new V3()); out.push(p.y - d.userData.cab[0].scale.x); } } return out.length ? +Math.min(...out).toFixed(3) : null; },
+    pesoTeste: (tp, v) => aplicarPeso(tp, v),
+    // diagnóstico: quanto as peças (cilindros dos halteres, anilha, anilhas e barra) entram no corpo na pose atual (mãos e dedos não contam)
+    invasao: () => {
+      rig.updateMatrixWorld(true); baseMesh.skeleton.update();
+      const vis = o => { for (let x = o; x; x = x.parent) if (!x.visible) return false; return true; };
+      const cil = [];
+      const kinds = [['halter', dumbbells.concat([halter1])], ['anilha', [anilha]], ['barra', [barra, barraW]]];
+      for (const [kind, gs] of kinds) for (const g of gs) g.traverse(m => {
+        if (!m.isMesh || !vis(m) || m.geometry.type !== 'CylinderGeometry') return;
+        const pr = m.geometry.parameters; m.updateWorldMatrix(true, false);
+        const sc = new V3(); m.matrixWorld.decompose(new V3(), new THREE.Quaternion(), sc);
+        cil.push({ m, kind, inv: m.matrixWorld.clone().invert(), r: pr.radiusTop, h: pr.height / 2, sr: sc.x, sh: sc.y, cab: m.geometry === GEO_PLACA || (pr.radiusTop === 1) });
+      });
+      if (!cil.length) return null;
+      const pos = baseMesh.geometry.attributes.position, si = baseMesh.geometry.attributes.skinIndex, sw = baseMesh.geometry.attributes.skinWeight, v = new V3(), q = new V3();
+      const res = {};
+      for (let i = 0; i < pos.count; i += 2) {
+        let k = 0; for (let j = 1; j < 4; j++) if (sw.array[i * 4 + j] > sw.array[i * 4 + k]) k = j;
+        const osso = baseMesh.skeleton.bones[si.array[i * 4 + k]].name;
+        if (/Hand|Proximal|Intermediate|Distal|Metacarpal/.test(osso)) continue;
+        v.fromBufferAttribute(pos, i); baseMesh.boneTransform(i, v); v.applyMatrix4(baseMesh.matrixWorld);
+        for (const c of cil) {
+          q.copy(v).applyMatrix4(c.inv);
+          const rad = Math.hypot(q.x, q.z); if (rad >= c.r || Math.abs(q.y) >= c.h) continue;
+          const d = Math.min((c.r - rad) * c.sr, (c.h - Math.abs(q.y)) * c.sh);
+          const key = c.kind + (c.cab ? '' : ':cabo'); const o = res[key] || (res[key] = { prof: 0, ossos: {} });
+          o.n = (o.n || 0) + (d > 0.005 ? 1 : 0); o.no = o.no || {}; if (d > 0.005) o.no[osso] = (o.no[osso] || 0) + 1;
+          if (d > o.prof) { o.prof = d; o.v = v.toArray().map(x => +x.toFixed(3)); o.c = c.m.getWorldPosition(new V3()).toArray().map(x => +x.toFixed(3)); o.r = c.r; } if (d > 0.005) o.ossos[osso] = Math.max(o.ossos[osso] || 0, +d.toFixed(3));
+        }
+      }
+      for (const k in res) res[k].prof = +res[k].prof.toFixed(3);
+      return res;
+    },
     barraY: () => { const g = barra.visible ? barra : barraW; return g.visible ? +g.getWorldPosition(new V3()).y.toFixed(3) : null; },
     pecas: () => ({ halter: Object.assign({}, cabecaHalter(dumbbells[0].userData.kg), { kg: dumbbells[0].userData.kg, rot: dumbbells[0].userData.rot.length }), anilha: { kg: anilha.userData.kg, raio: anilha.userData.raio, esc: anilha.userData.disc.scale.x, rot: anilha.userData.rot.length }, barra: { kg: barra.userData.kg, placas: barra.userData.placas.map(m => +(m.scale.x).toFixed(3)), rot: barra.userData.rots.length } }),
     proximoCard: () => ({ ex: MINI.proximoEx(), quadros: MINI.proximoQuadros(), vis: !$('restProx').hidden && !$('rest').hidden }),
