@@ -700,11 +700,52 @@
   /* ---------- Acessórios: halteres (um em cada mão), halter único e anilha ---------- */
   const mPlate = new THREE.MeshStandardMaterial({ color: 0x2b2630, roughness: 0.42, metalness: 0.3 });
   const mBar = new THREE.MeshStandardMaterial({ color: 0xa8a2b0, roughness: 0.25, metalness: 0.7 });
+  /* Número do peso impresso (textura gerada uma vez por valor) */
+  const TEX_PESO = new Map();
+  function texPeso(kg, modo) {
+    const chave = kg + '|' + modo; if (TEX_PESO.has(chave)) return TEX_PESO.get(chave);
+    const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+    g.fillStyle = '#E9E4F0'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const n = String(Math.round(kg * 100) / 100).replace('.', ','), f = n.length > 3 ? 74 : n.length > 2 ? 92 : 112;
+    if (modo === 'anel') { // anilha com furo no meio: número em cima, "kg" embaixo
+      g.font = '700 ' + Math.round(f * 0.62) + 'px system-ui, sans-serif'; g.fillText(n, 128, 58);
+      g.font = '600 34px system-ui, sans-serif'; g.fillText('KG', 128, 200);
+    } else { g.font = '700 ' + f + 'px system-ui, sans-serif'; g.fillText(n, 128, 112); g.font = '600 40px system-ui, sans-serif'; g.fillText('kg', 128, 196); }
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4;
+    const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false });
+    TEX_PESO.set(chave, m); return m;
+  }
+  const GEO_ROTULO = new THREE.CircleGeometry(1, 32);
+  // rótulo virado para +x (k=1) ou −x (k=−1), em x = pos
+  function rotuloX(kg, raio, pos, k, modo) {
+    const r = new THREE.Mesh(GEO_ROTULO, texPeso(kg, modo || 'cheio')); r.scale.setScalar(raio); r.position.x = pos; r.rotation.y = k * Math.PI / 2; r.renderOrder = 2; return r;
+  }
+  // tamanhos aproximados de peças reais
+  const cabecaHalter = kg => { kg = Math.max(0.5, kg); return { r: 0.022 + 0.012 * Math.sqrt(kg), L: Math.min(0.095, 0.017 + 0.0019 * kg) }; };
+  const raioAnilha = kg => Math.min(0.225, 0.085 + 0.024 * Math.sqrt(Math.max(1, kg)));
+  const espAnilha = kg => Math.min(0.09, 0.018 + 0.0011 * Math.max(1, kg));
+  const PLACAS = [[25, 0.225, 0.05], [20, 0.225, 0.045], [15, 0.2, 0.04], [10, 0.165, 0.035], [5, 0.115, 0.028], [2.5, 0.095, 0.022], [1.25, 0.08, 0.018], [1, 0.075, 0.016], [0.5, 0.065, 0.012]];
+  function placasPorLado(total) { // decompõe metade do total nas anilhas padrão (maior primeiro)
+    let resto = Math.round((total / 2) * 100) / 100; const out = [];
+    for (const [kg, r, t] of PLACAS) while (resto >= kg - 1e-6 && out.length < 8) { out.push([kg, r, t]); resto = Math.round((resto - kg) * 100) / 100; }
+    return out;
+  }
   function makeDumbbell() {
     const g = new THREE.Group();
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.15, 14), mBar); bar.rotation.z = Math.PI / 2; g.add(bar);
-    for (const k of [-1, 1]) { const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.03, 24), mPlate); pl.rotation.z = Math.PI / 2; pl.position.x = k * 0.062; g.add(pl); }
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 14), mBar); bar.rotation.z = Math.PI / 2; g.add(bar);
+    const cab = []; for (const k of [-1, 1]) { const pl = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 28), mPlate); pl.rotation.z = Math.PI / 2; g.add(pl); cab.push(pl); }
+    g.userData = { bar, cab, rot: [], kg: null };
+    ajustarHalter(g, 4);
     return g;
+  }
+  // cabeças do halter do tamanho do peso, com o número na face de fora
+  function ajustarHalter(g, kg) {
+    const u = g.userData; if (u.kg === kg) return; u.kg = kg;
+    const { r, L } = cabecaHalter(kg), x0 = 0.047;
+    u.bar.scale.set(1, 2 * (x0 + L) + 0.01, 1);
+    u.cab.forEach((pl, i) => { const k = i ? 1 : -1; pl.scale.set(r, L, r); pl.position.x = k * (x0 + L / 2); });
+    for (const m of u.rot) g.remove(m); u.rot = [];
+    for (const k of [-1, 1]) { const m = rotuloX(kg, r * 0.86, k * (x0 + L + 0.0008), k); g.add(m); u.rot.push(m); }
   }
   const dumbbells = [];
   for (const [s, p] of SIDES) {
@@ -719,12 +760,26 @@
   // anilha (eixo do cilindro = normal da anilha)
   const anilha = new THREE.Group();
   {
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.028, 48), mPlate); anilha.add(disc);
-    const aro = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.008, 8, 48), mPlate); aro.rotation.x = Math.PI / 2; aro.position.y = 0.016; anilha.add(aro);
-    const aro2 = aro.clone(); aro2.position.y = -0.016; anilha.add(aro2);
-    const miolo = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.034, 24), mBar); anilha.add(miolo);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 48), mPlate); anilha.add(disc);
+    const aro = new THREE.Mesh(new THREE.TorusGeometry(1, 0.064, 8, 48), mPlate); aro.rotation.x = Math.PI / 2; anilha.add(aro);
+    const aro2 = aro.clone(); anilha.add(aro2);
+    const miolo = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 24), mBar); anilha.add(miolo);
+    anilha.userData = { disc, aro, aro2, miolo, rot: [], kg: null, raio: 0.14 };
   }
   anilha.visible = false; scene.add(anilha);
+  // anilha do tamanho do peso (1 kg pequena, 20–25 kg grande), com o número nas duas faces
+  function ajustarAnilha(kg) {
+    const u = anilha.userData; if (u.kg === kg) return; u.kg = kg;
+    const R = raioAnilha(kg), t = espAnilha(kg); u.raio = R;
+    u.disc.scale.set(R, t, R);
+    for (const [a, k] of [[u.aro, 1], [u.aro2, -1]]) { a.scale.setScalar(R * 0.89); a.scale.z = R * 0.89; a.position.y = k * (t / 2 + 0.002); }
+    u.miolo.scale.set(1, t + 0.006, 1);
+    for (const m of u.rot) anilha.remove(m); u.rot = [];
+    for (const k of [-1, 1]) {
+      const m = new THREE.Mesh(GEO_ROTULO, texPeso(kg, 'anel')); m.scale.setScalar(R * 0.8); m.position.y = k * (t / 2 + 0.0035); m.rotation.x = -k * Math.PI / 2; m.renderOrder = 2;
+      anilha.add(m); u.rot.push(m);
+    }
+  }
   // barra reta e barra W (eixo da barra = x local)
   function makeBarra(w) {
     const g = new THREE.Group();
@@ -736,13 +791,28 @@
       bar = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 1.5, 14), mBar); bar.rotation.z = Math.PI / 2;
     }
     g.add(bar);
-    const r = w ? 0.11 : 0.17, x0 = w ? 0.47 : 0.6;
-    for (const k of [-1, 1]) {
-      const pl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.045, 40), mPlate); pl.rotation.z = Math.PI / 2; pl.position.x = k * x0; g.add(pl);
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.04, 16), mBar); col.rotation.z = Math.PI / 2; col.position.x = k * (x0 - 0.045); g.add(col);
-    }
+    const x0 = w ? 0.47 : 0.6;
+    for (const k of [-1, 1]) { const col = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.04, 16), mBar); col.rotation.z = Math.PI / 2; col.position.x = k * (x0 - 0.045); g.add(col); }
+    g.userData = { x0, pecas: [], kg: null };
+    ajustarBarra(g, 20);
     g.visible = false; scene.add(g);
     return g;
+  }
+  // anilhas da barra: o total escolhido dividido nos dois lados, em anilhas padrão (cada uma do seu tamanho e com o número)
+  const GEO_PLACA = new THREE.CylinderGeometry(1, 1, 1, 40);
+  function ajustarBarra(g, total) {
+    const u = g.userData; if (u.kg === total) return; u.kg = total;
+    for (const m of u.pecas) g.remove(m); u.pecas = [];
+    const lista = placasPorLado(total);
+    for (const k of [-1, 1]) {
+      let x = u.x0 - 0.025;
+      for (const [kg, r, t] of lista) {
+        const pl = new THREE.Mesh(GEO_PLACA, mPlate); pl.rotation.z = Math.PI / 2; pl.scale.set(r, t, r); pl.position.x = k * (x + t / 2); g.add(pl); u.pecas.push(pl);
+        const m = rotuloX(kg, r * 0.8, k * (x + t + 0.0008), k, 'anel'); g.add(m); u.pecas.push(m);
+        x += t + 0.002;
+      }
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.03, 14), mBar); tr.rotation.z = Math.PI / 2; tr.position.x = k * (x + 0.015); g.add(tr); u.pecas.push(tr);
+    }
   }
   const barra = makeBarra(false), barraW = makeBarra(true);
   // caneleiras (tornozelo e punho)
@@ -1252,7 +1322,7 @@
       const fa = new V3();
       for (const pn of ['left', 'right']) fa.add(bones[pn + 'Hand'].getWorldPosition(new V3()).sub(bones[pn + 'LowerArmTwist'].getWorldPosition(new V3())));
       fa.addScaledVector(normal, -fa.dot(normal)).normalize();
-      centro = meio.clone().addScaledVector(fa, 0.115);
+      centro = meio.clone().addScaledVector(fa, anilha.userData.raio - 0.025);
     }
     anilha.position.copy(centro);
     anilha.quaternion.setFromUnitVectors(_up, normal);
@@ -1948,7 +2018,8 @@
   const PESOS = {
     halteres: { nome: 'Halteres', max: 40, passo: 0.5, padrao: 4, rotulo: 5, sub: 'cada halter' },
     anilha: { nome: 'Anilha', max: 100, passo: 1, padrao: 12, rotulo: 10, sub: 'a anilha' },
-    caneleira: { nome: 'Caneleira', max: 20, passo: 0.5, padrao: 3, rotulo: 2, sub: 'cada caneleira' }
+    caneleira: { nome: 'Caneleira', max: 20, passo: 0.5, padrao: 3, rotulo: 2, sub: 'cada caneleira' },
+    barra: { nome: 'Anilhas na barra', max: 150, passo: 1, padrao: 20, rotulo: 10, sub: 'total dos dois lados, sem a barra' }
   };
   const tipoPeso = ex => (ex && PESOS[ex.equip] ? ex.equip : null);
   function pesoValido(tipo, v) {
@@ -1990,6 +2061,7 @@
   function pesoFalado() {
     const tp = tipoPeso(cur); if (!tp) return '';
     const v = pesoAtual(), nm = tp === 'halteres' ? (cur.prop === 'halter1' ? 'halter' : 'halteres') : tp;
+    if (tp === 'barra') return ', com ' + kgTxt(v) + (v > 1 ? ' quilos' : ' quilo') + ' de anilhas na barra';
     return ', com ' + nm + ' de ' + kgTxt(v) + (v > 1 ? ' quilos' : ' quilo');
   }
   escalaCaneleira(cfg.pesos.caneleira);
@@ -2053,8 +2125,17 @@
   const ICON_RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>';
   $('bReset').innerHTML = ICON_RESET;
 
+  // o tamanho das peças segue o peso escolhido
+  function pesoVisual() {
+    const tp = tipoPeso(cur); if (!tp) return;
+    const v = pesoAtual();
+    if (tp === 'caneleira') escalaCaneleira(v);
+    else if (tp === 'halteres') { for (const d of dumbbells) ajustarHalter(d, v); ajustarHalter(halter1.children[0], v); }
+    else if (tp === 'anilha') ajustarAnilha(v);
+    else if (tp === 'barra') { ajustarBarra(barra, v); ajustarBarra(barraW, v); }
+  }
   function painelTreino() {
-    if (tipoPeso(cur) === 'caneleira') escalaCaneleira(pesoAtual());
+    pesoVisual();
     const ativo = S.estado !== 'previa' && S.estado !== 'congelado';
     $('nRep').textContent = String(S.rep);
     $('nRepTot').textContent = String(tc.reps);
@@ -4686,6 +4767,8 @@
     },
     treinosIds: () => TREINOS.map(t => ({ id: t.id, nome: t.nome, itens: t.itens.map(i => i.ex) })),
     camera2: () => ({ dif: ['th', 'ph', 'dist', 'tx', 'ty', 'tz'].map(k => +(camT[k] - cam[k]).toFixed(4)).join(','), tw: tweening, est: S.estado, rep: cur.repouso, foco: focusKey, ptrs: ptrs.size, cfg: Object.assign({}, CAMCFG), grau: +giroGrau.toFixed(2), th: +(cam.th * 180 / Math.PI).toFixed(2) }),
+    barraY: () => { const g = barra.visible ? barra : barraW; return g.visible ? +g.getWorldPosition(new V3()).y.toFixed(3) : null; },
+    pecas: () => ({ halter: Object.assign({}, cabecaHalter(dumbbells[0].userData.kg), { kg: dumbbells[0].userData.kg, rot: dumbbells[0].userData.rot.length }), anilha: { kg: anilha.userData.kg, raio: anilha.userData.raio, esc: anilha.userData.disc.scale.x, rot: anilha.userData.rot.length }, barra: { kg: barra.userData.kg, placas: barra.userData.pecas.filter(m => m.geometry === GEO_PLACA).map(m => +(m.scale.x).toFixed(3)), rot: barra.userData.pecas.filter(m => m.geometry === GEO_ROTULO).length } }),
     proximoCard: () => ({ ex: MINI.proximoEx(), quadros: MINI.proximoQuadros(), vis: !$('restProx').hidden && !$('rest').hidden }),
     catalogo2: () => ({ favs: CAT.favs.slice(), soFav: CAT.soFav, grupo: CAT.grupo, modo: CAT.modo, mini: !!MINI.ativo(), previaQuadros: MINI.previaQuadros() }),
     treino: () => ({ estado: S.estado, ciclo: S.ciclo, rep: S.rep, lado, resto: +S.resto.toFixed(2), cfg: Object.assign({}, tc) }),
