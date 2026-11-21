@@ -869,6 +869,14 @@
     return o;
   }
   const relaxed = grip(-8, -12, -6, -8), fist = grip(-80, -95, -55, -45), flat = grip(-4, -4, -2, 0);
+  // pegada fechada: o polegar não dobra como um dedo — a base gira para a frente da palma (oposição),
+  // passa por cima da barra/cabo e a ponta fecha por fora do indicador e do médio, travando a peça
+  // (ângulos achados por otimização: ponta sobre as falanges médias, sem entrar na barra nem nos dedos)
+  for (const [s, p] of SIDES) {
+    fist[p + 'ThumbMetacarpal'] = [-53.2, s * 46.5, s * -14.1];
+    fist[p + 'ThumbProximal'] = [9.8, 0, s * -17.2];
+    fist[p + 'ThumbDistal'] = [63.5, 0, 0];
+  }
   const G = {
     quadriceps: ['reto_femoral', 'vasto_lateral', 'vasto_medial'], triceps: ['triceps_lateral', 'triceps_longa'],
     isquios: ['biceps_femoral', 'semitendineo'], gastro: ['gastrocnemio_medial', 'gastrocnemio_lateral'],
@@ -5063,6 +5071,18 @@
       }
       for (const k in res) res[k].prof = +res[k].prof.toFixed(3);
       return res;
+    },
+    // polegar da mão esquerda: distância da ponta até o indicador e até o eixo da peça segurada
+    polegar: () => {
+      rig.updateMatrixWorld(true);
+      const pd = bones.leftThumbDistal, ponta = new V3(0, -0.025, 0).applyMatrix4(pd.matrixWorld);
+      const ind = bones.leftIndexIntermediate.getWorldPosition(new V3());
+      let eixo = null;
+      const b2 = barra.visible ? barra : barraW.visible ? barraW : null, d = dumbbells[0].visible ? dumbbells[0] : null;
+      const alvo = b2 || d;
+      if (alvo) { const c = alvo.getWorldPosition(new V3()), ax = new V3(1, 0, 0).applyQuaternion(alvo.getWorldQuaternion(new THREE.Quaternion()));
+        eixo = Math.min(...[bones.leftThumbProximal, bones.leftThumbDistal].map(o => o.getWorldPosition(new V3())).concat([ponta]).map(q => { const v = q.clone().sub(c); return v.addScaledVector(ax, -v.dot(ax)).length(); })); }
+      return { ateIndicador: +ponta.distanceTo(ind).toFixed(3), ateEixo: eixo == null ? null : +eixo.toFixed(3) };
     },
     barraY: () => { const g = barra.visible ? barra : barraW; return g.visible ? +g.getWorldPosition(new V3()).y.toFixed(3) : null; },
     pecas: () => ({ halter: Object.assign({}, cabecaHalter(dumbbells[0].userData.kg), { kg: dumbbells[0].userData.kg, rot: dumbbells[0].userData.rot.length }), anilha: { kg: anilha.userData.kg, raio: anilha.userData.raio, esc: anilha.userData.disc.scale.x, rot: anilha.userData.rot.length }, barra: { kg: barra.userData.kg, placas: barra.userData.placas.map(m => +(m.scale.x).toFixed(3)), rot: barra.userData.rots.length } }),
